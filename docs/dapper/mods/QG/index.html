@@ -222,7 +222,7 @@ def gen_sample(model, nSamples, SpinUp, Spacing):
 
 
 sample_filename = modelling.rc.dirs.samples/&#39;QG_samples.npz&#39;
-if not sample_filename.is_file() and &#34;pdoc&#34; not in sys.modules:
+if (not sample_filename.is_file()) and (&#34;pdoc&#34; not in sys.modules):
     print(&#39;Did not find sample file&#39;, sample_filename,
           &#39;for experiment initialization. Generating...&#39;)
     sample = gen_sample(model_config(&#34;sample_generation&#34;, {}), 400, 700, 10)
