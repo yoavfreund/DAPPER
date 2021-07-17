@@ -57,7 +57,7 @@ somewhere around what Lorenz used, namely <code>dt=0.05/12</code>.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/LorenzIII/__init__.py#L0-L205" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/LorenzIII/__init__.py#L0-L228" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">&#34;&#34;&#34;A multi-scale, smooth version of the classic Lorenz-96.
 
@@ -110,7 +110,7 @@ class Model:
     c    : float = 2.5  # coupling strength
     Force: float = 15   # forcing
 
-    Tplot: float = 10
+    mp   : bool  = False
 
     def __post_init__(self):
         J = self.J
@@ -146,8 +146,31 @@ class Model:
             + self.Force
         )
 
-    def step(self, x0, t, dt):
+    def step1(self, x0, t, dt):
         return rk4(lambda t, x: self.dxdt(x), x0, np.nan, dt)
+    # Note: step1 is already ensemble compatible.
+    # However, it is a bit slow, so we can gain in speed by using multiprocessing.
+
+    # TODO 4: the same pattern is used for the QG model. Merge, and  it a decorator?
+    def step(self, E, t, dt):
+        if E.ndim == 1:
+            return self.step1(E, t, dt)
+        if E.ndim == 2:
+            if self.mp and E.size &gt; 1e5:
+                # TODO 4: using dapper.tools.multiproc.Pool yielded
+                # &#34;Too many files open&#34; error. Fixed it as described here:
+                # https://stackoverflow.com/q/45665991
+                import multiprocessing_on_dill as mpd
+
+                def f(E):
+                    return self.step1(E, t=t, dt=dt)
+                with mpd.Pool() as pool:
+                    E = pool.map(f, E)
+                E = np.array(E)
+            else:
+                for n, x in enumerate(E):
+                    E[n] = self.step1(x, t, dt)
+            return E
 
 
 def summation_kernel(width):
@@ -285,7 +308,7 @@ But with default system parameters and N=50, the savings are negligible.</p></di
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/LorenzIII/__init__.py#L92-L104" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/LorenzIII/__init__.py#L115-L127" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def summation_kernel(width):
     &#34;&#34;&#34;Prepare computation of the modified sum in `bib.lorenz2005designing`.
@@ -343,7 +366,7 @@ array([4., 3., 2., 3., 4., 5., 6., 7., 6., 5.])
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/LorenzIII/__init__.py#L107-L181" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/LorenzIII/__init__.py#L130-L204" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def boxcar(x, n, method=&#34;direct&#34;):
     &#34;&#34;&#34;Moving average (boxcar filter) on `x` using `n` nearest (periodically) elements.
@@ -434,7 +457,7 @@ compared to just calling this function again are negligible.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/LorenzIII/__init__.py#L184-L192" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/LorenzIII/__init__.py#L207-L215" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def shift(x, k):
     &#34;&#34;&#34;Rolls `x` leftwards. I.e. `output[i] = input[i+k]`.
@@ -455,7 +478,7 @@ compared to just calling this function again are negligible.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/LorenzIII/__init__.py#L195-L201" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/LorenzIII/__init__.py#L218-L224" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def prodsum_self(x, k):
     &#34;&#34;&#34;Compute `prodsum(x, x, k)` efficiently: eqn 10 of `bib.lorenz2005designing`.&#34;&#34;&#34;
@@ -474,7 +497,7 @@ compared to just calling this function again are negligible.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/LorenzIII/__init__.py#L204-L206" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/LorenzIII/__init__.py#L227-L229" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def prodsum_K1(x, y):
     &#34;&#34;&#34;Compute `prodsum(x, y, 1)` efficiently.&#34;&#34;&#34;
@@ -488,7 +511,7 @@ compared to just calling this function again are negligible.</p></div>
 <dl>
 <dt id="dapper.mods.LorenzIII.Model"><code class="flex name class">
 <span>class <span class="ident">Model</span></span>
-<span>(</span><span>M: int = 960, J: int = 12, K: int = 32, b: float = 10, c: float = 2.5, Force: float = 15, Tplot: float = 10)</span>
+<span>(</span><span>M: int = 960, J: int = 12, K: int = 32, b: float = 10, c: float = 2.5, Force: float = 15, mp: bool = False)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>The model configuration.</p>
@@ -499,7 +522,7 @@ working with multiple parameter settings simultaneously.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/LorenzIII/__init__.py#L36-L89" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/LorenzIII/__init__.py#L36-L112" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Model:
     &#34;&#34;&#34;The model configuration.
@@ -517,7 +540,7 @@ working with multiple parameter settings simultaneously.</p></div>
     c    : float = 2.5  # coupling strength
     Force: float = 15   # forcing
 
-    Tplot: float = 10
+    mp   : bool  = False
 
     def __post_init__(self):
         J = self.J
@@ -553,8 +576,31 @@ working with multiple parameter settings simultaneously.</p></div>
             + self.Force
         )
 
-    def step(self, x0, t, dt):
-        return rk4(lambda t, x: self.dxdt(x), x0, np.nan, dt)</code></pre>
+    def step1(self, x0, t, dt):
+        return rk4(lambda t, x: self.dxdt(x), x0, np.nan, dt)
+    # Note: step1 is already ensemble compatible.
+    # However, it is a bit slow, so we can gain in speed by using multiprocessing.
+
+    # TODO 4: the same pattern is used for the QG model. Merge, and  it a decorator?
+    def step(self, E, t, dt):
+        if E.ndim == 1:
+            return self.step1(E, t, dt)
+        if E.ndim == 2:
+            if self.mp and E.size &gt; 1e5:
+                # TODO 4: using dapper.tools.multiproc.Pool yielded
+                # &#34;Too many files open&#34; error. Fixed it as described here:
+                # https://stackoverflow.com/q/45665991
+                import multiprocessing_on_dill as mpd
+
+                def f(E):
+                    return self.step1(E, t=t, dt=dt)
+                with mpd.Pool() as pool:
+                    E = pool.map(f, E)
+                E = np.array(E)
+            else:
+                for n, x in enumerate(E):
+                    E[n] = self.step1(x, t, dt)
+            return E</code></pre>
 </details>
 <h3>Class variables</h3>
 <dl>
@@ -582,7 +628,7 @@ working with multiple parameter settings simultaneously.</p></div>
 <dd>
 <div class="desc"></div>
 </dd>
-<dt id="dapper.mods.LorenzIII.Model.Tplot"><code class="name">var <span class="ident">Tplot</span> : float</code></dt>
+<dt id="dapper.mods.LorenzIII.Model.mp"><code class="name">var <span class="ident">mp</span> : bool</code></dt>
 <dd>
 <div class="desc"></div>
 </dd>
@@ -636,8 +682,8 @@ working with multiple parameter settings simultaneously.</p></div>
     )</code></pre>
 </details>
 </dd>
-<dt id="dapper.mods.LorenzIII.Model.step"><code class="name flex">
-<span>def <span class="ident">step</span></span>(<span>self, x0, t, dt)</span>
+<dt id="dapper.mods.LorenzIII.Model.step1"><code class="name flex">
+<span>def <span class="ident">step1</span></span>(<span>self, x0, t, dt)</span>
 </code></dt>
 <dd>
 <div class="desc"></div>
@@ -646,8 +692,39 @@ working with multiple parameter settings simultaneously.</p></div>
 <span>Expand source code</span>
 <a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/LorenzIII/__init__.py#L88-L89" class="git-link">Browse git</a>
 </summary>
-<pre><code class="python">def step(self, x0, t, dt):
+<pre><code class="python">def step1(self, x0, t, dt):
     return rk4(lambda t, x: self.dxdt(x), x0, np.nan, dt)</code></pre>
+</details>
+</dd>
+<dt id="dapper.mods.LorenzIII.Model.step"><code class="name flex">
+<span>def <span class="ident">step</span></span>(<span>self, E, t, dt)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/LorenzIII/__init__.py#L94-L112" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def step(self, E, t, dt):
+    if E.ndim == 1:
+        return self.step1(E, t, dt)
+    if E.ndim == 2:
+        if self.mp and E.size &gt; 1e5:
+            # TODO 4: using dapper.tools.multiproc.Pool yielded
+            # &#34;Too many files open&#34; error. Fixed it as described here:
+            # https://stackoverflow.com/q/45665991
+            import multiprocessing_on_dill as mpd
+
+            def f(E):
+                return self.step1(E, t=t, dt=dt)
+            with mpd.Pool() as pool:
+                E = pool.map(f, E)
+            E = np.array(E)
+        else:
+            for n, x in enumerate(E):
+                E[n] = self.step1(x, t, dt)
+        return E</code></pre>
 </details>
 </dd>
 </dl>
@@ -692,6 +769,7 @@ data-gaCategoryParameter="dapper.mods.LorenzIII">
 <ul class="two-column">
 <li><code><a title="dapper.mods.LorenzIII.Model.decompose" href="#dapper.mods.LorenzIII.Model.decompose">decompose</a></code></li>
 <li><code><a title="dapper.mods.LorenzIII.Model.dxdt" href="#dapper.mods.LorenzIII.Model.dxdt">dxdt</a></code></li>
+<li><code><a title="dapper.mods.LorenzIII.Model.step1" href="#dapper.mods.LorenzIII.Model.step1">step1</a></code></li>
 <li><code><a title="dapper.mods.LorenzIII.Model.step" href="#dapper.mods.LorenzIII.Model.step">step</a></code></li>
 <li><code><a title="dapper.mods.LorenzIII.Model.M" href="#dapper.mods.LorenzIII.Model.M">M</a></code></li>
 <li><code><a title="dapper.mods.LorenzIII.Model.J" href="#dapper.mods.LorenzIII.Model.J">J</a></code></li>
@@ -699,7 +777,7 @@ data-gaCategoryParameter="dapper.mods.LorenzIII">
 <li><code><a title="dapper.mods.LorenzIII.Model.b" href="#dapper.mods.LorenzIII.Model.b">b</a></code></li>
 <li><code><a title="dapper.mods.LorenzIII.Model.c" href="#dapper.mods.LorenzIII.Model.c">c</a></code></li>
 <li><code><a title="dapper.mods.LorenzIII.Model.Force" href="#dapper.mods.LorenzIII.Model.Force">Force</a></code></li>
-<li><code><a title="dapper.mods.LorenzIII.Model.Tplot" href="#dapper.mods.LorenzIII.Model.Tplot">Tplot</a></code></li>
+<li><code><a title="dapper.mods.LorenzIII.Model.mp" href="#dapper.mods.LorenzIII.Model.mp">mp</a></code></li>
 </ul>
 </li>
 </ul>

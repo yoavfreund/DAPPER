@@ -66,7 +66,7 @@ is the name of the corresponding liveplotting classes/functions.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/liveplotting.py#L0-L1345" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/liveplotting.py#L0-L1346" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">&#34;&#34;&#34;On-line (live) plots of the DA process for various models and methods.
 
@@ -1192,7 +1192,7 @@ def spatial1d(
     obs_inds     = None,
     periodicity  = None,
     dims         = (),
-    ens_props    = {&#39;color&#39;: &#39;k&#39;, &#39;alpha&#39;: 0.1},  # noqa
+    ens_props    = {&#39;color&#39;: &#39;b&#39;, &#39;alpha&#39;: 0.1},  # noqa
     conf_mult    = None,
 ):
 
@@ -1238,6 +1238,7 @@ def spatial1d(
         # Truth, Obs
         (line_x, )   = ax.plot(ii, nan1, &#39;k-&#39;, lw=3, label=&#39;Truth&#39;)
         if p.obs_inds is not None:
+            p.obs_inds = np.asarray(p.obs_inds)
             (line_y, ) = ax.plot(p.obs_inds, nan*p.obs_inds, &#39;g*&#39;, ms=5, label=&#39;Obs&#39;)
 
         # Tune plot
@@ -2022,20 +2023,20 @@ because there's usually not that much data to sort through.</p></div>
 </details>
 </dd>
 <dt id="dapper.tools.liveplotting.spatial1d"><code class="name flex">
-<span>def <span class="ident">spatial1d</span></span>(<span>obs_inds=None, periodicity=None, dims=(), ens_props={'color': 'k', 'alpha': 0.1}, conf_mult=None)</span>
+<span>def <span class="ident">spatial1d</span></span>(<span>obs_inds=None, periodicity=None, dims=(), ens_props={'color': 'b', 'alpha': 0.1}, conf_mult=None)</span>
 </code></dt>
 <dd>
 <div class="desc"></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/liveplotting.py#L1121-L1224" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/liveplotting.py#L1121-L1225" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def spatial1d(
     obs_inds     = None,
     periodicity  = None,
     dims         = (),
-    ens_props    = {&#39;color&#39;: &#39;k&#39;, &#39;alpha&#39;: 0.1},  # noqa
+    ens_props    = {&#39;color&#39;: &#39;b&#39;, &#39;alpha&#39;: 0.1},  # noqa
     conf_mult    = None,
 ):
 
@@ -2081,6 +2082,7 @@ because there's usually not that much data to sort through.</p></div>
         # Truth, Obs
         (line_x, )   = ax.plot(ii, nan1, &#39;k-&#39;, lw=3, label=&#39;Truth&#39;)
         if p.obs_inds is not None:
+            p.obs_inds = np.asarray(p.obs_inds)
             (line_y, ) = ax.plot(p.obs_inds, nan*p.obs_inds, &#39;g*&#39;, ms=5, label=&#39;Obs&#39;)
 
         # Tune plot
@@ -2145,7 +2147,7 @@ because there's usually not that much data to sort through.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/liveplotting.py#L1227-L1335" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/liveplotting.py#L1228-L1336" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def spatial2d(
     square,
