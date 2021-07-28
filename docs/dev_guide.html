@@ -39,7 +39,6 @@ body.gsc-overflow-hidden #sidebar {overflow: visible;}
 <h1 id="developer-guide">Developer guide</h1>
 <h2 id="conventions">Conventions</h2>
 <ul>
-<li>Python version <code>&gt;=3.7</code> for <code>dict</code>'s to maintain ordering.</li>
 <li>Ensemble (data) matrices are <code>np.ndarrays</code> with shape <code>N-by-Nx</code>.
 This shape (orientation) is contrary to the EnKF literature,
 but has the following advantages:<ul>
@@ -56,7 +55,7 @@ E.g. <code>dy @ Rinv @ Y.T @ Pw</code> (where <code>dy</code> is a vector)</li>
 <li>Naming:<ul>
 <li><code>E</code>: ensemble matrix</li>
 <li><code>w</code>: ensemble weights or coefficients</li>
-<li><code>X</code>: centred ensemble</li>
+<li><code>X</code>: centred ensemble ("anomalies")</li>
 <li><code>N</code>: ensemble size</li>
 <li><code>Nx</code>: state size</li>
 <li><code>Ny</code>: observation size</li>
@@ -124,6 +123,11 @@ which hosts the website.</p>
 insert their bibtex into <code>docs/bib/refs.bib</code>,
 then run <code>docs/bib/make_bib.py</code>,
 which will format and add entries to <code>docs/bib/bib.py</code>.</p>
+<p>A live preview of the documentation (that updates whenever you save
+the python source file) can be had with</p>
+<pre><code class="language-sh">cd docs
+pdoc --http : dapper dev_guide.py
+</code></pre>
 <h2 id="profiling">Profiling</h2>
 <ul>
 <li>Launch your python script using <code>kernprof -l -v my_script.py</code></li>
@@ -201,13 +205,12 @@ password: mypass
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/docs/dev_guide.py#L0-L218" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/docs/dev_guide.py#L0-L225" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">&#34;&#34;&#34;# Developer guide
 
 ## Conventions
 
-- Python version `&gt;=3.7` for `dict`&#39;s to maintain ordering.
 - Ensemble (data) matrices are `np.ndarrays` with shape `N-by-Nx`.
   This shape (orientation) is contrary to the EnKF literature,
   but has the following advantages:
@@ -222,7 +225,7 @@ password: mypass
 - Naming:
     - `E`: ensemble matrix
     - `w`: ensemble weights or coefficients
-    - `X`: centred ensemble
+    - `X`: centred ensemble (&#34;anomalies&#34;)
     - `N`: ensemble size
     - `Nx`: state size
     - `Ny`: observation size
@@ -310,6 +313,14 @@ In order to add new references,
 insert their bibtex into `docs/bib/refs.bib`,
 then run `docs/bib/make_bib.py`,
 which will format and add entries to `docs/bib/bib.py`.
+
+A live preview of the documentation (that updates whenever you save
+the python source file) can be had with
+
+```sh
+cd docs
+pdoc --http : dapper dev_guide.py
+```
 
 ## Profiling
 

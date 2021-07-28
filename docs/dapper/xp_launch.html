@@ -41,7 +41,7 @@ body.gsc-overflow-hidden #sidebar {overflow: visible;}
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L0-L617" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L0-L627" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">&#34;&#34;&#34;Tools (notably `xpList`) for setup and running of experiments (known as `xp`s).
 
@@ -80,7 +80,7 @@ XP_TIMESTAMP_TEMPLATE = &#34;run_%Y-%m-%d__%H-%M-%S&#34;
 def seed_and_simulate(HMM, xp):
     &#34;&#34;&#34;Default experiment setup (sets seed and simulates truth and obs).
 
-    Used by `xpList.launch`.
+    Used by `xpList.launch` via `run_experiment`.
 
     Parameters
     ----------
@@ -105,15 +105,13 @@ def seed_and_simulate(HMM, xp):
         The simulated truth and observations.
     &#34;&#34;&#34;
     set_seed(getattr(xp, &#39;seed&#39;, False))
-
     xx, yy = HMM.simulate()
     return xx, yy
 
 
-def run_experiment(xp, label, savedir, HMM,
-                   setup=None, free=True, statkeys=False, fail_gently=False,
-                   **stat_kwargs):
-    &#34;&#34;&#34;Used by `xpList.launch` to run each single (DA) experiment.
+def run_experiment(xp, label, savedir, HMM, setup=seed_and_simulate, free=True,
+                   statkeys=False, fail_gently=False, **stat_kwargs):
+    &#34;&#34;&#34;Used by `xpList.launch` to run each single (DA) experiment (&#34;xp&#34;).
 
     This involves steps similar to `examples/basic_1.py`, i.e.:
 
@@ -134,8 +132,27 @@ def run_experiment(xp, label, savedir, HMM,
     HMM: HiddenMarkovModel
         Container defining the system.
     setup: function
-        Should set params, eg `HMM.Force`, seed, and return (simulated/loaded)
-        truth and obs series. Example: `seed_and_simulate`.
+        This function must take two arguments: `HMM` and `xp`,
+        and return the (typically synthetic) truth and obs time series.
+        The default (`seed_and_simulate`) also sets the seed.
+
+        Note that this gives you the ability to customize almost any aspect of the
+        experiments. Typically you will grab one or more parameter values
+        stored in the `xp` (see `dapper.da_methods.da_method`) and act on them,
+        or set them in some other object that impacts the experiment.
+        Thus, by generating a new `xp` for each such parameter value you can
+        investigate the impact/sensitivity of the results to this parameter.
+        Examples include:
+
+        - Setting some aspect of the `HMM` such as the observation noise,
+          or the interval between observations.
+        - Setting some parameter of the model (not otherwise detailed in the `HMM`).
+          For example, the `Force` parameter of `dapper.mods.Lorenz96`, as done in
+          see `examples/basic_3`.
+        - Using a different `HMM` entirely for the truth/obs (`xx`/`yy`) generation,
+          than the one that will be used by the DA. Or loading the truth/obs
+          time series from file. In both cases, you might also have to do some
+          cropping or slicing of `xx` and `yy` before returning them.
     free: bool
         Whether (or not) to `del xp.stats` after the experiment is done,
         so as to free up memory and/or not save this data
@@ -477,11 +494,12 @@ class xpList(list):
         columns = {**distinct, &#39;|&#39;: [&#39;|&#39;]*len(self), **averages}  # merge
         return tabulate(columns, headers=&#34;keys&#34;, showindex=True).replace(&#39;␣&#39;, &#39; &#39;)
 
-    def launch(self, HMM, save_as=&#34;noname&#34;, mp=False,
-               setup=seed_and_simulate, fail_gently=None, **kwargs):
+    def launch(self, HMM, save_as=&#34;noname&#34;, mp=False, fail_gently=None, **kwargs):
         &#34;&#34;&#34;Essentially: `for xp in self: run_experiment(xp, ..., **kwargs)`.
 
-        The results are saved in `rc.dirs[&#39;data&#39;]/save_as`,
+        See `run_experiment` for documentation on the `kwargs` and `fail_gently`.
+
+        The results are saved in `rc.dirs.data / save_as`,
         unless `save_as` is `False`/`None`.
 
         Depending on `mp`, `run_experiment` is delegated as follows:
@@ -499,19 +517,8 @@ class xpList(list):
             - If this dict field is empty, then all python files
               in `sys.path[0]` are uploaded.
 
-        If `setup == None`: use `seed_and_simulate`.
-        Specify your own setup function
-        (possibly calling `seed_and_simulate`)
-        in order to set (general) experiment parameters that are not
-        (i.e. those that are not inherently used by the da_method
-        of that `xp`).
-
         See `examples/basic_2.py` and `examples/basic_3.py` for example use.
         &#34;&#34;&#34;
-        # Collect common args forwarded to run_experiment
-        kwargs[&#39;HMM&#39;] = HMM
-        kwargs[&#34;setup&#34;] = setup
-
         # Parse mp option
         if not mp:
             mp = dict()
@@ -531,6 +538,9 @@ class xpList(list):
                 fail_gently = True
                 # True unless otherwise requested
         kwargs[&#34;fail_gently&#34;] = fail_gently
+
+        # Bundle HMM with kwargs
+        kwargs[&#39;HMM&#39;] = HMM
 
         # Parse save_as
         if save_as in [None, False]:
@@ -675,7 +685,7 @@ def combinator(param_dict, **glob_dict):
 </code></dt>
 <dd>
 <div class="desc"><p>Default experiment setup (sets seed and simulates truth and obs).</p>
-<p>Used by <code><a title="dapper.xp_launch.xpList.launch" href="#dapper.xp_launch.xpList.launch">xpList.launch()</a></code>.</p>
+<p>Used by <code><a title="dapper.xp_launch.xpList.launch" href="#dapper.xp_launch.xpList.launch">xpList.launch()</a></code> via <code><a title="dapper.xp_launch.run_experiment" href="#dapper.xp_launch.run_experiment">run_experiment()</a></code>.</p>
 <h2 id="parameters">Parameters</h2>
 <dl>
 <dt><strong><code>HMM</code></strong> :&ensp;<code>HiddenMarkovModel</code></dt>
@@ -704,12 +714,12 @@ which would not provide exact reproducibility.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L35-L65" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L35-L64" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def seed_and_simulate(HMM, xp):
     &#34;&#34;&#34;Default experiment setup (sets seed and simulates truth and obs).
 
-    Used by `xpList.launch`.
+    Used by `xpList.launch` via `run_experiment`.
 
     Parameters
     ----------
@@ -734,16 +744,15 @@ which would not provide exact reproducibility.</p>
         The simulated truth and observations.
     &#34;&#34;&#34;
     set_seed(getattr(xp, &#39;seed&#39;, False))
-
     xx, yy = HMM.simulate()
     return xx, yy</code></pre>
 </details>
 </dd>
 <dt id="dapper.xp_launch.run_experiment"><code class="name flex">
-<span>def <span class="ident">run_experiment</span></span>(<span>xp, label, savedir, HMM, setup=None, free=True, statkeys=False, fail_gently=False, **stat_kwargs)</span>
+<span>def <span class="ident">run_experiment</span></span>(<span>xp, label, savedir, HMM, setup=&lt;function seed_and_simulate&gt;, free=True, statkeys=False, fail_gently=False, **stat_kwargs)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Used by <code><a title="dapper.xp_launch.xpList.launch" href="#dapper.xp_launch.xpList.launch">xpList.launch()</a></code> to run each single (DA) experiment.</p>
+<div class="desc"><p>Used by <code><a title="dapper.xp_launch.xpList.launch" href="#dapper.xp_launch.xpList.launch">xpList.launch()</a></code> to run each single (DA) experiment ("xp").</p>
 <p>This involves steps similar to <code>examples/basic_1.py</code>, i.e.:</p>
 <ul>
 <li><code>setup</code>
@@ -767,8 +776,29 @@ which would not provide exact reproducibility.</p>
 <dt><strong><code>HMM</code></strong> :&ensp;<code>HiddenMarkovModel</code></dt>
 <dd>Container defining the system.</dd>
 <dt><strong><code>setup</code></strong> :&ensp;<code>function</code></dt>
-<dd>Should set params, eg <code>HMM.Force</code>, seed, and return (simulated/loaded)
-truth and obs series. Example: <code><a title="dapper.xp_launch.seed_and_simulate" href="#dapper.xp_launch.seed_and_simulate">seed_and_simulate()</a></code>.</dd>
+<dd>
+<p>This function must take two arguments: <code>HMM</code> and <code>xp</code>,
+and return the (typically synthetic) truth and obs time series.
+The default (<code><a title="dapper.xp_launch.seed_and_simulate" href="#dapper.xp_launch.seed_and_simulate">seed_and_simulate()</a></code>) also sets the seed.</p>
+<p>Note that this gives you the ability to customize almost any aspect of the
+experiments. Typically you will grab one or more parameter values
+stored in the <code>xp</code> (see <code><a title="dapper.da_methods.da_method" href="da_methods/index.html#dapper.da_methods.da_method">da_method()</a></code>) and act on them,
+or set them in some other object that impacts the experiment.
+Thus, by generating a new <code>xp</code> for each such parameter value you can
+investigate the impact/sensitivity of the results to this parameter.
+Examples include:</p>
+<ul>
+<li>Setting some aspect of the <code>HMM</code> such as the observation noise,
+or the interval between observations.</li>
+<li>Setting some parameter of the model (not otherwise detailed in the <code>HMM</code>).
+For example, the <code>Force</code> parameter of <code><a title="dapper.mods.Lorenz96" href="mods/Lorenz96/index.html">dapper.mods.Lorenz96</a></code>, as done in
+see <code>examples/basic_3</code>.</li>
+<li>Using a different <code>HMM</code> entirely for the truth/obs (<code>xx</code>/<code>yy</code>) generation,
+than the one that will be used by the DA. Or loading the truth/obs
+time series from file. In both cases, you might also have to do some
+cropping or slicing of <code>xx</code> and <code>yy</code> before returning them.</li>
+</ul>
+</dd>
 <dt><strong><code>free</code></strong> :&ensp;<code>bool</code></dt>
 <dd>Whether (or not) to <code>del xp.stats</code> after the experiment is done,
 so as to free up memory and/or not save this data
@@ -783,12 +813,11 @@ this xp.</dd>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L68-L139" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L67-L156" class="git-link">Browse git</a>
 </summary>
-<pre><code class="python">def run_experiment(xp, label, savedir, HMM,
-                   setup=None, free=True, statkeys=False, fail_gently=False,
-                   **stat_kwargs):
-    &#34;&#34;&#34;Used by `xpList.launch` to run each single (DA) experiment.
+<pre><code class="python">def run_experiment(xp, label, savedir, HMM, setup=seed_and_simulate, free=True,
+                   statkeys=False, fail_gently=False, **stat_kwargs):
+    &#34;&#34;&#34;Used by `xpList.launch` to run each single (DA) experiment (&#34;xp&#34;).
 
     This involves steps similar to `examples/basic_1.py`, i.e.:
 
@@ -809,8 +838,27 @@ this xp.</dd>
     HMM: HiddenMarkovModel
         Container defining the system.
     setup: function
-        Should set params, eg `HMM.Force`, seed, and return (simulated/loaded)
-        truth and obs series. Example: `seed_and_simulate`.
+        This function must take two arguments: `HMM` and `xp`,
+        and return the (typically synthetic) truth and obs time series.
+        The default (`seed_and_simulate`) also sets the seed.
+
+        Note that this gives you the ability to customize almost any aspect of the
+        experiments. Typically you will grab one or more parameter values
+        stored in the `xp` (see `dapper.da_methods.da_method`) and act on them,
+        or set them in some other object that impacts the experiment.
+        Thus, by generating a new `xp` for each such parameter value you can
+        investigate the impact/sensitivity of the results to this parameter.
+        Examples include:
+
+        - Setting some aspect of the `HMM` such as the observation noise,
+          or the interval between observations.
+        - Setting some parameter of the model (not otherwise detailed in the `HMM`).
+          For example, the `Force` parameter of `dapper.mods.Lorenz96`, as done in
+          see `examples/basic_3`.
+        - Using a different `HMM` entirely for the truth/obs (`xx`/`yy`) generation,
+          than the one that will be used by the DA. Or loading the truth/obs
+          time series from file. In both cases, you might also have to do some
+          cropping or slicing of `xx` and `yy` before returning them.
     free: bool
         Whether (or not) to `del xp.stats` after the experiment is done,
         so as to free up memory and/or not save this data
@@ -867,7 +915,7 @@ this xp.</dd>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L171-L176" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L188-L193" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def collapse_str(string, length=6):
     &#34;&#34;&#34;Truncate a string (in the middle) to the given `length`&#34;&#34;&#34;
@@ -894,7 +942,7 @@ then you'll create many more than you intend.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L593-L618" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L603-L628" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def combinator(param_dict, **glob_dict):
     &#34;&#34;&#34;Mass creation of `xp`&#39;s by combining the value lists in the parameter dicts.
@@ -973,7 +1021,7 @@ as opposed to this class (<code><a title="dapper.xp_launch.xpList" href="#dapper
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L179-L590" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L196-L600" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class xpList(list):
     &#34;&#34;&#34;Subclass of `list` specialized for experiment (&#34;xp&#34;) objects.
@@ -1231,11 +1279,12 @@ as opposed to this class (<code><a title="dapper.xp_launch.xpList" href="#dapper
         columns = {**distinct, &#39;|&#39;: [&#39;|&#39;]*len(self), **averages}  # merge
         return tabulate(columns, headers=&#34;keys&#34;, showindex=True).replace(&#39;␣&#39;, &#39; &#39;)
 
-    def launch(self, HMM, save_as=&#34;noname&#34;, mp=False,
-               setup=seed_and_simulate, fail_gently=None, **kwargs):
+    def launch(self, HMM, save_as=&#34;noname&#34;, mp=False, fail_gently=None, **kwargs):
         &#34;&#34;&#34;Essentially: `for xp in self: run_experiment(xp, ..., **kwargs)`.
 
-        The results are saved in `rc.dirs[&#39;data&#39;]/save_as`,
+        See `run_experiment` for documentation on the `kwargs` and `fail_gently`.
+
+        The results are saved in `rc.dirs.data / save_as`,
         unless `save_as` is `False`/`None`.
 
         Depending on `mp`, `run_experiment` is delegated as follows:
@@ -1253,19 +1302,8 @@ as opposed to this class (<code><a title="dapper.xp_launch.xpList" href="#dapper
             - If this dict field is empty, then all python files
               in `sys.path[0]` are uploaded.
 
-        If `setup == None`: use `seed_and_simulate`.
-        Specify your own setup function
-        (possibly calling `seed_and_simulate`)
-        in order to set (general) experiment parameters that are not
-        (i.e. those that are not inherently used by the da_method
-        of that `xp`).
-
         See `examples/basic_2.py` and `examples/basic_3.py` for example use.
         &#34;&#34;&#34;
-        # Collect common args forwarded to run_experiment
-        kwargs[&#39;HMM&#39;] = HMM
-        kwargs[&#34;setup&#34;] = setup
-
         # Parse mp option
         if not mp:
             mp = dict()
@@ -1285,6 +1323,9 @@ as opposed to this class (<code><a title="dapper.xp_launch.xpList" href="#dapper
                 fail_gently = True
                 # True unless otherwise requested
         kwargs[&#34;fail_gently&#34;] = fail_gently
+
+        # Bundle HMM with kwargs
+        kwargs[&#39;HMM&#39;] = HMM
 
         # Parse save_as
         if save_as in [None, False]:
@@ -1400,7 +1441,7 @@ as opposed to this class (<code><a title="dapper.xp_launch.xpList" href="#dapper
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L259-L262" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L276-L279" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">@property
 def da_methods(self):
@@ -1419,7 +1460,7 @@ def da_methods(self):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L231-L234" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L248-L251" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def append(self, xp):
     &#34;&#34;&#34;Append **if** not `self.unique` &amp; present.&#34;&#34;&#34;
@@ -1437,7 +1478,7 @@ unless the missingval (e.g. <code>None</code>) matches the required value.</p></
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L246-L257" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L263-L274" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def inds(self, strict=True, missingval=&#34;NONSENSE&#34;, **kws):
     &#34;&#34;&#34;Find (all) indices of `xps` whose attributes match kws.
@@ -1470,7 +1511,7 @@ need be included.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L264-L375" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L281-L392" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def split_attrs(self, nomerge=()):
     &#34;&#34;&#34;Classify each/every attribute of the `xp`s into: distinct, redundant, common.
@@ -1599,7 +1640,7 @@ need be included.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L385-L423" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L402-L440" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def gen_names(self, abbrev=6, tab=False):
     &#34;&#34;&#34;Similiar to `self.__repr__()`, but:
@@ -1651,7 +1692,7 @@ need be included.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L425-L433" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L442-L450" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def tabulate_avrgs(self, *args, **kwargs):
     &#34;&#34;&#34;Pretty (tabulated) `repr` of `xps` **and** their `avrgs.`
@@ -1665,11 +1706,12 @@ need be included.</p>
 </details>
 </dd>
 <dt id="dapper.xp_launch.xpList.launch"><code class="name flex">
-<span>def <span class="ident">launch</span></span>(<span>self, HMM, save_as='noname', mp=False, setup=&lt;function seed_and_simulate&gt;, fail_gently=None, **kwargs)</span>
+<span>def <span class="ident">launch</span></span>(<span>self, HMM, save_as='noname', mp=False, fail_gently=None, **kwargs)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Essentially: <code>for xp in self: run_experiment(xp, ..., **kwargs)</code>.</p>
-<p>The results are saved in <code>rc.dirs['data']/save_as</code>,
+<p>See <code><a title="dapper.xp_launch.run_experiment" href="#dapper.xp_launch.run_experiment">run_experiment()</a></code> for documentation on the <code>kwargs</code> and <code>fail_gently</code>.</p>
+<p>The results are saved in <code>rc.dirs.data / save_as</code>,
 unless <code>save_as</code> is <code>False</code>/<code>None</code>.</p>
 <p>Depending on <code>mp</code>, <code><a title="dapper.xp_launch.run_experiment" href="#dapper.xp_launch.run_experiment">run_experiment()</a></code> is delegated as follows:</p>
 <ul>
@@ -1688,23 +1730,18 @@ in <code>sys.path[0]</code> are uploaded.</li>
 </ul>
 </li>
 </ul>
-<p>If <code>setup == None</code>: use <code><a title="dapper.xp_launch.seed_and_simulate" href="#dapper.xp_launch.seed_and_simulate">seed_and_simulate()</a></code>.
-Specify your own setup function
-(possibly calling <code><a title="dapper.xp_launch.seed_and_simulate" href="#dapper.xp_launch.seed_and_simulate">seed_and_simulate()</a></code>)
-in order to set (general) experiment parameters that are not
-(i.e. those that are not inherently used by the da_method
-of that <code>xp</code>).</p>
 <p>See <code>examples/basic_2.py</code> and <code>examples/basic_3.py</code> for example use.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L435-L590" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L452-L600" class="git-link">Browse git</a>
 </summary>
-<pre><code class="python">def launch(self, HMM, save_as=&#34;noname&#34;, mp=False,
-           setup=seed_and_simulate, fail_gently=None, **kwargs):
+<pre><code class="python">def launch(self, HMM, save_as=&#34;noname&#34;, mp=False, fail_gently=None, **kwargs):
     &#34;&#34;&#34;Essentially: `for xp in self: run_experiment(xp, ..., **kwargs)`.
 
-    The results are saved in `rc.dirs[&#39;data&#39;]/save_as`,
+    See `run_experiment` for documentation on the `kwargs` and `fail_gently`.
+
+    The results are saved in `rc.dirs.data / save_as`,
     unless `save_as` is `False`/`None`.
 
     Depending on `mp`, `run_experiment` is delegated as follows:
@@ -1722,19 +1759,8 @@ of that <code>xp</code>).</p>
         - If this dict field is empty, then all python files
           in `sys.path[0]` are uploaded.
 
-    If `setup == None`: use `seed_and_simulate`.
-    Specify your own setup function
-    (possibly calling `seed_and_simulate`)
-    in order to set (general) experiment parameters that are not
-    (i.e. those that are not inherently used by the da_method
-    of that `xp`).
-
     See `examples/basic_2.py` and `examples/basic_3.py` for example use.
     &#34;&#34;&#34;
-    # Collect common args forwarded to run_experiment
-    kwargs[&#39;HMM&#39;] = HMM
-    kwargs[&#34;setup&#34;] = setup
-
     # Parse mp option
     if not mp:
         mp = dict()
@@ -1754,6 +1780,9 @@ of that <code>xp</code>).</p>
             fail_gently = True
             # True unless otherwise requested
     kwargs[&#34;fail_gently&#34;] = fail_gently
+
+    # Bundle HMM with kwargs
+    kwargs[&#39;HMM&#39;] = HMM
 
     # Parse save_as
     if save_as in [None, False]:
