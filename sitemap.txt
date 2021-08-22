@@ -16,6 +16,7 @@ https://nansencenter.github.io/DAPPER/docs/dapper/mods/Ikeda/
 https://nansencenter.github.io/DAPPER/docs/dapper/mods/Ikeda/some_settings_01.html
 https://nansencenter.github.io/DAPPER/docs/dapper/mods/KS/
 https://nansencenter.github.io/DAPPER/docs/dapper/mods/KS/bocquet2019.html
+https://nansencenter.github.io/DAPPER/docs/dapper/mods/L96s/
 https://nansencenter.github.io/DAPPER/docs/dapper/mods/LA/
 https://nansencenter.github.io/DAPPER/docs/dapper/mods/LA/evensen2009.html
 https://nansencenter.github.io/DAPPER/docs/dapper/mods/LA/raanes2015.html
@@ -45,6 +46,8 @@ https://nansencenter.github.io/DAPPER/docs/dapper/mods/Lorenz96/sakov2008.html
 https://nansencenter.github.io/DAPPER/docs/dapper/mods/Lorenz96/spectral_obs.html
 https://nansencenter.github.io/DAPPER/docs/dapper/mods/Lorenz96/todter2015.html
 https://nansencenter.github.io/DAPPER/docs/dapper/mods/Lorenz96/todter2015_G.html
+https://nansencenter.github.io/DAPPER/docs/dapper/mods/Lorenz96s/
+https://nansencenter.github.io/DAPPER/docs/dapper/mods/Lorenz96s/grudzien2020.html
 https://nansencenter.github.io/DAPPER/docs/dapper/mods/LorenzIII/
 https://nansencenter.github.io/DAPPER/docs/dapper/mods/LorenzUV/
 https://nansencenter.github.io/DAPPER/docs/dapper/mods/LorenzUV/lorenz96.html
