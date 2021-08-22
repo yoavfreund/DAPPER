@@ -4,7 +4,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
-<meta name="generator" content="pdoc 0.9.2" />
+<meta name="generator" content="pdoc 0.10.0" />
 <title>dapper.xp_launch API documentation</title>
 <meta name="description" content="Tools (notably `xpList`) for setup and running of experiments (known as `xp`s) …" />
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
@@ -41,7 +41,7 @@ body.gsc-overflow-hidden #sidebar {overflow: visible;}
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L0-L627" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L1-L629" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">&#34;&#34;&#34;Tools (notably `xpList`) for setup and running of experiments (known as `xp`s).
 
@@ -134,9 +134,8 @@ def run_experiment(xp, label, savedir, HMM, setup=seed_and_simulate, free=True,
     setup: function
         This function must take two arguments: `HMM` and `xp`,
         and return the (typically synthetic) truth and obs time series.
-        The default (`seed_and_simulate`) also sets the seed.
 
-        Note that this gives you the ability to customize almost any aspect of the
+        This gives you the ability to customize almost any aspect of the
         experiments. Typically you will grab one or more parameter values
         stored in the `xp` (see `dapper.da_methods.da_method`) and act on them,
         or set them in some other object that impacts the experiment.
@@ -144,6 +143,8 @@ def run_experiment(xp, label, savedir, HMM, setup=seed_and_simulate, free=True,
         investigate the impact/sensitivity of the results to this parameter.
         Examples include:
 
+        - Setting the seed. See the default `setup`, namely `seed_and_simulate`,
+          for how this is done.
         - Setting some aspect of the `HMM` such as the observation noise,
           or the interval between observations.
         - Setting some parameter of the model (not otherwise detailed in the `HMM`).
@@ -778,9 +779,8 @@ which would not provide exact reproducibility.</p>
 <dt><strong><code>setup</code></strong> :&ensp;<code>function</code></dt>
 <dd>
 <p>This function must take two arguments: <code>HMM</code> and <code>xp</code>,
-and return the (typically synthetic) truth and obs time series.
-The default (<code><a title="dapper.xp_launch.seed_and_simulate" href="#dapper.xp_launch.seed_and_simulate">seed_and_simulate()</a></code>) also sets the seed.</p>
-<p>Note that this gives you the ability to customize almost any aspect of the
+and return the (typically synthetic) truth and obs time series.</p>
+<p>This gives you the ability to customize almost any aspect of the
 experiments. Typically you will grab one or more parameter values
 stored in the <code>xp</code> (see <code><a title="dapper.da_methods.da_method" href="da_methods/index.html#dapper.da_methods.da_method">da_method()</a></code>) and act on them,
 or set them in some other object that impacts the experiment.
@@ -788,6 +788,8 @@ Thus, by generating a new <code>xp</code> for each such parameter value you can
 investigate the impact/sensitivity of the results to this parameter.
 Examples include:</p>
 <ul>
+<li>Setting the seed. See the default <code>setup</code>, namely <code><a title="dapper.xp_launch.seed_and_simulate" href="#dapper.xp_launch.seed_and_simulate">seed_and_simulate()</a></code>,
+for how this is done.</li>
 <li>Setting some aspect of the <code>HMM</code> such as the observation noise,
 or the interval between observations.</li>
 <li>Setting some parameter of the model (not otherwise detailed in the <code>HMM</code>).
@@ -813,7 +815,7 @@ this xp.</dd>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L67-L156" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L67-L157" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def run_experiment(xp, label, savedir, HMM, setup=seed_and_simulate, free=True,
                    statkeys=False, fail_gently=False, **stat_kwargs):
@@ -840,9 +842,8 @@ this xp.</dd>
     setup: function
         This function must take two arguments: `HMM` and `xp`,
         and return the (typically synthetic) truth and obs time series.
-        The default (`seed_and_simulate`) also sets the seed.
 
-        Note that this gives you the ability to customize almost any aspect of the
+        This gives you the ability to customize almost any aspect of the
         experiments. Typically you will grab one or more parameter values
         stored in the `xp` (see `dapper.da_methods.da_method`) and act on them,
         or set them in some other object that impacts the experiment.
@@ -850,6 +851,8 @@ this xp.</dd>
         investigate the impact/sensitivity of the results to this parameter.
         Examples include:
 
+        - Setting the seed. See the default `setup`, namely `seed_and_simulate`,
+          for how this is done.
         - Setting some aspect of the `HMM` such as the observation noise,
           or the interval between observations.
         - Setting some parameter of the model (not otherwise detailed in the `HMM`).
@@ -915,7 +918,7 @@ this xp.</dd>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L188-L193" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L189-L194" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def collapse_str(string, length=6):
     &#34;&#34;&#34;Truncate a string (in the middle) to the given `length`&#34;&#34;&#34;
@@ -942,7 +945,7 @@ then you'll create many more than you intend.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L603-L628" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L604-L629" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def combinator(param_dict, **glob_dict):
     &#34;&#34;&#34;Mass creation of `xp`&#39;s by combining the value lists in the parameter dicts.
@@ -1021,7 +1024,7 @@ as opposed to this class (<code><a title="dapper.xp_launch.xpList" href="#dapper
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L196-L600" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L197-L601" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class xpList(list):
     &#34;&#34;&#34;Subclass of `list` specialized for experiment (&#34;xp&#34;) objects.
@@ -1441,7 +1444,7 @@ as opposed to this class (<code><a title="dapper.xp_launch.xpList" href="#dapper
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L276-L279" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L277-L280" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">@property
 def da_methods(self):
@@ -1460,7 +1463,7 @@ def da_methods(self):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L248-L251" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L249-L252" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def append(self, xp):
     &#34;&#34;&#34;Append **if** not `self.unique` &amp; present.&#34;&#34;&#34;
@@ -1478,7 +1481,7 @@ unless the missingval (e.g. <code>None</code>) matches the required value.</p></
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L263-L274" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L264-L275" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def inds(self, strict=True, missingval=&#34;NONSENSE&#34;, **kws):
     &#34;&#34;&#34;Find (all) indices of `xps` whose attributes match kws.
@@ -1511,7 +1514,7 @@ need be included.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L281-L392" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L282-L393" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def split_attrs(self, nomerge=()):
     &#34;&#34;&#34;Classify each/every attribute of the `xp`s into: distinct, redundant, common.
@@ -1640,7 +1643,7 @@ need be included.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L402-L440" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L403-L441" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def gen_names(self, abbrev=6, tab=False):
     &#34;&#34;&#34;Similiar to `self.__repr__()`, but:
@@ -1692,7 +1695,7 @@ need be included.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L442-L450" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L443-L451" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def tabulate_avrgs(self, *args, **kwargs):
     &#34;&#34;&#34;Pretty (tabulated) `repr` of `xps` **and** their `avrgs.`
@@ -1734,7 +1737,7 @@ in <code>sys.path[0]</code> are uploaded.</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L452-L600" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L453-L601" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def launch(self, HMM, save_as=&#34;noname&#34;, mp=False, fail_gently=None, **kwargs):
     &#34;&#34;&#34;Essentially: `for xp in self: run_experiment(xp, ..., **kwargs)`.
@@ -1941,7 +1944,7 @@ data-gaCategoryParameter="dapper.xp_launch">
 </nav>
 </main>
 <footer id="footer">
-<p>Generated by <a href="https://pdoc3.github.io/pdoc"><cite>pdoc</cite> 0.9.2</a>.</p>
+<p>Generated by <a href="https://pdoc3.github.io/pdoc"><cite>pdoc</cite> 0.10.0</a>.</p>
 </footer>
 </body>
 </html>
