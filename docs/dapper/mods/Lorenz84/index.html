@@ -41,7 +41,7 @@ body.gsc-overflow-hidden #sidebar {overflow: visible;}
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/Lorenz84/__init__.py#L1-L46" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/Lorenz84/__init__.py#L1-L45" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">&#34;&#34;&#34;A chaotic system of size 3, like Lorenz-63, but with +complex geometry.
 
@@ -65,12 +65,11 @@ G = 1.23
 
 @modelling.ens_compatible
 def dxdt(x):
-    d = np.zeros_like(x)
     x, y, z = x
-    d[0] = - y**2 - z**2 - a*x + a*F
-    d[1] = x*y - b*x*z - y + G
-    d[2] = b*x*y + x*z - z
-    return d
+    dx = - y**2 - z**2 - a*x + a*F
+    dy = x*y - b*x*z - y + G
+    dz = b*x*y + x*z - z
+    return np.array([dx, dy, dz])
 
 
 step = modelling.with_rk4(dxdt, autonom=True)
@@ -121,16 +120,15 @@ def dstep_dx(x, t, dt):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/Lorenz84/__init__.py#L21-L28" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/Lorenz84/__init__.py#L21-L27" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">@modelling.ens_compatible
 def dxdt(x):
-    d = np.zeros_like(x)
     x, y, z = x
-    d[0] = - y**2 - z**2 - a*x + a*F
-    d[1] = x*y - b*x*z - y + G
-    d[2] = b*x*y + x*z - z
-    return d</code></pre>
+    dx = - y**2 - z**2 - a*x + a*F
+    dy = x*y - b*x*z - y + G
+    dz = b*x*y + x*z - z
+    return np.array([dx, dy, dz])</code></pre>
 </details>
 </dd>
 <dt id="dapper.mods.Lorenz84.d2x_dtdx"><code class="name flex">
@@ -141,7 +139,7 @@ def dxdt(x):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/Lorenz84/__init__.py#L36-L42" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/Lorenz84/__init__.py#L35-L41" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def d2x_dtdx(x):
     x, y, z = x
@@ -160,7 +158,7 @@ def dxdt(x):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/Lorenz84/__init__.py#L45-L46" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/Lorenz84/__init__.py#L44-L45" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def dstep_dx(x, t, dt):
     return integrate_TLM(d2x_dtdx(x), dt, method=&#39;approx&#39;)</code></pre>

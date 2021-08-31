@@ -51,13 +51,14 @@ coded by Hansen (colleague of Lorenz) in 2004 (prior to publication).</p>
 which is the same as the Lorenz-96 model.</li>
 </ul>
 <p>An implementation using explicit for-loops can be found in commit 6193532b .
-It uses numba (pip install required) for speed gain, but is still very slow.</p>
+It uses numba (pip install required) for speed gain, but is still very slow.
+The implementation hereunder uses efficient numpy vectorization =&gt; much faster.</p>
 <p>With rk4 the largest stable time step (for free run) seems to be
 somewhere around what Lorenz used, namely <code>dt=0.05/12</code>.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/LorenzIII/__init__.py#L1-L229" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/LorenzIII/__init__.py#L1-L230" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">&#34;&#34;&#34;A multi-scale, smooth version of the classic Lorenz-96.
 
@@ -79,6 +80,7 @@ Special cases of this model are:
 
 An implementation using explicit for-loops can be found in commit 6193532b .
 It uses numba (pip install required) for speed gain, but is still very slow.
+The implementation hereunder uses efficient numpy vectorization =&gt; much faster.
 
 With rk4 the largest stable time step (for free run) seems to be
 somewhere around what Lorenz used, namely `dt=0.05/12`.
@@ -308,7 +310,7 @@ But with default system parameters and N=50, the savings are negligible.</p></di
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/LorenzIII/__init__.py#L115-L127" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/LorenzIII/__init__.py#L116-L128" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def summation_kernel(width):
     &#34;&#34;&#34;Prepare computation of the modified sum in `bib.lorenz2005designing`.
@@ -366,7 +368,7 @@ array([4., 3., 2., 3., 4., 5., 6., 7., 6., 5.])
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/LorenzIII/__init__.py#L130-L204" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/LorenzIII/__init__.py#L131-L205" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def boxcar(x, n, method=&#34;direct&#34;):
     &#34;&#34;&#34;Moving average (boxcar filter) on `x` using `n` nearest (periodically) elements.
@@ -457,7 +459,7 @@ compared to just calling this function again are negligible.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/LorenzIII/__init__.py#L207-L215" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/LorenzIII/__init__.py#L208-L216" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def shift(x, k):
     &#34;&#34;&#34;Rolls `x` leftwards. I.e. `output[i] = input[i+k]`.
@@ -478,7 +480,7 @@ compared to just calling this function again are negligible.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/LorenzIII/__init__.py#L218-L224" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/LorenzIII/__init__.py#L219-L225" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def prodsum_self(x, k):
     &#34;&#34;&#34;Compute `prodsum(x, x, k)` efficiently: eqn 10 of `bib.lorenz2005designing`.&#34;&#34;&#34;
@@ -497,7 +499,7 @@ compared to just calling this function again are negligible.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/LorenzIII/__init__.py#L227-L229" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/LorenzIII/__init__.py#L228-L230" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def prodsum_K1(x, y):
     &#34;&#34;&#34;Compute `prodsum(x, y, 1)` efficiently.&#34;&#34;&#34;
@@ -522,7 +524,7 @@ working with multiple parameter settings simultaneously.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/LorenzIII/__init__.py#L36-L112" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/LorenzIII/__init__.py#L37-L113" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Model:
     &#34;&#34;&#34;The model configuration.
@@ -643,7 +645,7 @@ working with multiple parameter settings simultaneously.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/LorenzIII/__init__.py#L63-L75" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/LorenzIII/__init__.py#L64-L76" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def decompose(self, z):
     &#34;&#34;&#34;Split `z` into `x` and `y` fields, where `x` is the large-scale component.&#34;&#34;&#34;
@@ -668,7 +670,7 @@ working with multiple parameter settings simultaneously.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/LorenzIII/__init__.py#L77-L86" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/LorenzIII/__init__.py#L78-L87" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def dxdt(self, z):
     x, y = self.decompose(z)
@@ -690,7 +692,7 @@ working with multiple parameter settings simultaneously.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/LorenzIII/__init__.py#L88-L89" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/LorenzIII/__init__.py#L89-L90" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def step1(self, x0, t, dt):
     return rk4(lambda t, x: self.dxdt(x), x0, np.nan, dt)</code></pre>
@@ -704,7 +706,7 @@ working with multiple parameter settings simultaneously.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/LorenzIII/__init__.py#L94-L112" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/LorenzIII/__init__.py#L95-L113" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def step(self, E, t, dt):
     if E.ndim == 1:

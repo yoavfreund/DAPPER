@@ -44,7 +44,7 @@ the fluid convection between horizontal plates with different temperatures.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/Lorenz63/__init__.py#L1-L41" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/Lorenz63/__init__.py#L1-L40" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">&#34;&#34;&#34;The classic exhibitor of chaos, consisting of 3 coupled ODEs.
 
@@ -74,12 +74,11 @@ beta = 8.0/3
 @modelling.ens_compatible
 def dxdt(x):
     &#34;&#34;&#34;Evolution equation (coupled ODEs) specifying the dynamics.&#34;&#34;&#34;
-    d     = np.zeros_like(x)
     x, y, z = x
-    d[0]  = sig*(y - x)
-    d[1]  = rho*x - y - x*z
-    d[2]  = x*y - beta*z
-    return d
+    dx = sig*(y - x)
+    dy = rho*x - y - x*z
+    dz = x*y - beta*z
+    return np.array([dx, dy, dz])
 
 
 step = modelling.with_rk4(dxdt, autonom=True)
@@ -143,17 +142,16 @@ x0 = np.array([1.509, -1.531, 25.46])</code></pre>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/Lorenz63/__init__.py#L26-L34" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/Lorenz63/__init__.py#L26-L33" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">@modelling.ens_compatible
 def dxdt(x):
     &#34;&#34;&#34;Evolution equation (coupled ODEs) specifying the dynamics.&#34;&#34;&#34;
-    d     = np.zeros_like(x)
     x, y, z = x
-    d[0]  = sig*(y - x)
-    d[1]  = rho*x - y - x*z
-    d[2]  = x*y - beta*z
-    return d</code></pre>
+    dx = sig*(y - x)
+    dy = rho*x - y - x*z
+    dz = x*y - beta*z
+    return np.array([dx, dy, dz])</code></pre>
 </details>
 </dd>
 </dl>
