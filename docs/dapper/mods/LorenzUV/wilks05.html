@@ -111,10 +111,10 @@ Obs[&#39;noise&#39;] = R
 other = {&#39;name&#39;: rel2mods(__file__)+&#39;_trunc&#39;}
 HMM_trunc = modelling.HiddenMarkovModel(Dyn, Obs, t, X0, LP=LUV.LPs(jj), **other)
 
-LUV.prmzt = lambda t, x: polynom_prmzt(t, x, 1)
+LUV.prmzt = lambda x, t: polynom_prmzt(x, t, 1)
 
 
-def polynom_prmzt(t, x, order):
+def polynom_prmzt(x, t, order):
     &#34;&#34;&#34;
     Polynomial (deterministic) parameterization of fast variables (Y).
 
@@ -161,7 +161,7 @@ def polynom_prmzt(t, x, order):
 <h2 class="section-title" id="header-functions">Functions</h2>
 <dl>
 <dt id="dapper.mods.LorenzUV.wilks05.polynom_prmzt"><code class="name flex">
-<span>def <span class="ident">polynom_prmzt</span></span>(<span>t, x, order)</span>
+<span>def <span class="ident">polynom_prmzt</span></span>(<span>x, t, order)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Polynomial (deterministic) parameterization of fast variables (Y).</p>
@@ -174,7 +174,7 @@ There is very little improvement gained above order=1.</p></div>
 <span>Expand source code</span>
 <a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/LorenzUV/wilks05.py#L72-L99" class="git-link">Browse git</a>
 </summary>
-<pre><code class="python">def polynom_prmzt(t, x, order):
+<pre><code class="python">def polynom_prmzt(x, t, order):
     &#34;&#34;&#34;
     Polynomial (deterministic) parameterization of fast variables (Y).
 

@@ -40,7 +40,7 @@ body.gsc-overflow-hidden #sidebar {overflow: visible;}
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/integration.py#L1-L241" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/integration.py#L1-L224" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">&#34;&#34;&#34;Time stepping (integration) tools.&#34;&#34;&#34;
 
@@ -58,12 +58,12 @@ def rk4(f, x, t, dt, stages=4, s=0):
     &#34;&#34;&#34;Runge-Kutta (explicit, non-adaptive) numerical (S)ODE solvers.
 
     For ODEs, the order of convergence equals the number of `stages`.
+
     For SDEs with additive noise (`s&gt;0`), the order of convergence
-    (both weak and strong) is 1 for `stages` equal to one or four.
+    (both weak and strong) is 1 for `stages` equal to 1 or 4.
     These correspond to the classic Euler-Maruyama scheme and the Runge-Kutta
-    scheme for SODEs respectively, see `bib.grudzien2020numerical`
-    for a DA-specific discussion on integration schemes and their
-    discretization errors.
+    scheme for S-ODEs respectively, see `bib.grudzien2020numerical`
+    for a DA-specific discussion on integration schemes and their discretization errors.
 
     Parameters
     ----------
@@ -94,55 +94,38 @@ def rk4(f, x, t, dt, stages=4, s=0):
         State vector at the new time, `t+dt`
     &#34;&#34;&#34;
 
+    # Draw noise
     if s &gt; 0:
-        # non-trivial diffusion, this defines the SDE integration with additive noise
-        # generate perturbation for Brownian motion
-        dims = np.shape(x)
-
-        if len(dims) &gt; 1:
-            N, Nx = dims
-            W = np.sqrt(dt) * np.random.standard_normal([N, Nx])
-
-        else:
-            N_x , = dims
-            W = np.sqrt(dt) * np.random.standard_normal(N_x)
-
-        if stages &gt;=1: k1 = dt * f(t       , x) + s * W             # noqa
-        if stages &gt;=2: k2 = dt * f(t+dt/2.0, x+k1/2.0) + s * W      # noqa
-        if stages ==3: k3 = dt * f(t+dt    , x+k2*2.0-k1) + s * W   # noqa
-        if stages ==4:                                              # noqa
-                      k3 = dt * f(t+dt/2.0, x+k2/2.0) + s * W       # noqa
-                      k4 = dt * f(t+dt    , x+k3) + s * W           # noqa
-        if    stages ==1: return x + k1                             # noqa
-        elif  stages ==2: return x + k2                             # noqa
-        elif  stages ==3: return x + (k1 + 4.0*k2 + k3)/6.0         # noqa
-        elif  stages ==4: return x + (k1 + 2.0*(k2 + k3) + k4)/6.0  # noqa
-        else: raise NotImplementedError                             # noqa
-
+        W = s * np.sqrt(dt) * np.random.randn(*x.shape)
     else:
-        # deterministic integration
+        W = 0
 
-        if stages &gt;=1: k1 = dt * f(t       , x)                     # noqa
-        if stages &gt;=2: k2 = dt * f(t+dt/2.0, x+k1/2.0)              # noqa
-        if stages ==3: k3 = dt * f(t+dt    , x+k2*2.0-k1)           # noqa
-        if stages ==4:                                              # noqa
-                      k3 = dt * f(t+dt/2.0, x+k2/2.0)               # noqa
-                      k4 = dt * f(t+dt    , x+k3)                   # noqa
-        if    stages ==1: return x + k1                             # noqa
-        elif  stages ==2: return x + k2                             # noqa
-        elif  stages ==3: return x + (k1 + 4.0*k2 + k3)/6.0         # noqa
-        elif  stages ==4: return x + (k1 + 2.0*(k2 + k3) + k4)/6.0  # noqa
-        else: raise NotImplementedError                             # noqa
-# fmt: on
+    # Approximations to Delta x
+    if stages &gt;= 1: k1 = dt * f(x,           t)         + W    # noqa
+    if stages &gt;= 2: k2 = dt * f(x+k1/2.0,    t+dt/2.0)  + W    # noqa
+    if stages == 3: k3 = dt * f(x+k2*2.0-k1, t+dt)      + W    # noqa
+    if stages == 4:
+                    k3 = dt * f(x+k2/2.0,    t+dt/2.0)  + W    # noqa
+                    k4 = dt * f(x+k3,        t+dt)      + W    # noqa
+
+    # Mix proxies
+    if    stages == 1: y = x + k1                              # noqa
+    elif  stages == 2: y = x + k2                              # noqa
+    elif  stages == 3: y = x + (k1 + 4.0*k2 + k3)/6.0          # noqa
+    elif  stages == 4: y = x + (k1 + 2.0*(k2 + k3) + k4)/6.0   # noqa
+    else:
+        raise NotImplementedError
+
+    return y
 
 
 def with_rk4(dxdt, autonom=False, stages=4, s=0):
     &#34;&#34;&#34;Wrap `dxdt` in `rk4`.&#34;&#34;&#34;
-    def tendency(t, x):
+    def tendency(x, t):
         if autonom:
             return dxdt(x)
         else:
-            return dxdt(t, x)
+            return dxdt(x, t)
 
     def step(x0, t0, dt):
         return rk4(tendency, x0, t0, dt, stages=stages)
@@ -237,7 +220,7 @@ def integrate_TLM(TLM, dt, method=&#39;approx&#39;):
     else:
         Id = np.eye(TLM.shape[0])
         if method == &#39;rk4&#39;:
-            resolvent = rk4(lambda t, U: TLM@U, Id, np.nan, dt)
+            resolvent = rk4(lambda U, t: TLM@U, Id, np.nan, dt)
         elif method.lower().startswith(&#39;approx&#39;):
             resolvent = Id + dt*TLM
         else:
@@ -297,13 +280,12 @@ def FD_Jac(func, eps=1e-7):
 </code></dt>
 <dd>
 <div class="desc"><p>Runge-Kutta (explicit, non-adaptive) numerical (S)ODE solvers.</p>
-<p>For ODEs, the order of convergence equals the number of <code>stages</code>.
-For SDEs with additive noise (<code>s&gt;0</code>), the order of convergence
-(both weak and strong) is 1 for <code>stages</code> equal to one or four.
+<p>For ODEs, the order of convergence equals the number of <code>stages</code>.</p>
+<p>For SDEs with additive noise (<code>s&gt;0</code>), the order of convergence
+(both weak and strong) is 1 for <code>stages</code> equal to 1 or 4.
 These correspond to the classic Euler-Maruyama scheme and the Runge-Kutta
-scheme for SODEs respectively, see <code>bib.grudzien2020numerical</code>
-for a DA-specific discussion on integration schemes and their
-discretization errors.</p>
+scheme for S-ODEs respectively, see <code>bib.grudzien2020numerical</code>
+for a DA-specific discussion on integration schemes and their discretization errors.</p>
 <h2 id="parameters">Parameters</h2>
 <dl>
 <dt><strong><code>f</code></strong> :&ensp;<code>function</code></dt>
@@ -330,18 +312,18 @@ Default: 0, yielding deterministic integration.</dd>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/integration.py#L13-L91" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/integration.py#L13-L75" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def rk4(f, x, t, dt, stages=4, s=0):
     &#34;&#34;&#34;Runge-Kutta (explicit, non-adaptive) numerical (S)ODE solvers.
 
     For ODEs, the order of convergence equals the number of `stages`.
+
     For SDEs with additive noise (`s&gt;0`), the order of convergence
-    (both weak and strong) is 1 for `stages` equal to one or four.
+    (both weak and strong) is 1 for `stages` equal to 1 or 4.
     These correspond to the classic Euler-Maruyama scheme and the Runge-Kutta
-    scheme for SODEs respectively, see `bib.grudzien2020numerical`
-    for a DA-specific discussion on integration schemes and their
-    discretization errors.
+    scheme for S-ODEs respectively, see `bib.grudzien2020numerical`
+    for a DA-specific discussion on integration schemes and their discretization errors.
 
     Parameters
     ----------
@@ -372,45 +354,29 @@ Default: 0, yielding deterministic integration.</dd>
         State vector at the new time, `t+dt`
     &#34;&#34;&#34;
 
+    # Draw noise
     if s &gt; 0:
-        # non-trivial diffusion, this defines the SDE integration with additive noise
-        # generate perturbation for Brownian motion
-        dims = np.shape(x)
-
-        if len(dims) &gt; 1:
-            N, Nx = dims
-            W = np.sqrt(dt) * np.random.standard_normal([N, Nx])
-
-        else:
-            N_x , = dims
-            W = np.sqrt(dt) * np.random.standard_normal(N_x)
-
-        if stages &gt;=1: k1 = dt * f(t       , x) + s * W             # noqa
-        if stages &gt;=2: k2 = dt * f(t+dt/2.0, x+k1/2.0) + s * W      # noqa
-        if stages ==3: k3 = dt * f(t+dt    , x+k2*2.0-k1) + s * W   # noqa
-        if stages ==4:                                              # noqa
-                      k3 = dt * f(t+dt/2.0, x+k2/2.0) + s * W       # noqa
-                      k4 = dt * f(t+dt    , x+k3) + s * W           # noqa
-        if    stages ==1: return x + k1                             # noqa
-        elif  stages ==2: return x + k2                             # noqa
-        elif  stages ==3: return x + (k1 + 4.0*k2 + k3)/6.0         # noqa
-        elif  stages ==4: return x + (k1 + 2.0*(k2 + k3) + k4)/6.0  # noqa
-        else: raise NotImplementedError                             # noqa
-
+        W = s * np.sqrt(dt) * np.random.randn(*x.shape)
     else:
-        # deterministic integration
+        W = 0
 
-        if stages &gt;=1: k1 = dt * f(t       , x)                     # noqa
-        if stages &gt;=2: k2 = dt * f(t+dt/2.0, x+k1/2.0)              # noqa
-        if stages ==3: k3 = dt * f(t+dt    , x+k2*2.0-k1)           # noqa
-        if stages ==4:                                              # noqa
-                      k3 = dt * f(t+dt/2.0, x+k2/2.0)               # noqa
-                      k4 = dt * f(t+dt    , x+k3)                   # noqa
-        if    stages ==1: return x + k1                             # noqa
-        elif  stages ==2: return x + k2                             # noqa
-        elif  stages ==3: return x + (k1 + 4.0*k2 + k3)/6.0         # noqa
-        elif  stages ==4: return x + (k1 + 2.0*(k2 + k3) + k4)/6.0  # noqa
-        else: raise NotImplementedError                             # noqa</code></pre>
+    # Approximations to Delta x
+    if stages &gt;= 1: k1 = dt * f(x,           t)         + W    # noqa
+    if stages &gt;= 2: k2 = dt * f(x+k1/2.0,    t+dt/2.0)  + W    # noqa
+    if stages == 3: k3 = dt * f(x+k2*2.0-k1, t+dt)      + W    # noqa
+    if stages == 4:
+                    k3 = dt * f(x+k2/2.0,    t+dt/2.0)  + W    # noqa
+                    k4 = dt * f(x+k3,        t+dt)      + W    # noqa
+
+    # Mix proxies
+    if    stages == 1: y = x + k1                              # noqa
+    elif  stages == 2: y = x + k2                              # noqa
+    elif  stages == 3: y = x + (k1 + 4.0*k2 + k3)/6.0          # noqa
+    elif  stages == 4: y = x + (k1 + 2.0*(k2 + k3) + k4)/6.0   # noqa
+    else:
+        raise NotImplementedError
+
+    return y</code></pre>
 </details>
 </dd>
 <dt id="dapper.mods.integration.with_rk4"><code class="name flex">
@@ -421,15 +387,15 @@ Default: 0, yielding deterministic integration.</dd>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/integration.py#L95-L108" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/integration.py#L78-L91" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def with_rk4(dxdt, autonom=False, stages=4, s=0):
     &#34;&#34;&#34;Wrap `dxdt` in `rk4`.&#34;&#34;&#34;
-    def tendency(t, x):
+    def tendency(x, t):
         if autonom:
             return dxdt(x)
         else:
-            return dxdt(t, x)
+            return dxdt(x, t)
 
     def step(x0, t0, dt):
         return rk4(tendency, x0, t0, dt, stages=stages)
@@ -478,7 +444,7 @@ True
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/integration.py#L111-L161" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/integration.py#L94-L144" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def with_recursion(func, prog=False):
     &#34;&#34;&#34;Make function recursive in its 1st arg.
@@ -569,7 +535,7 @@ True
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/integration.py#L164-L201" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/integration.py#L147-L184" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def integrate_TLM(TLM, dt, method=&#39;approx&#39;):
     r&#34;&#34;&#34;Compute the resolvent.
@@ -603,7 +569,7 @@ True
     else:
         Id = np.eye(TLM.shape[0])
         if method == &#39;rk4&#39;:
-            resolvent = rk4(lambda t, U: TLM@U, Id, np.nan, dt)
+            resolvent = rk4(lambda U, t: TLM@U, Id, np.nan, dt)
         elif method.lower().startswith(&#39;approx&#39;):
             resolvent = Id + dt*TLM
         else:
@@ -629,7 +595,7 @@ where, in the 2D case, each row is seen as one function input.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/integration.py#L204-L226" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/integration.py#L187-L209" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def FD_Jac(func, eps=1e-7):
     &#34;&#34;&#34;Finite-diff approx. of Jacobian of `func`.

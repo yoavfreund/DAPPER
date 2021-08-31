@@ -149,7 +149,7 @@ class Model:
         )
 
     def step1(self, x0, t, dt):
-        return rk4(lambda t, x: self.dxdt(x), x0, np.nan, dt)
+        return rk4(lambda x, t: self.dxdt(x), x0, np.nan, dt)
     # Note: step1 is already ensemble compatible.
     # However, it is a bit slow, so we can gain in speed by using multiprocessing.
 
@@ -579,7 +579,7 @@ working with multiple parameter settings simultaneously.</p></div>
         )
 
     def step1(self, x0, t, dt):
-        return rk4(lambda t, x: self.dxdt(x), x0, np.nan, dt)
+        return rk4(lambda x, t: self.dxdt(x), x0, np.nan, dt)
     # Note: step1 is already ensemble compatible.
     # However, it is a bit slow, so we can gain in speed by using multiprocessing.
 
@@ -695,7 +695,7 @@ working with multiple parameter settings simultaneously.</p></div>
 <a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/LorenzIII/__init__.py#L89-L90" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def step1(self, x0, t, dt):
-    return rk4(lambda t, x: self.dxdt(x), x0, np.nan, dt)</code></pre>
+    return rk4(lambda x, t: self.dxdt(x), x0, np.nan, dt)</code></pre>
 </details>
 </dd>
 <dt id="dapper.mods.LorenzIII.Model.step"><code class="name flex">

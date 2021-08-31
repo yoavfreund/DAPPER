@@ -193,13 +193,13 @@ def l96s_tay2_step(x, t, dt, s):
 def em_ensemble_step(x0, t, dt):
     &#34;&#34;&#34;Euler-Maruyama (order 1.0 Weak / Strong) model step wrapper&#34;&#34;&#34;
 
-    return rk4(lambda t, x: dxdt(x), x0, np.nan, dt, s=diffusion, stages=1)
+    return rk4(lambda x, t: dxdt(x), x0, np.nan, dt, s=diffusion, stages=1)
 
 
 def rk_ensemble_step(x0, t, dt):
     &#34;&#34;&#34;4-stage Runge-Kutta (order 1.0 Weak / Strong) model step wrapper&#34;&#34;&#34;
 
-    return rk4(lambda t, x: dxdt(x), x0, np.nan, dt, s=diffusion, stages=4)
+    return rk4(lambda x, t: dxdt(x), x0, np.nan, dt, s=diffusion, stages=4)
 
 
 # define the numerical step model for the truth twin
@@ -311,7 +311,7 @@ which makes a Fourier truncation at p=1 for the Brownian bridge process. See
 <pre><code class="python">def em_ensemble_step(x0, t, dt):
     &#34;&#34;&#34;Euler-Maruyama (order 1.0 Weak / Strong) model step wrapper&#34;&#34;&#34;
 
-    return rk4(lambda t, x: dxdt(x), x0, np.nan, dt, s=diffusion, stages=1)</code></pre>
+    return rk4(lambda x, t: dxdt(x), x0, np.nan, dt, s=diffusion, stages=1)</code></pre>
 </details>
 </dd>
 <dt id="dapper.mods.Lorenz96s.rk_ensemble_step"><code class="name flex">
@@ -327,7 +327,7 @@ which makes a Fourier truncation at p=1 for the Brownian bridge process. See
 <pre><code class="python">def rk_ensemble_step(x0, t, dt):
     &#34;&#34;&#34;4-stage Runge-Kutta (order 1.0 Weak / Strong) model step wrapper&#34;&#34;&#34;
 
-    return rk4(lambda t, x: dxdt(x), x0, np.nan, dt, s=diffusion, stages=4)</code></pre>
+    return rk4(lambda x, t: dxdt(x), x0, np.nan, dt, s=diffusion, stages=4)</code></pre>
 </details>
 </dd>
 <dt id="dapper.mods.Lorenz96s.truth_step"><code class="name flex">

@@ -90,7 +90,7 @@ def dxdt(x):
 
 
 def step(x0, t, dt):
-    return rk4(lambda t, x: dxdt(x), x0, np.nan, dt)</code></pre>
+    return rk4(lambda x, t: dxdt(x), x0, np.nan, dt)</code></pre>
 </details>
 </section>
 <section>
@@ -254,7 +254,7 @@ def step(x0, t, dt):
 <a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/Lorenz96/__init__.py#L41-L42" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def step(x0, t, dt):
-    return rk4(lambda t, x: dxdt(x), x0, np.nan, dt)</code></pre>
+    return rk4(lambda x, t: dxdt(x), x0, np.nan, dt)</code></pre>
 </details>
 </dd>
 </dl>

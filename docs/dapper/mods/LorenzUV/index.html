@@ -137,10 +137,10 @@ class model_instance():
         assert x.shape[-1] == self.nU
         return dxdt_auto(x) + self.F
 
-    def dxdt_parameterized(self, t, x):
+    def dxdt_parameterized(self, x, t):
         &#34;&#34;&#34;Compute truncated `dxdt` with parameterization of fast variables (`V`).&#34;&#34;&#34;
         d  = self.dxdt_trunc(x)
-        d -= self.prmzt(t, x)  # must (of course) be set first
+        d -= self.prmzt(x, t)  # must (of course) be set first
         return d
 
     def dxdt(self, x):
@@ -309,10 +309,10 @@ class model_instance():
         assert x.shape[-1] == self.nU
         return dxdt_auto(x) + self.F
 
-    def dxdt_parameterized(self, t, x):
+    def dxdt_parameterized(self, x, t):
         &#34;&#34;&#34;Compute truncated `dxdt` with parameterization of fast variables (`V`).&#34;&#34;&#34;
         d  = self.dxdt_trunc(x)
-        d -= self.prmzt(t, x)  # must (of course) be set first
+        d -= self.prmzt(x, t)  # must (of course) be set first
         return d
 
     def dxdt(self, x):
@@ -380,7 +380,7 @@ class model_instance():
 </details>
 </dd>
 <dt id="dapper.mods.LorenzUV.model_instance.dxdt_parameterized"><code class="name flex">
-<span>def <span class="ident">dxdt_parameterized</span></span>(<span>self, t, x)</span>
+<span>def <span class="ident">dxdt_parameterized</span></span>(<span>self, x, t)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Compute truncated <code>dxdt</code> with parameterization of fast variables (<code>V</code>).</p></div>
@@ -389,10 +389,10 @@ class model_instance():
 <span>Expand source code</span>
 <a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/LorenzUV/__init__.py#L81-L85" class="git-link">Browse git</a>
 </summary>
-<pre><code class="python">def dxdt_parameterized(self, t, x):
+<pre><code class="python">def dxdt_parameterized(self, x, t):
     &#34;&#34;&#34;Compute truncated `dxdt` with parameterization of fast variables (`V`).&#34;&#34;&#34;
     d  = self.dxdt_trunc(x)
-    d -= self.prmzt(t, x)  # must (of course) be set first
+    d -= self.prmzt(x, t)  # must (of course) be set first
     return d</code></pre>
 </details>
 </dd>
