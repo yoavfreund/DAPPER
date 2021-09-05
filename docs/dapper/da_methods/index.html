@@ -82,7 +82,7 @@ You probably don't need statistical significance while debugging.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/__init__.py#L1-L170" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/__init__.py#L1-L174" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">&#34;&#34;&#34;Contains the data assimilation methods included with DAPPER.
 
@@ -96,7 +96,6 @@ Follow the example of one of the methods within one of the
 sub-directories/packages.
 The simplest example is perhaps
 `dapper.da_methods.ensemble.EnKF`.
-
 
 ## General advice for programming/debugging scientific experiments
 
@@ -240,6 +239,11 @@ def da_method(*default_dataclasses):
                 &#34; must define a method called &#39;assimilate&#39;.&#34;) from error
         cls.assimilate = functools.wraps(_assimilate)(assimilate)
 
+        # Shortcut for register_stat
+        def stat(self, name, value):
+            dapper.stats.register_stat(self.stats, name, value)
+        cls.stat = stat
+
         # Make self.__class__.__name__ an attrib.
         # Used by xpList.split_attrs().
         cls.da_method = cls.__name__
@@ -367,7 +371,7 @@ experiments (see <code><a title="dapper.xp_launch.run_experiment" href="../xp_la
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/__init__.py#L48-L162" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/__init__.py#L47-L166" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def da_method(*default_dataclasses):
     &#34;&#34;&#34;Turn a dataclass-style class into a DA method for DAPPER (`xp`).
@@ -477,6 +481,11 @@ experiments (see <code><a title="dapper.xp_launch.run_experiment" href="../xp_la
                 &#34;Classes decorated by da_method()&#34;
                 &#34; must define a method called &#39;assimilate&#39;.&#34;) from error
         cls.assimilate = functools.wraps(_assimilate)(assimilate)
+
+        # Shortcut for register_stat
+        def stat(self, name, value):
+            dapper.stats.register_stat(self.stats, name, value)
+        cls.stat = stat
 
         # Make self.__class__.__name__ an attrib.
         # Used by xpList.split_attrs().

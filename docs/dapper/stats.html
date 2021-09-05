@@ -40,7 +40,7 @@ body.gsc-overflow-hidden #sidebar {overflow: visible;}
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L1-L782" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L1-L805" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">&#34;&#34;&#34;Stats computation for the assessment of DA methods.&#34;&#34;&#34;
 
@@ -58,22 +58,40 @@ import dapper.tools.series as series
 from dapper.dpr_config import rc
 from dapper.tools.matrices import CovMat
 from dapper.tools.progressbar import progbar
-from dapper.tools.series import DataSeries, StatPrint
 
 
-class Stats(StatPrint):
+class Stats(series.StatPrint):
     &#34;&#34;&#34;Contains and computes statistics of the DA methods.
 
-    Use new_series() to register your own stat time series.
+    Use `Stats.new_series` to register your own time series of statistics.
+    For example, create `ndarray` of length `KObs+1` to hold the time series
+    of estimated inflation values
+    &gt;&gt;&gt; self.stats.new_series(&#39;infl&#39;, 1, KObs+1)  # doctest: +SKIP
+
+    Of course, you could just do this
+    &gt;&gt;&gt; self.stats.my_custom_stat = value  # doctest: +SKIP
+
+    However, `Stats.average_in_time` will not operate on it,
+    because it is not in the standard format created by `Stats.new_series`.
+    Moreover, recall that `xp.launch` (without `free=False`) will delete
+    the `Stats` object from `xp` after the assimilation, in order to save memory.
+    Therefore, in order to have `my_custom_stat` be available among `xp.avrgs`,
+    it must be &#34;registered&#34;:
+    &gt;&gt;&gt; self.stats.stat_register.append(&#34;my_custom_stat&#34;)  # doctest: +SKIP
+
+    Alternatively, you can do both at once
+    &gt;&gt;&gt; self.stat(&#34;my_custom_stat&#34;, value)  # doctest: +SKIP
+
+    You can also overwrite pre-defined stats fields,
+    which will then be automatically averaged and written to `.avrgs`.
+    For example, you can remove all calls to `stats.assess`, and simply do
+    &gt;&gt;&gt; ...  # doctest: +SKIP
+    ... error_time_series = xx - ensemble_time_series.mean(axis=1)
+    ... stats.err.rms.a = np.sqrt(np.mean(error_time_series**2, axis=-1))
     &#34;&#34;&#34;
 
     def __init__(self, xp, HMM, xx, yy, liveplots=False, store_u=rc.store_u):
-        &#34;&#34;&#34;Init the default statistics.
-
-        Note: Python allows dynamically creating attributes, so you can easily
-        add custom stat. series to a Stat instance within a particular method,
-        for example. Use `new_series` to get automatic averaging too.
-        &#34;&#34;&#34;
+        &#34;&#34;&#34;Init the default statistics.&#34;&#34;&#34;
         ######################################
         # Preamble
         ######################################
@@ -159,18 +177,14 @@ class Stats(StatPrint):
         self.new_series(&#39;resmpl&#39;, 1, KObs+1)
 
     def new_series(self, name, shape, length=&#39;FAUSt&#39;, MS=False, **kws):
-        &#34;&#34;&#34;Create (and register) a statistics time series.
+        &#34;&#34;&#34;Create (and register) a statistics time series, initialized with `nan`s.
 
-        Series are initialized with nan&#39;s.
-
-        Example
-        -------
-        Create ndarray of length KObs+1 for inflation time series:
-        &gt;&gt;&gt; self.new_series(&#39;infl&#39;, 1, KObs+1)  # doctest: +SKIP
+        If `length` is an integer, a `DataSeries` (a trivial subclass of
+        `numpy.ndarray`) is made. By default, though, a `series.FAUSt` is created.
 
         NB: The `sliding_diagnostics` liveplotting relies on detecting `nan`&#39;s
             to avoid plotting stats that are not being used.
-            =&gt; Cannot use `dtype=bool` or `int` for stats that get plotted.
+            Thus, you cannot use `dtype=bool` or `int` for stats that get plotted.
         &#34;&#34;&#34;
         # Convert int shape to tuple
         if not hasattr(shape, &#39;__len__&#39;):
@@ -186,7 +200,7 @@ class Stats(StatPrint):
                 tseries = series.FAUSt(*total_shape, *store_opts, **kws)
             else:
                 total_shape = (length,)+shape
-                tseries = DataSeries(total_shape, *kws)
+                tseries = series.DataSeries(total_shape, *kws)
             register_stat(parent, name, tseries)
 
         # Principal series
@@ -206,7 +220,8 @@ class Stats(StatPrint):
 
     @property
     def data_series(self):
-        return [k for k in vars(self) if isinstance(getattr(self, k), DataSeries)]
+        return [k for k in vars(self)
+                if isinstance(getattr(self, k), series.DataSeries)]
 
     def assess(self, k, kObs=None, faus=None,
                E=None, w=None, mu=None, Cov=None):
@@ -415,7 +430,7 @@ class Stats(StatPrint):
                 if tseries.store_u:
                     avrgs[&#39;u&#39;] = series.mean_with_conf(tseries[kk, &#39;u&#39;])
 
-            elif isinstance(tseries, DataSeries):
+            elif isinstance(tseries, series.DataSeries):
                 if tseries.array.shape[1:] != ():
                     return average_multivariate()
                 elif len(tseries.array) == self.KObs+1:
@@ -501,23 +516,27 @@ class Stats(StatPrint):
 
 
 def register_stat(self, name, value):
+    &#34;&#34;&#34;Do `self.name = value` and register `name` as in self&#39;s `stat_register`.
+
+    Note: `self` is not always a `Stats` object, but could be a &#34;child&#34; of it.
+    &#34;&#34;&#34;
     setattr(self, name, value)
     if not hasattr(self, &#34;stat_register&#34;):
         self.stat_register = []
     self.stat_register.append(name)
 
 
-class Avrgs(StatPrint, struct_tools.DotDict):
+class Avrgs(series.StatPrint, struct_tools.DotDict):
     &#34;&#34;&#34;A DotDict specialized for stat. averages.
 
     Embellishments:
-    - StatPrint
+    - series.StatPrint
     - tabulate
     - getattr that supports abbreviations.
     &#34;&#34;&#34;
 
-    def tabulate(self, statkeys=()):
-        columns = tabulate_avrgs([self], statkeys, decimals=None)
+    def tabulate(self, statkeys=(), decimals=None):
+        columns = tabulate_avrgs([self], statkeys, decimals=decimals)
         return tabulate(columns, headers=&#34;keys&#34;).replace(&#39;␣&#39;, &#39; &#39;)
 
     abbrevs = {&#39;rmse&#39;: &#39;err.rms&#39;, &#39;rmss&#39;: &#39;std.rms&#39;, &#39;rmv&#39;: &#39;std.rms&#39;}
@@ -645,6 +664,10 @@ def unpack_uqs(uq_list, decimals=None):
         Default: `None`. In this case, the formatting is left to the `uq`s.
     &#34;&#34;&#34;
     def frmt(uq):
+        if not isinstance(uq, series.UncertainQtty):
+            # Presumably uq is just a number
+            uq = series.UncertainQtty(uq)
+
         attrs = vars(uq).copy()
 
         # val/prec: round
@@ -732,7 +755,7 @@ def center(E, axis=0, rescale=False):
         N = E.shape[axis]
         X *= np.sqrt(N/(N-1))
 
-    x = x.squeeze()
+    x = x.squeeze(axis=axis)
 
     return X, x
 
@@ -837,13 +860,18 @@ def unbias_var(w=None, N_eff=None, avoid_pathological=False):
 <span>def <span class="ident">register_stat</span></span>(<span>self, name, value)</span>
 </code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><p>Do <code>self.name = value</code> and register <code>name</code> as in self's <code>stat_register</code>.</p>
+<p>Note: <code>self</code> is not always a <code><a title="dapper.stats.Stats" href="#dapper.stats.Stats">Stats</a></code> object, but could be a "child" of it.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L459-L463" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L474-L482" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def register_stat(self, name, value):
+    &#34;&#34;&#34;Do `self.name = value` and register `name` as in self&#39;s `stat_register`.
+
+    Note: `self` is not always a `Stats` object, but could be a &#34;child&#34; of it.
+    &#34;&#34;&#34;
     setattr(self, name, value)
     if not hasattr(self, &#34;stat_register&#34;):
         self.stat_register = []
@@ -873,7 +901,7 @@ def unbias_var(w=None, N_eff=None, avoid_pathological=False):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L515-L581" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L534-L600" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def align_col(col, pad=&#39;␣&#39;, missingval=&#39;&#39;, just=&#34;&gt;&#34;):
     r&#34;&#34;&#34;Align column.
@@ -965,7 +993,7 @@ Default: <code>None</code>. In this case, the formatting is left to the <code>uq
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L584-L634" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L603-L657" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def unpack_uqs(uq_list, decimals=None):
     &#34;&#34;&#34;Convert list of `uq`s into dict of lists (of equal-length) of attributes.
@@ -987,6 +1015,10 @@ Default: <code>None</code>. In this case, the formatting is left to the <code>uq
         Default: `None`. In this case, the formatting is left to the `uq`s.
     &#34;&#34;&#34;
     def frmt(uq):
+        if not isinstance(uq, series.UncertainQtty):
+            # Presumably uq is just a number
+            uq = series.UncertainQtty(uq)
+
         attrs = vars(uq).copy()
 
         # val/prec: round
@@ -1028,7 +1060,7 @@ Default: <code>None</code>. In this case, the formatting is left to the <code>uq
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L637-L655" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L660-L678" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def tabulate_avrgs(avrgs_list, statkeys=(), decimals=None):
     &#34;&#34;&#34;Tabulate avrgs (val±prec).&#34;&#34;&#34;
@@ -1078,7 +1110,7 @@ where N is the ensemble size. Default: False</dd>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L658-L693" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L681-L716" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def center(E, axis=0, rescale=False):
     r&#34;&#34;&#34;Center ensemble.
@@ -1113,7 +1145,7 @@ where N is the ensemble size. Default: False</dd>
         N = E.shape[axis]
         X *= np.sqrt(N/(N-1))
 
-    x = x.squeeze()
+    x = x.squeeze(axis=axis)
 
     return X, x</code></pre>
 </details>
@@ -1128,7 +1160,7 @@ when used to center observation perturbations.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L696-L702" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L719-L725" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def mean0(E, axis=0, rescale=True):
     &#34;&#34;&#34;Like `center`, but only return the anomalies (not the mean).
@@ -1159,7 +1191,7 @@ when used to center observation perturbations.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L705-L725" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L728-L748" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def inflate_ens(E, factor):
     &#34;&#34;&#34;Inflate the ensemble (center, inflate, re-combine).
@@ -1206,7 +1238,7 @@ should be nearly one since sum(w) = 1</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L728-L747" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L751-L770" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def weight_degeneracy(w, prec=1e-10):
     &#34;&#34;&#34;Check if the weights are degenerate.
@@ -1257,7 +1289,7 @@ The unbiasing factor is <span><span class="MathJax_Preview"> N_{eff} / (N_{eff} 
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L750-L782" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L773-L805" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def unbias_var(w=None, N_eff=None, avoid_pathological=False):
     &#34;&#34;&#34;Compute unbias-ing factor for variance estimation.
@@ -1305,29 +1337,70 @@ The unbiasing factor is <span><span class="MathJax_Preview"> N_{eff} / (N_{eff} 
 </code></dt>
 <dd>
 <div class="desc"><p>Contains and computes statistics of the DA methods.</p>
-<p>Use new_series() to register your own stat time series.</p>
-<p>Init the default statistics.</p>
-<p>Note: Python allows dynamically creating attributes, so you can easily
-add custom stat. series to a Stat instance within a particular method,
-for example. Use <code>new_series</code> to get automatic averaging too.</p></div>
+<p>Use <code><a title="dapper.stats.Stats.new_series" href="#dapper.stats.Stats.new_series">Stats.new_series()</a></code> to register your own time series of statistics.
+For example, create <code>ndarray</code> of length <code>KObs+1</code> to hold the time series
+of estimated inflation values</p>
+<pre><code class="language-python-repl">&gt;&gt;&gt; self.stats.new_series('infl', 1, KObs+1)  # doctest: +SKIP
+</code></pre>
+<p>Of course, you could just do this</p>
+<pre><code class="language-python-repl">&gt;&gt;&gt; self.stats.my_custom_stat = value  # doctest: +SKIP
+</code></pre>
+<p>However, <code><a title="dapper.stats.Stats.average_in_time" href="#dapper.stats.Stats.average_in_time">Stats.average_in_time()</a></code> will not operate on it,
+because it is not in the standard format created by <code><a title="dapper.stats.Stats.new_series" href="#dapper.stats.Stats.new_series">Stats.new_series()</a></code>.
+Moreover, recall that <code>xp.launch</code> (without <code>free=False</code>) will delete
+the <code><a title="dapper.stats.Stats" href="#dapper.stats.Stats">Stats</a></code> object from <code>xp</code> after the assimilation, in order to save memory.
+Therefore, in order to have <code>my_custom_stat</code> be available among <code>xp.avrgs</code>,
+it must be "registered":</p>
+<pre><code class="language-python-repl">&gt;&gt;&gt; self.stats.stat_register.append(&quot;my_custom_stat&quot;)  # doctest: +SKIP
+</code></pre>
+<p>Alternatively, you can do both at once</p>
+<pre><code class="language-python-repl">&gt;&gt;&gt; self.stat(&quot;my_custom_stat&quot;, value)  # doctest: +SKIP
+</code></pre>
+<p>You can also overwrite pre-defined stats fields,
+which will then be automatically averaged and written to <code>.avrgs</code>.
+For example, you can remove all calls to <code>stats.assess</code>, and simply do</p>
+<pre><code class="language-python-repl">&gt;&gt;&gt; ...  # doctest: +SKIP
+... error_time_series = xx - ensemble_time_series.mean(axis=1)
+... stats.err.rms.a = np.sqrt(np.mean(error_time_series**2, axis=-1))
+</code></pre>
+<p>Init the default statistics.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L20-L456" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L19-L471" class="git-link">Browse git</a>
 </summary>
-<pre><code class="python">class Stats(StatPrint):
+<pre><code class="python">class Stats(series.StatPrint):
     &#34;&#34;&#34;Contains and computes statistics of the DA methods.
 
-    Use new_series() to register your own stat time series.
+    Use `Stats.new_series` to register your own time series of statistics.
+    For example, create `ndarray` of length `KObs+1` to hold the time series
+    of estimated inflation values
+    &gt;&gt;&gt; self.stats.new_series(&#39;infl&#39;, 1, KObs+1)  # doctest: +SKIP
+
+    Of course, you could just do this
+    &gt;&gt;&gt; self.stats.my_custom_stat = value  # doctest: +SKIP
+
+    However, `Stats.average_in_time` will not operate on it,
+    because it is not in the standard format created by `Stats.new_series`.
+    Moreover, recall that `xp.launch` (without `free=False`) will delete
+    the `Stats` object from `xp` after the assimilation, in order to save memory.
+    Therefore, in order to have `my_custom_stat` be available among `xp.avrgs`,
+    it must be &#34;registered&#34;:
+    &gt;&gt;&gt; self.stats.stat_register.append(&#34;my_custom_stat&#34;)  # doctest: +SKIP
+
+    Alternatively, you can do both at once
+    &gt;&gt;&gt; self.stat(&#34;my_custom_stat&#34;, value)  # doctest: +SKIP
+
+    You can also overwrite pre-defined stats fields,
+    which will then be automatically averaged and written to `.avrgs`.
+    For example, you can remove all calls to `stats.assess`, and simply do
+    &gt;&gt;&gt; ...  # doctest: +SKIP
+    ... error_time_series = xx - ensemble_time_series.mean(axis=1)
+    ... stats.err.rms.a = np.sqrt(np.mean(error_time_series**2, axis=-1))
     &#34;&#34;&#34;
 
     def __init__(self, xp, HMM, xx, yy, liveplots=False, store_u=rc.store_u):
-        &#34;&#34;&#34;Init the default statistics.
-
-        Note: Python allows dynamically creating attributes, so you can easily
-        add custom stat. series to a Stat instance within a particular method,
-        for example. Use `new_series` to get automatic averaging too.
-        &#34;&#34;&#34;
+        &#34;&#34;&#34;Init the default statistics.&#34;&#34;&#34;
         ######################################
         # Preamble
         ######################################
@@ -1413,18 +1486,14 @@ for example. Use <code>new_series</code> to get automatic averaging too.</p></di
         self.new_series(&#39;resmpl&#39;, 1, KObs+1)
 
     def new_series(self, name, shape, length=&#39;FAUSt&#39;, MS=False, **kws):
-        &#34;&#34;&#34;Create (and register) a statistics time series.
+        &#34;&#34;&#34;Create (and register) a statistics time series, initialized with `nan`s.
 
-        Series are initialized with nan&#39;s.
-
-        Example
-        -------
-        Create ndarray of length KObs+1 for inflation time series:
-        &gt;&gt;&gt; self.new_series(&#39;infl&#39;, 1, KObs+1)  # doctest: +SKIP
+        If `length` is an integer, a `DataSeries` (a trivial subclass of
+        `numpy.ndarray`) is made. By default, though, a `series.FAUSt` is created.
 
         NB: The `sliding_diagnostics` liveplotting relies on detecting `nan`&#39;s
             to avoid plotting stats that are not being used.
-            =&gt; Cannot use `dtype=bool` or `int` for stats that get plotted.
+            Thus, you cannot use `dtype=bool` or `int` for stats that get plotted.
         &#34;&#34;&#34;
         # Convert int shape to tuple
         if not hasattr(shape, &#39;__len__&#39;):
@@ -1440,7 +1509,7 @@ for example. Use <code>new_series</code> to get automatic averaging too.</p></di
                 tseries = series.FAUSt(*total_shape, *store_opts, **kws)
             else:
                 total_shape = (length,)+shape
-                tseries = DataSeries(total_shape, *kws)
+                tseries = series.DataSeries(total_shape, *kws)
             register_stat(parent, name, tseries)
 
         # Principal series
@@ -1460,7 +1529,8 @@ for example. Use <code>new_series</code> to get automatic averaging too.</p></di
 
     @property
     def data_series(self):
-        return [k for k in vars(self) if isinstance(getattr(self, k), DataSeries)]
+        return [k for k in vars(self)
+                if isinstance(getattr(self, k), series.DataSeries)]
 
     def assess(self, k, kObs=None, faus=None,
                E=None, w=None, mu=None, Cov=None):
@@ -1669,7 +1739,7 @@ for example. Use <code>new_series</code> to get automatic averaging too.</p></di
                 if tseries.store_u:
                     avrgs[&#39;u&#39;] = series.mean_with_conf(tseries[kk, &#39;u&#39;])
 
-            elif isinstance(tseries, DataSeries):
+            elif isinstance(tseries, series.DataSeries):
                 if tseries.array.shape[1:] != ():
                     return average_multivariate()
                 elif len(tseries.array) == self.KObs+1:
@@ -1766,11 +1836,12 @@ for example. Use <code>new_series</code> to get automatic averaging too.</p></di
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L163-L165" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L177-L180" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">@property
 def data_series(self):
-    return [k for k in vars(self) if isinstance(getattr(self, k), DataSeries)]</code></pre>
+    return [k for k in vars(self)
+            if isinstance(getattr(self, k), series.DataSeries)]</code></pre>
 </details>
 </dd>
 </dl>
@@ -1780,33 +1851,26 @@ def data_series(self):
 <span>def <span class="ident">new_series</span></span>(<span>self, name, shape, length='FAUSt', MS=False, **kws)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Create (and register) a statistics time series.</p>
-<p>Series are initialized with nan's.</p>
-<h2 id="example">Example</h2>
-<p>Create ndarray of length KObs+1 for inflation time series:</p>
-<pre><code class="language-python-repl">&gt;&gt;&gt; self.new_series('infl', 1, KObs+1)  # doctest: +SKIP
-</code></pre>
+<div class="desc"><p>Create (and register) a statistics time series, initialized with <code>nan</code>s.</p>
+<p>If <code>length</code> is an integer, a <code>DataSeries</code> (a trivial subclass of
+<code>numpy.ndarray</code>) is made. By default, though, a <code>series.FAUSt</code> is created.</p>
 <p>NB: The <code>sliding_diagnostics</code> liveplotting relies on detecting <code>nan</code>'s
 to avoid plotting stats that are not being used.
-=&gt; Cannot use <code>dtype=bool</code> or <code>int</code> for stats that get plotted.</p></div>
+Thus, you cannot use <code>dtype=bool</code> or <code>int</code> for stats that get plotted.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L117-L161" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L135-L175" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def new_series(self, name, shape, length=&#39;FAUSt&#39;, MS=False, **kws):
-    &#34;&#34;&#34;Create (and register) a statistics time series.
+    &#34;&#34;&#34;Create (and register) a statistics time series, initialized with `nan`s.
 
-    Series are initialized with nan&#39;s.
-
-    Example
-    -------
-    Create ndarray of length KObs+1 for inflation time series:
-    &gt;&gt;&gt; self.new_series(&#39;infl&#39;, 1, KObs+1)  # doctest: +SKIP
+    If `length` is an integer, a `DataSeries` (a trivial subclass of
+    `numpy.ndarray`) is made. By default, though, a `series.FAUSt` is created.
 
     NB: The `sliding_diagnostics` liveplotting relies on detecting `nan`&#39;s
         to avoid plotting stats that are not being used.
-        =&gt; Cannot use `dtype=bool` or `int` for stats that get plotted.
+        Thus, you cannot use `dtype=bool` or `int` for stats that get plotted.
     &#34;&#34;&#34;
     # Convert int shape to tuple
     if not hasattr(shape, &#39;__len__&#39;):
@@ -1822,7 +1886,7 @@ to avoid plotting stats that are not being used.
             tseries = series.FAUSt(*total_shape, *store_opts, **kws)
         else:
             total_shape = (length,)+shape
-            tseries = DataSeries(total_shape, *kws)
+            tseries = series.DataSeries(total_shape, *kws)
         register_stat(parent, name, tseries)
 
     # Principal series
@@ -1855,7 +1919,7 @@ Default: 'u' if kObs is None else 'au' ('a' and 'u').</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L167-L241" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L182-L256" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def assess(self, k, kObs=None, faus=None,
            E=None, w=None, mu=None, Cov=None):
@@ -1942,7 +2006,7 @@ Default: 'u' if kObs is None else 'au' ('a' and 'u').</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L243-L253" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L258-L268" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def summarize_marginals(self, now):
     &#34;&#34;&#34;Compute Mean-field and RMS values&#34;&#34;&#34;
@@ -1965,7 +2029,7 @@ Default: 'u' if kObs is None else 'au' ('a' and 'u').</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L255-L257" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L270-L272" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def derivative_stats(self, now):
     &#34;&#34;&#34;Stats that derive from others (=&gt; not specific for _ens or _ext).&#34;&#34;&#34;
@@ -1980,7 +2044,7 @@ Default: 'u' if kObs is None else 'au' ('a' and 'u').</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L259-L321" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L274-L336" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def assess_ens(self, now, x, E, w):
     &#34;&#34;&#34;Ensemble and Particle filter (weighted/importance) assessment.&#34;&#34;&#34;
@@ -2055,7 +2119,7 @@ Default: 'u' if kObs is None else 'au' ('a' and 'u').</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L323-L344" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L338-L359" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def assess_ext(self, now, x, mu, P):
     &#34;&#34;&#34;Kalman filter (Gaussian) assessment.&#34;&#34;&#34;
@@ -2094,7 +2158,7 @@ time inds for averaging</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L346-L406" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L361-L421" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def average_in_time(self, kk=None, kkObs=None, free=False):
     &#34;&#34;&#34;Avarage all univariate (scalar) time series.
@@ -2124,7 +2188,7 @@ time inds for averaging</li>
             if tseries.store_u:
                 avrgs[&#39;u&#39;] = series.mean_with_conf(tseries[kk, &#39;u&#39;])
 
-        elif isinstance(tseries, DataSeries):
+        elif isinstance(tseries, series.DataSeries):
             if tseries.array.shape[1:] != ():
                 return average_multivariate()
             elif len(tseries.array) == self.KObs+1:
@@ -2179,7 +2243,7 @@ time inds for averaging</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L408-L456" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L423-L471" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def replay(self, figlist=&#34;default&#34;, speed=np.inf, t1=0, t2=None, **kwargs):
     &#34;&#34;&#34;Replay LivePlot with what&#39;s been stored in &#39;self&#39;.
@@ -2241,26 +2305,26 @@ time inds for averaging</li>
 <dd>
 <div class="desc"><p>A DotDict specialized for stat. averages.</p>
 <p>Embellishments:
-- StatPrint
+- series.StatPrint
 - tabulate
 - getattr that supports abbreviations.</p>
 <p>Init like a normal dict.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L466-L490" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L485-L509" class="git-link">Browse git</a>
 </summary>
-<pre><code class="python">class Avrgs(StatPrint, struct_tools.DotDict):
+<pre><code class="python">class Avrgs(series.StatPrint, struct_tools.DotDict):
     &#34;&#34;&#34;A DotDict specialized for stat. averages.
 
     Embellishments:
-    - StatPrint
+    - series.StatPrint
     - tabulate
     - getattr that supports abbreviations.
     &#34;&#34;&#34;
 
-    def tabulate(self, statkeys=()):
-        columns = tabulate_avrgs([self], statkeys, decimals=None)
+    def tabulate(self, statkeys=(), decimals=None):
+        columns = tabulate_avrgs([self], statkeys, decimals=decimals)
         return tabulate(columns, headers=&#34;keys&#34;).replace(&#39;␣&#39;, &#39; &#39;)
 
     abbrevs = {&#39;rmse&#39;: &#39;err.rms&#39;, &#39;rmss&#39;: &#39;std.rms&#39;, &#39;rmv&#39;: &#39;std.rms&#39;}
@@ -2294,17 +2358,17 @@ time inds for averaging</li>
 <h3>Methods</h3>
 <dl>
 <dt id="dapper.stats.Avrgs.tabulate"><code class="name flex">
-<span>def <span class="ident">tabulate</span></span>(<span>self, statkeys=())</span>
+<span>def <span class="ident">tabulate</span></span>(<span>self, statkeys=(), decimals=None)</span>
 </code></dt>
 <dd>
 <div class="desc"></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L475-L477" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L494-L496" class="git-link">Browse git</a>
 </summary>
-<pre><code class="python">def tabulate(self, statkeys=()):
-    columns = tabulate_avrgs([self], statkeys, decimals=None)
+<pre><code class="python">def tabulate(self, statkeys=(), decimals=None):
+    columns = tabulate_avrgs([self], statkeys, decimals=decimals)
     return tabulate(columns, headers=&#34;keys&#34;).replace(&#39;␣&#39;, &#39; &#39;)</code></pre>
 </details>
 </dd>

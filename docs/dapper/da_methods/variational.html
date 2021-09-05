@@ -850,6 +850,20 @@ Total number of model simulations (of duration dtObs): N * (nIter*Lag + 1).
     stats.assess(k, KObs, &#39;us&#39;, E=E)</code></pre>
 </details>
 </dd>
+<dt id="dapper.da_methods.variational.iEnKS.stat"><code class="name flex">
+<span>def <span class="ident">stat</span></span>(<span>self, name, value)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/__init__.py#L157-L158" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def stat(self, name, value):
+    dapper.stats.register_stat(self.stats, name, value)</code></pre>
+</details>
+</dd>
 </dl>
 </dd>
 <dt id="dapper.da_methods.variational.Var4D"><code class="flex name class">
@@ -1115,6 +1129,20 @@ there is no benefit to the adjoint trick (back-propagation).
     stats.assess(k, KObs, &#39;us&#39;, mu=x, Cov=X@Cow1@X.T)</code></pre>
 </details>
 </dd>
+<dt id="dapper.da_methods.variational.Var4D.stat"><code class="name flex">
+<span>def <span class="ident">stat</span></span>(<span>self, name, value)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/__init__.py#L157-L158" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def stat(self, name, value):
+    dapper.stats.register_stat(self.stats, name, value)</code></pre>
+</details>
+</dd>
 </dl>
 </dd>
 </dl>
@@ -1152,6 +1180,7 @@ data-gaCategoryParameter="dapper.da_methods.variational">
 <h4><code><a title="dapper.da_methods.variational.iEnKS" href="#dapper.da_methods.variational.iEnKS">iEnKS</a></code></h4>
 <ul class="two-column">
 <li><code><a title="dapper.da_methods.variational.iEnKS.assimilate" href="#dapper.da_methods.variational.iEnKS.assimilate">assimilate</a></code></li>
+<li><code><a title="dapper.da_methods.variational.iEnKS.stat" href="#dapper.da_methods.variational.iEnKS.stat">stat</a></code></li>
 <li><code><a title="dapper.da_methods.variational.iEnKS.upd_a" href="#dapper.da_methods.variational.iEnKS.upd_a">upd_a</a></code></li>
 <li><code><a title="dapper.da_methods.variational.iEnKS.N" href="#dapper.da_methods.variational.iEnKS.N">N</a></code></li>
 <li><code><a title="dapper.da_methods.variational.iEnKS.MDA" href="#dapper.da_methods.variational.iEnKS.MDA">MDA</a></code></li>
@@ -1170,6 +1199,7 @@ data-gaCategoryParameter="dapper.da_methods.variational">
 <h4><code><a title="dapper.da_methods.variational.Var4D" href="#dapper.da_methods.variational.Var4D">Var4D</a></code></h4>
 <ul class="two-column">
 <li><code><a title="dapper.da_methods.variational.Var4D.assimilate" href="#dapper.da_methods.variational.Var4D.assimilate">assimilate</a></code></li>
+<li><code><a title="dapper.da_methods.variational.Var4D.stat" href="#dapper.da_methods.variational.Var4D.stat">stat</a></code></li>
 <li><code><a title="dapper.da_methods.variational.Var4D.B" href="#dapper.da_methods.variational.Var4D.B">B</a></code></li>
 <li><code><a title="dapper.da_methods.variational.Var4D.xB" href="#dapper.da_methods.variational.Var4D.xB">xB</a></code></li>
 <li><code><a title="dapper.da_methods.variational.Var4D.Lag" href="#dapper.da_methods.variational.Var4D.Lag">Lag</a></code></li>

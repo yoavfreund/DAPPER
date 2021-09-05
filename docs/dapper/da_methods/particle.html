@@ -1240,6 +1240,20 @@ See <code><a title="bib.chen2003bayesian" href="../../bib.html#bib.chen2003bayes
         stats.assess(k, kObs, &#39;u&#39;, E=E, w=w)</code></pre>
 </details>
 </dd>
+<dt id="dapper.da_methods.particle.PartFilt.stat"><code class="name flex">
+<span>def <span class="ident">stat</span></span>(<span>self, name, value)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/__init__.py#L157-L158" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def stat(self, name, value):
+    dapper.stats.register_stat(self.stats, name, value)</code></pre>
+</details>
+</dd>
 </dl>
 </dd>
 <dt id="dapper.da_methods.particle.OptPF"><code class="flex name class">
@@ -1413,6 +1427,20 @@ the bootstrap filter :func:<code><a title="dapper.da_methods.particle.PartFilt" 
                 E, _    = regularize(C12, E, idx, self.nuj)
 
         stats.assess(k, kObs, &#39;u&#39;, E=E, w=w)</code></pre>
+</details>
+</dd>
+<dt id="dapper.da_methods.particle.OptPF.stat"><code class="name flex">
+<span>def <span class="ident">stat</span></span>(<span>self, name, value)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/__init__.py#L157-L158" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def stat(self, name, value):
+    dapper.stats.register_stat(self.stats, name, value)</code></pre>
 </details>
 </dd>
 </dl>
@@ -1609,6 +1637,20 @@ Similarly, by adjusting the weights we play on the bias-variance spectrum.</p>
                 #     w *= np.exp(-0.5*chi2*(1 - 1/rroot))
                 #     w /= w.sum()
         stats.assess(k, kObs, &#39;u&#39;, E=E, w=w)</code></pre>
+</details>
+</dd>
+<dt id="dapper.da_methods.particle.PFa.stat"><code class="name flex">
+<span>def <span class="ident">stat</span></span>(<span>self, name, value)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/__init__.py#L157-L158" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def stat(self, name, value):
+    dapper.stats.register_stat(self.stats, name, value)</code></pre>
 </details>
 </dd>
 </dl>
@@ -1904,6 +1946,20 @@ Or maybe we should use x_a^n distributed according to a sqrt update?</p></div>
         stats.assess(k, kObs, &#39;u&#39;, E=E, w=w)</code></pre>
 </details>
 </dd>
+<dt id="dapper.da_methods.particle.PFxN_EnKF.stat"><code class="name flex">
+<span>def <span class="ident">stat</span></span>(<span>self, name, value)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/__init__.py#L157-L158" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def stat(self, name, value):
+    dapper.stats.register_stat(self.stats, name, value)</code></pre>
+</details>
+</dd>
 </dl>
 </dd>
 <dt id="dapper.da_methods.particle.PFxN"><code class="flex name class">
@@ -2093,6 +2149,20 @@ without jittering.</p></div>
         stats.assess(k, kObs, &#39;u&#39;, E=E, w=w)</code></pre>
 </details>
 </dd>
+<dt id="dapper.da_methods.particle.PFxN.stat"><code class="name flex">
+<span>def <span class="ident">stat</span></span>(<span>self, name, value)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/__init__.py#L157-L158" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def stat(self, name, value):
+    dapper.stats.register_stat(self.stats, name, value)</code></pre>
+</details>
+</dd>
 </dl>
 </dd>
 </dl>
@@ -2138,6 +2208,7 @@ data-gaCategoryParameter="dapper.da_methods.particle">
 <h4><code><a title="dapper.da_methods.particle.PartFilt" href="#dapper.da_methods.particle.PartFilt">PartFilt</a></code></h4>
 <ul class="two-column">
 <li><code><a title="dapper.da_methods.particle.PartFilt.assimilate" href="#dapper.da_methods.particle.PartFilt.assimilate">assimilate</a></code></li>
+<li><code><a title="dapper.da_methods.particle.PartFilt.stat" href="#dapper.da_methods.particle.PartFilt.stat">stat</a></code></li>
 <li><code><a title="dapper.da_methods.particle.PartFilt.N" href="#dapper.da_methods.particle.PartFilt.N">N</a></code></li>
 <li><code><a title="dapper.da_methods.particle.PartFilt.reg" href="#dapper.da_methods.particle.PartFilt.reg">reg</a></code></li>
 <li><code><a title="dapper.da_methods.particle.PartFilt.nuj" href="#dapper.da_methods.particle.PartFilt.nuj">nuj</a></code></li>
@@ -2152,6 +2223,7 @@ data-gaCategoryParameter="dapper.da_methods.particle">
 <h4><code><a title="dapper.da_methods.particle.OptPF" href="#dapper.da_methods.particle.OptPF">OptPF</a></code></h4>
 <ul class="two-column">
 <li><code><a title="dapper.da_methods.particle.OptPF.assimilate" href="#dapper.da_methods.particle.OptPF.assimilate">assimilate</a></code></li>
+<li><code><a title="dapper.da_methods.particle.OptPF.stat" href="#dapper.da_methods.particle.OptPF.stat">stat</a></code></li>
 <li><code><a title="dapper.da_methods.particle.OptPF.N" href="#dapper.da_methods.particle.OptPF.N">N</a></code></li>
 <li><code><a title="dapper.da_methods.particle.OptPF.Qs" href="#dapper.da_methods.particle.OptPF.Qs">Qs</a></code></li>
 <li><code><a title="dapper.da_methods.particle.OptPF.reg" href="#dapper.da_methods.particle.OptPF.reg">reg</a></code></li>
@@ -2166,6 +2238,7 @@ data-gaCategoryParameter="dapper.da_methods.particle">
 <h4><code><a title="dapper.da_methods.particle.PFa" href="#dapper.da_methods.particle.PFa">PFa</a></code></h4>
 <ul class="two-column">
 <li><code><a title="dapper.da_methods.particle.PFa.assimilate" href="#dapper.da_methods.particle.PFa.assimilate">assimilate</a></code></li>
+<li><code><a title="dapper.da_methods.particle.PFa.stat" href="#dapper.da_methods.particle.PFa.stat">stat</a></code></li>
 <li><code><a title="dapper.da_methods.particle.PFa.N" href="#dapper.da_methods.particle.PFa.N">N</a></code></li>
 <li><code><a title="dapper.da_methods.particle.PFa.alpha" href="#dapper.da_methods.particle.PFa.alpha">alpha</a></code></li>
 <li><code><a title="dapper.da_methods.particle.PFa.reg" href="#dapper.da_methods.particle.PFa.reg">reg</a></code></li>
@@ -2180,6 +2253,7 @@ data-gaCategoryParameter="dapper.da_methods.particle">
 <h4><code><a title="dapper.da_methods.particle.PFxN_EnKF" href="#dapper.da_methods.particle.PFxN_EnKF">PFxN_EnKF</a></code></h4>
 <ul class="two-column">
 <li><code><a title="dapper.da_methods.particle.PFxN_EnKF.assimilate" href="#dapper.da_methods.particle.PFxN_EnKF.assimilate">assimilate</a></code></li>
+<li><code><a title="dapper.da_methods.particle.PFxN_EnKF.stat" href="#dapper.da_methods.particle.PFxN_EnKF.stat">stat</a></code></li>
 <li><code><a title="dapper.da_methods.particle.PFxN_EnKF.N" href="#dapper.da_methods.particle.PFxN_EnKF.N">N</a></code></li>
 <li><code><a title="dapper.da_methods.particle.PFxN_EnKF.Qs" href="#dapper.da_methods.particle.PFxN_EnKF.Qs">Qs</a></code></li>
 <li><code><a title="dapper.da_methods.particle.PFxN_EnKF.xN" href="#dapper.da_methods.particle.PFxN_EnKF.xN">xN</a></code></li>
@@ -2194,6 +2268,7 @@ data-gaCategoryParameter="dapper.da_methods.particle">
 <h4><code><a title="dapper.da_methods.particle.PFxN" href="#dapper.da_methods.particle.PFxN">PFxN</a></code></h4>
 <ul class="two-column">
 <li><code><a title="dapper.da_methods.particle.PFxN.assimilate" href="#dapper.da_methods.particle.PFxN.assimilate">assimilate</a></code></li>
+<li><code><a title="dapper.da_methods.particle.PFxN.stat" href="#dapper.da_methods.particle.PFxN.stat">stat</a></code></li>
 <li><code><a title="dapper.da_methods.particle.PFxN.N" href="#dapper.da_methods.particle.PFxN.N">N</a></code></li>
 <li><code><a title="dapper.da_methods.particle.PFxN.Qs" href="#dapper.da_methods.particle.PFxN.Qs">Qs</a></code></li>
 <li><code><a title="dapper.da_methods.particle.PFxN.xN" href="#dapper.da_methods.particle.PFxN.xN">xN</a></code></li>

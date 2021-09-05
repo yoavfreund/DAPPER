@@ -40,7 +40,7 @@ body.gsc-overflow-hidden #sidebar {overflow: visible;}
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/ensemble.py#L1-L981" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/ensemble.py#L1-L982" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">&#34;&#34;&#34;The EnKF and other ensemble-based methods.&#34;&#34;&#34;
 
@@ -100,7 +100,7 @@ class EnKF:
             stats.assess(k, kObs, E=E)
 
 
-def EnKF_analysis(E, Eo, hnoise, y, upd_a, stats, kObs):
+def EnKF_analysis(E, Eo, hnoise, y, upd_a, stats=None, kObs=None):
     &#34;&#34;&#34;Perform the EnKF analysis update.
 
     This implementation includes several flavours and forms,
@@ -261,10 +261,11 @@ def EnKF_analysis(E, Eo, hnoise, y, upd_a, stats, kObs):
         raise KeyError(&#34;No analysis update method found: &#39;&#34; + upd_a + &#34;&#39;.&#34;)
 
     # Diagnostic: relative influence of observations
-    if &#39;trHK&#39; in locals():
-        stats.trHK[kObs] = trHK      / hnoise.M
-    elif &#39;HK&#39; in locals():
-        stats.trHK[kObs] = HK.trace()/hnoise.M
+    if stats is not None:
+        if &#39;trHK&#39; in locals():
+            stats.trHK[kObs] = trHK      / hnoise.M
+        elif &#39;HK&#39; in locals():
+            stats.trHK[kObs] = HK.trace()/hnoise.M
 
     return E
 
@@ -1033,7 +1034,7 @@ class EnKF_N:
 <h2 class="section-title" id="header-functions">Functions</h2>
 <dl>
 <dt id="dapper.da_methods.ensemble.EnKF_analysis"><code class="name flex">
-<span>def <span class="ident">EnKF_analysis</span></span>(<span>E, Eo, hnoise, y, upd_a, stats, kObs)</span>
+<span>def <span class="ident">EnKF_analysis</span></span>(<span>E, Eo, hnoise, y, upd_a, stats=None, kObs=None)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Perform the EnKF analysis update.</p>
@@ -1044,9 +1045,9 @@ specified by <code>upd_a</code>.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/ensemble.py#L59-L225" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/ensemble.py#L59-L226" class="git-link">Browse git</a>
 </summary>
-<pre><code class="python">def EnKF_analysis(E, Eo, hnoise, y, upd_a, stats, kObs):
+<pre><code class="python">def EnKF_analysis(E, Eo, hnoise, y, upd_a, stats=None, kObs=None):
     &#34;&#34;&#34;Perform the EnKF analysis update.
 
     This implementation includes several flavours and forms,
@@ -1207,10 +1208,11 @@ specified by <code>upd_a</code>.</p>
         raise KeyError(&#34;No analysis update method found: &#39;&#34; + upd_a + &#34;&#39;.&#34;)
 
     # Diagnostic: relative influence of observations
-    if &#39;trHK&#39; in locals():
-        stats.trHK[kObs] = trHK      / hnoise.M
-    elif &#39;HK&#39; in locals():
-        stats.trHK[kObs] = HK.trace()/hnoise.M
+    if stats is not None:
+        if &#39;trHK&#39; in locals():
+            stats.trHK[kObs] = trHK      / hnoise.M
+        elif &#39;HK&#39; in locals():
+            stats.trHK[kObs] = HK.trace()/hnoise.M
 
     return E</code></pre>
 </details>
@@ -1230,7 +1232,7 @@ this should have been inside :func:<code><a title="dapper.da_methods.ensemble.En
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/ensemble.py#L228-L253" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/ensemble.py#L229-L254" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def post_process(E, infl, rot):
     &#34;&#34;&#34;Inflate, Rotate.
@@ -1269,7 +1271,7 @@ this should have been inside :func:<code><a title="dapper.da_methods.ensemble.En
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/ensemble.py#L256-L345" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/ensemble.py#L257-L346" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def add_noise(E, dt, noise, method):
     &#34;&#34;&#34;Treatment of additive noise for ensembles.
@@ -1376,7 +1378,7 @@ this should have been inside :func:<code><a title="dapper.da_methods.ensemble.En
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/ensemble.py#L458-L477" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/ensemble.py#L459-L478" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def serial_inds(upd_a, y, cvR, A):
     &#34;&#34;&#34;Get the indices used for serial updating.
@@ -1409,7 +1411,7 @@ this should have been inside :func:<code><a title="dapper.da_methods.ensemble.En
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/ensemble.py#L660-L702" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/ensemble.py#L661-L703" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def effective_N(YR, dyR, xN, g):
     &#34;&#34;&#34;Effective ensemble size N.
@@ -1465,7 +1467,7 @@ this should have been inside :func:<code><a title="dapper.da_methods.ensemble.En
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/ensemble.py#L730-L749" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/ensemble.py#L731-L750" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def Newton_m(fun, deriv, x0, is_inverted=False,
              conf=1.0, xtol=1e-4, ytol=1e-7, itermax=10**2):
@@ -1537,7 +1539,7 @@ as if N were smaller than it truly is.</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/ensemble.py#L752-L812" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/ensemble.py#L753-L813" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def hyperprior_coeffs(s, N, xN=1, g=0):
     r&#34;&#34;&#34;Set EnKF-N inflation hyperparams.
@@ -1614,7 +1616,7 @@ the distinction between the primal and dual EnKF-N.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/ensemble.py#L815-L827" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/ensemble.py#L816-L828" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def zeta_a(eN, cL, w):
     &#34;&#34;&#34;EnKF-N inflation estimation via w.
@@ -1741,6 +1743,20 @@ the distinction between the primal and dual EnKF-N.</p></div>
         stats.assess(k, kObs, E=E)</code></pre>
 </details>
 </dd>
+<dt id="dapper.da_methods.ensemble.EnKF.stat"><code class="name flex">
+<span>def <span class="ident">stat</span></span>(<span>self, name, value)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/__init__.py#L157-L158" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def stat(self, name, value):
+    dapper.stats.register_stat(self.stats, name, value)</code></pre>
+</details>
+</dd>
 </dl>
 </dd>
 <dt id="dapper.da_methods.ensemble.EnKS"><code class="flex name class">
@@ -1755,7 +1771,7 @@ is the management of the lag and the reshapings.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/ensemble.py#L349-L406" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/ensemble.py#L350-L407" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class EnKS:
     &#34;&#34;&#34;The ensemble Kalman smoother.
@@ -1857,7 +1873,7 @@ is the management of the lag and the reshapings.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/ensemble.py#L364-L366" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/ensemble.py#L365-L367" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def reshape_to(self, E):
     K, N, Nx = E.shape
@@ -1872,7 +1888,7 @@ is the management of the lag and the reshapings.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/ensemble.py#L368-L371" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/ensemble.py#L369-L372" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def reshape_fr(self, E, Nx):
     N, Km = E.shape
@@ -1888,7 +1904,7 @@ is the management of the lag and the reshapings.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/ensemble.py#L373-L406" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/ensemble.py#L374-L407" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def assimilate(self, HMM, xx, yy):
     Dyn, Obs, chrono, X0, stats = \
@@ -1926,6 +1942,20 @@ is the management of the lag and the reshapings.</p></div>
             stats.assess(k, kObs, &#39;s&#39;, E=E[k])</code></pre>
 </details>
 </dd>
+<dt id="dapper.da_methods.ensemble.EnKS.stat"><code class="name flex">
+<span>def <span class="ident">stat</span></span>(<span>self, name, value)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/__init__.py#L157-L158" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def stat(self, name, value):
+    dapper.stats.register_stat(self.stats, name, value)</code></pre>
+</details>
+</dd>
 </dl>
 </dd>
 <dt id="dapper.da_methods.ensemble.EnRTS"><code class="flex name class">
@@ -1938,7 +1968,7 @@ is the management of the lag and the reshapings.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/ensemble.py#L410-L455" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/ensemble.py#L411-L456" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class EnRTS:
     &#34;&#34;&#34;EnRTS (Rauch-Tung-Striebel) smoother.
@@ -2028,7 +2058,7 @@ is the management of the lag and the reshapings.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/ensemble.py#L420-L455" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/ensemble.py#L421-L456" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def assimilate(self, HMM, xx, yy):
     Dyn, Obs, chrono, X0, stats = \
@@ -2068,6 +2098,20 @@ is the management of the lag and the reshapings.</p></div>
             stats.assess(k, kObs, &#39;s&#39;, E=E[k])</code></pre>
 </details>
 </dd>
+<dt id="dapper.da_methods.ensemble.EnRTS.stat"><code class="name flex">
+<span>def <span class="ident">stat</span></span>(<span>self, name, value)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/__init__.py#L157-L158" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def stat(self, name, value):
+    dapper.stats.register_stat(self.stats, name, value)</code></pre>
+</details>
+</dd>
 </dl>
 </dd>
 <dt id="dapper.da_methods.ensemble.SL_EAKF"><code class="flex name class">
@@ -2082,7 +2126,7 @@ to the <code><a title="dapper.da_methods.ensemble.EnKF" href="#dapper.da_methods
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/ensemble.py#L481-L550" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/ensemble.py#L482-L551" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class SL_EAKF:
     &#34;&#34;&#34;Serial, covariance-localized EAKF.
@@ -2200,7 +2244,7 @@ to the <code><a title="dapper.da_methods.ensemble.EnKF" href="#dapper.da_methods
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/ensemble.py#L495-L550" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/ensemble.py#L496-L551" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def assimilate(self, HMM, xx, yy):
     Dyn, Obs, chrono, X0, stats = HMM.Dyn, HMM.Obs, HMM.t, HMM.X0, self.stats
@@ -2260,6 +2304,20 @@ to the <code><a title="dapper.da_methods.ensemble.EnKF" href="#dapper.da_methods
         stats.assess(k, kObs, E=E)</code></pre>
 </details>
 </dd>
+<dt id="dapper.da_methods.ensemble.SL_EAKF.stat"><code class="name flex">
+<span>def <span class="ident">stat</span></span>(<span>self, name, value)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/__init__.py#L157-L158" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def stat(self, name, value):
+    dapper.stats.register_stat(self.stats, name, value)</code></pre>
+</details>
+</dd>
 </dl>
 </dd>
 <dt id="dapper.da_methods.ensemble.LETKF"><code class="flex name class">
@@ -2276,7 +2334,7 @@ even with <code>batch_size=(1,)</code>. But for <code><a title="dapper.mods.QG" 
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/ensemble.py#L554-L657" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/ensemble.py#L555-L658" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class LETKF:
     &#34;&#34;&#34;Same as EnKF (sqrt), but with localization.
@@ -2436,7 +2494,7 @@ even with <code>batch_size=(1,)</code>. But for <code><a title="dapper.mods.QG" 
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/ensemble.py#L573-L657" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/ensemble.py#L574-L658" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def assimilate(self, HMM, xx, yy):
     Dyn, Obs, chrono, X0, stats, N = \
@@ -2525,6 +2583,20 @@ even with <code>batch_size=(1,)</code>. But for <code><a title="dapper.mods.QG" 
         stats.assess(k, kObs, E=E)</code></pre>
 </details>
 </dd>
+<dt id="dapper.da_methods.ensemble.LETKF.stat"><code class="name flex">
+<span>def <span class="ident">stat</span></span>(<span>self, name, value)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/__init__.py#L157-L158" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def stat(self, name, value):
+    dapper.stats.register_stat(self.stats, name, value)</code></pre>
+</details>
+</dd>
 </dl>
 </dd>
 <dt id="dapper.da_methods.ensemble.EnKF_N"><code class="flex name class">
@@ -2553,7 +2625,7 @@ Further description in hyperprior_coeffs().</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/ensemble.py#L831-L981" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/ensemble.py#L832-L982" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class EnKF_N:
     &#34;&#34;&#34;Finite-size EnKF (EnKF-N).
@@ -2756,7 +2828,7 @@ Further description in hyperprior_coeffs().</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/ensemble.py#L864-L981" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/ensemble.py#L865-L982" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def assimilate(self, HMM, xx, yy):
     # Unpack
@@ -2878,6 +2950,20 @@ Further description in hyperprior_coeffs().</p></div>
         stats.assess(k, kObs, E=E)</code></pre>
 </details>
 </dd>
+<dt id="dapper.da_methods.ensemble.EnKF_N.stat"><code class="name flex">
+<span>def <span class="ident">stat</span></span>(<span>self, name, value)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/__init__.py#L157-L158" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def stat(self, name, value):
+    dapper.stats.register_stat(self.stats, name, value)</code></pre>
+</details>
+</dd>
 </dl>
 </dd>
 </dl>
@@ -2922,6 +3008,7 @@ data-gaCategoryParameter="dapper.da_methods.ensemble">
 <h4><code><a title="dapper.da_methods.ensemble.EnKF" href="#dapper.da_methods.ensemble.EnKF">EnKF</a></code></h4>
 <ul class="two-column">
 <li><code><a title="dapper.da_methods.ensemble.EnKF.assimilate" href="#dapper.da_methods.ensemble.EnKF.assimilate">assimilate</a></code></li>
+<li><code><a title="dapper.da_methods.ensemble.EnKF.stat" href="#dapper.da_methods.ensemble.EnKF.stat">stat</a></code></li>
 <li><code><a title="dapper.da_methods.ensemble.EnKF.upd_a" href="#dapper.da_methods.ensemble.EnKF.upd_a">upd_a</a></code></li>
 <li><code><a title="dapper.da_methods.ensemble.EnKF.N" href="#dapper.da_methods.ensemble.EnKF.N">N</a></code></li>
 <li><code><a title="dapper.da_methods.ensemble.EnKF.infl" href="#dapper.da_methods.ensemble.EnKF.infl">infl</a></code></li>
@@ -2936,6 +3023,7 @@ data-gaCategoryParameter="dapper.da_methods.ensemble">
 <li><code><a title="dapper.da_methods.ensemble.EnKS.reshape_to" href="#dapper.da_methods.ensemble.EnKS.reshape_to">reshape_to</a></code></li>
 <li><code><a title="dapper.da_methods.ensemble.EnKS.reshape_fr" href="#dapper.da_methods.ensemble.EnKS.reshape_fr">reshape_fr</a></code></li>
 <li><code><a title="dapper.da_methods.ensemble.EnKS.assimilate" href="#dapper.da_methods.ensemble.EnKS.assimilate">assimilate</a></code></li>
+<li><code><a title="dapper.da_methods.ensemble.EnKS.stat" href="#dapper.da_methods.ensemble.EnKS.stat">stat</a></code></li>
 <li><code><a title="dapper.da_methods.ensemble.EnKS.upd_a" href="#dapper.da_methods.ensemble.EnKS.upd_a">upd_a</a></code></li>
 <li><code><a title="dapper.da_methods.ensemble.EnKS.N" href="#dapper.da_methods.ensemble.EnKS.N">N</a></code></li>
 <li><code><a title="dapper.da_methods.ensemble.EnKS.Lag" href="#dapper.da_methods.ensemble.EnKS.Lag">Lag</a></code></li>
@@ -2949,6 +3037,7 @@ data-gaCategoryParameter="dapper.da_methods.ensemble">
 <h4><code><a title="dapper.da_methods.ensemble.EnRTS" href="#dapper.da_methods.ensemble.EnRTS">EnRTS</a></code></h4>
 <ul class="two-column">
 <li><code><a title="dapper.da_methods.ensemble.EnRTS.assimilate" href="#dapper.da_methods.ensemble.EnRTS.assimilate">assimilate</a></code></li>
+<li><code><a title="dapper.da_methods.ensemble.EnRTS.stat" href="#dapper.da_methods.ensemble.EnRTS.stat">stat</a></code></li>
 <li><code><a title="dapper.da_methods.ensemble.EnRTS.upd_a" href="#dapper.da_methods.ensemble.EnRTS.upd_a">upd_a</a></code></li>
 <li><code><a title="dapper.da_methods.ensemble.EnRTS.N" href="#dapper.da_methods.ensemble.EnRTS.N">N</a></code></li>
 <li><code><a title="dapper.da_methods.ensemble.EnRTS.cntr" href="#dapper.da_methods.ensemble.EnRTS.cntr">cntr</a></code></li>
@@ -2962,6 +3051,7 @@ data-gaCategoryParameter="dapper.da_methods.ensemble">
 <h4><code><a title="dapper.da_methods.ensemble.SL_EAKF" href="#dapper.da_methods.ensemble.SL_EAKF">SL_EAKF</a></code></h4>
 <ul class="two-column">
 <li><code><a title="dapper.da_methods.ensemble.SL_EAKF.assimilate" href="#dapper.da_methods.ensemble.SL_EAKF.assimilate">assimilate</a></code></li>
+<li><code><a title="dapper.da_methods.ensemble.SL_EAKF.stat" href="#dapper.da_methods.ensemble.SL_EAKF.stat">stat</a></code></li>
 <li><code><a title="dapper.da_methods.ensemble.SL_EAKF.N" href="#dapper.da_methods.ensemble.SL_EAKF.N">N</a></code></li>
 <li><code><a title="dapper.da_methods.ensemble.SL_EAKF.loc_rad" href="#dapper.da_methods.ensemble.SL_EAKF.loc_rad">loc_rad</a></code></li>
 <li><code><a title="dapper.da_methods.ensemble.SL_EAKF.taper" href="#dapper.da_methods.ensemble.SL_EAKF.taper">taper</a></code></li>
@@ -2976,6 +3066,7 @@ data-gaCategoryParameter="dapper.da_methods.ensemble">
 <h4><code><a title="dapper.da_methods.ensemble.LETKF" href="#dapper.da_methods.ensemble.LETKF">LETKF</a></code></h4>
 <ul class="two-column">
 <li><code><a title="dapper.da_methods.ensemble.LETKF.assimilate" href="#dapper.da_methods.ensemble.LETKF.assimilate">assimilate</a></code></li>
+<li><code><a title="dapper.da_methods.ensemble.LETKF.stat" href="#dapper.da_methods.ensemble.LETKF.stat">stat</a></code></li>
 <li><code><a title="dapper.da_methods.ensemble.LETKF.N" href="#dapper.da_methods.ensemble.LETKF.N">N</a></code></li>
 <li><code><a title="dapper.da_methods.ensemble.LETKF.loc_rad" href="#dapper.da_methods.ensemble.LETKF.loc_rad">loc_rad</a></code></li>
 <li><code><a title="dapper.da_methods.ensemble.LETKF.taper" href="#dapper.da_methods.ensemble.LETKF.taper">taper</a></code></li>
@@ -2992,6 +3083,7 @@ data-gaCategoryParameter="dapper.da_methods.ensemble">
 <h4><code><a title="dapper.da_methods.ensemble.EnKF_N" href="#dapper.da_methods.ensemble.EnKF_N">EnKF_N</a></code></h4>
 <ul class="two-column">
 <li><code><a title="dapper.da_methods.ensemble.EnKF_N.assimilate" href="#dapper.da_methods.ensemble.EnKF_N.assimilate">assimilate</a></code></li>
+<li><code><a title="dapper.da_methods.ensemble.EnKF_N.stat" href="#dapper.da_methods.ensemble.EnKF_N.stat">stat</a></code></li>
 <li><code><a title="dapper.da_methods.ensemble.EnKF_N.N" href="#dapper.da_methods.ensemble.EnKF_N.N">N</a></code></li>
 <li><code><a title="dapper.da_methods.ensemble.EnKF_N.dual" href="#dapper.da_methods.ensemble.EnKF_N.dual">dual</a></code></li>
 <li><code><a title="dapper.da_methods.ensemble.EnKF_N.Hess" href="#dapper.da_methods.ensemble.EnKF_N.Hess">Hess</a></code></li>

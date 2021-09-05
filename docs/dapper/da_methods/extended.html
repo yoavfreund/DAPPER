@@ -293,6 +293,20 @@ Specifying it this way (per unit time) means less tuning.</li>
         stats.assess(k, kObs, mu=mu, Cov=P)</code></pre>
 </details>
 </dd>
+<dt id="dapper.da_methods.extended.ExtKF.stat"><code class="name flex">
+<span>def <span class="ident">stat</span></span>(<span>self, name, value)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/__init__.py#L157-L158" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def stat(self, name, value):
+    dapper.stats.register_stat(self.stats, name, value)</code></pre>
+</details>
+</dd>
 </dl>
 </dd>
 <dt id="dapper.da_methods.extended.ExtRTS"><code class="flex name class">
@@ -433,6 +447,20 @@ Specifying it this way (per unit time) means less tuning.</li>
         stats.assess(k, mu=mu[k], Cov=P[k])</code></pre>
 </details>
 </dd>
+<dt id="dapper.da_methods.extended.ExtRTS.stat"><code class="name flex">
+<span>def <span class="ident">stat</span></span>(<span>self, name, value)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/__init__.py#L157-L158" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def stat(self, name, value):
+    dapper.stats.register_stat(self.stats, name, value)</code></pre>
+</details>
+</dd>
 </dl>
 </dd>
 </dl>
@@ -465,6 +493,7 @@ data-gaCategoryParameter="dapper.da_methods.extended">
 <h4><code><a title="dapper.da_methods.extended.ExtKF" href="#dapper.da_methods.extended.ExtKF">ExtKF</a></code></h4>
 <ul class="">
 <li><code><a title="dapper.da_methods.extended.ExtKF.assimilate" href="#dapper.da_methods.extended.ExtKF.assimilate">assimilate</a></code></li>
+<li><code><a title="dapper.da_methods.extended.ExtKF.stat" href="#dapper.da_methods.extended.ExtKF.stat">stat</a></code></li>
 <li><code><a title="dapper.da_methods.extended.ExtKF.infl" href="#dapper.da_methods.extended.ExtKF.infl">infl</a></code></li>
 <li><code><a title="dapper.da_methods.extended.ExtKF.da_method" href="#dapper.da_methods.extended.ExtKF.da_method">da_method</a></code></li>
 </ul>
@@ -473,6 +502,7 @@ data-gaCategoryParameter="dapper.da_methods.extended">
 <h4><code><a title="dapper.da_methods.extended.ExtRTS" href="#dapper.da_methods.extended.ExtRTS">ExtRTS</a></code></h4>
 <ul class="">
 <li><code><a title="dapper.da_methods.extended.ExtRTS.assimilate" href="#dapper.da_methods.extended.ExtRTS.assimilate">assimilate</a></code></li>
+<li><code><a title="dapper.da_methods.extended.ExtRTS.stat" href="#dapper.da_methods.extended.ExtRTS.stat">stat</a></code></li>
 <li><code><a title="dapper.da_methods.extended.ExtRTS.infl" href="#dapper.da_methods.extended.ExtRTS.infl">infl</a></code></li>
 <li><code><a title="dapper.da_methods.extended.ExtRTS.da_method" href="#dapper.da_methods.extended.ExtRTS.da_method">da_method</a></code></li>
 </ul>
