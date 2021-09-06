@@ -47,7 +47,7 @@ which is based on this c code:
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/DoublePendulum/__init__.py#L1-L78" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/DoublePendulum/__init__.py#L1-L76" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">&#34;&#34;&#34;The motion of a pendulum with another pendulum attached to its end.
 
@@ -65,8 +65,6 @@ from numpy import cos, sin
 import dapper.mods as modelling
 from dapper.mods.integration import FD_Jac
 from dapper.mods.Lorenz63 import LPs
-
-__pdoc__ = {&#34;demo&#34;: False}
 
 G  = 9.8  # acceleration due to gravity, in m/s^2
 L1 = 1.0  # length of pendulum 1 in m
@@ -153,7 +151,7 @@ def LP_setup(jj): return LPs(jj, params=dict())</code></pre>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/DoublePendulum/__init__.py#L30-L55" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/DoublePendulum/__init__.py#L28-L53" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">@modelling.ens_compatible
 def dxdt(x):
@@ -191,7 +189,7 @@ def dxdt(x):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/DoublePendulum/__init__.py#L65-L75" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/DoublePendulum/__init__.py#L63-L73" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def energy(x):
     &#34;&#34;&#34;Compute total energy of system.&#34;&#34;&#34;
@@ -214,7 +212,7 @@ def dxdt(x):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/DoublePendulum/__init__.py#L78-L78" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/DoublePendulum/__init__.py#L76-L76" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def LP_setup(jj): return LPs(jj, params=dict())</code></pre>
 </details>

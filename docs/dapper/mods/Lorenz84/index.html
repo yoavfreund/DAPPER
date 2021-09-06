@@ -41,7 +41,7 @@ body.gsc-overflow-hidden #sidebar {overflow: visible;}
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/Lorenz84/__init__.py#L1-L45" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/Lorenz84/__init__.py#L1-L43" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">&#34;&#34;&#34;A chaotic system of size 3, like Lorenz-63, but with +complex geometry.
 
@@ -52,8 +52,6 @@ import numpy as np
 
 import dapper.mods as modelling
 from dapper.mods.integration import integrate_TLM
-
-__pdoc__ = {&#34;demo&#34;: False}
 
 # Constants
 a = 0.25
@@ -120,7 +118,7 @@ def dstep_dx(x, t, dt):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/Lorenz84/__init__.py#L21-L27" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/Lorenz84/__init__.py#L19-L25" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">@modelling.ens_compatible
 def dxdt(x):
@@ -139,7 +137,7 @@ def dxdt(x):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/Lorenz84/__init__.py#L35-L41" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/Lorenz84/__init__.py#L33-L39" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def d2x_dtdx(x):
     x, y, z = x
@@ -158,7 +156,7 @@ def dxdt(x):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/Lorenz84/__init__.py#L44-L45" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/Lorenz84/__init__.py#L42-L43" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def dstep_dx(x, t, dt):
     return integrate_TLM(d2x_dtdx(x), dt, method=&#39;approx&#39;)</code></pre>

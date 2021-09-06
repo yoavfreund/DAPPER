@@ -5,8 +5,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
 <meta name="generator" content="pdoc 0.10.0" />
-<title>dapper.mods.Lorenz96s.grudzien2020 API documentation</title>
-<meta name="description" content="Settings as in `bib.grudzien2020numerical`." />
+<title>dapper.mods.LorenzUV.illust_parameterizations API documentation</title>
+<meta name="description" content="Illusrate parameterizations …" />
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/typography.min.css" integrity="sha256-7l/o7C8jubJiy74VsKTidCy1yBkRtiUGbVkYBylBqUg=" crossorigin>
 <link rel="stylesheet preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/styles/github.min.css" crossorigin>
@@ -33,47 +33,181 @@ body.gsc-overflow-hidden #sidebar {overflow: visible;}
 <main>
 <article id="content">
 <header>
-<h1 class="title">Module <code>dapper.mods.Lorenz96s.grudzien2020</code></h1>
+<h1 class="title">Module <code>dapper.mods.LorenzUV.illust_parameterizations</code></h1>
 </header>
 <section id="section-intro">
-<p>Settings as in <code><a title="bib.grudzien2020numerical" href="../../../bib.html#bib.grudzien2020numerical">grudzien2020numerical</a></code>.</p>
+<p>Illusrate parameterizations.</p>
+<p>Plot scattergram of "unresolved tendency" and the parameterization that emulate it.</p>
+<p>We plot the diff:
+<code>model_step/dt - true_step/dt
+(1)</code>
+Whereas Wilks plots
+<code>model_dxdt
+- true_step/dt
+(2)</code>
+Another option is:
+<code>model_dxdt
+- true_dxdt
+(3)</code></p>
+<p>Thus, for us (eqn 1), the model integration scheme matters.
+Also, Wilks uses
+- <code>dt = 0.001</code> for truth
+- <code>dt = 0.005</code> for model.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/Lorenz96s/grudzien2020.py#L1-L32" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/LorenzUV/illust_parameterizations.py#L1-L150" class="git-link">Browse git</a>
 </summary>
-<pre><code class="python">&#34;&#34;&#34;Settings as in `bib.grudzien2020numerical`.&#34;&#34;&#34;
+<pre><code class="python">&#34;&#34;&#34;Illusrate parameterizations.
 
-import dapper.mods as modelling
-from dapper.mods.Lorenz96 import Tplot, x0
-from dapper.mods.Lorenz96s import steppers
+Plot scattergram of &#34;unresolved tendency&#34; and the parameterization that emulate it.
 
+We plot the diff:
+  `model_step/dt - true_step/dt    (1)`
+Whereas Wilks plots
+  `model_dxdt    - true_step/dt    (2)`
+Another option is:
+  `model_dxdt    - true_dxdt       (3)`
 
-def HMMs(stepper=&#34;Tay2&#34;, resolution=&#34;Low&#34;, R=1):
-    &#34;&#34;&#34;Define the various HMMs used.&#34;&#34;&#34;
-    # Use small version of L96. Has 4 non-stable Lyapunov exponents.
-    Nx = 10
+Thus, for us (eqn 1), the model integration scheme matters.
+Also, Wilks uses
+- `dt = 0.001` for truth
+- `dt = 0.005` for model.
+&#34;&#34;&#34;
 
-    # Time sequence
-    # Grudzien&#39;2020 uses the below chronology with KObs=25000, BurnIn=5000.
-    t = modelling.Chronology(dt=0.005, dtObs=.1, T=30, Tplot=Tplot, BurnIn=10)
-    if resolution == &#34;High&#34;:
-        t.dt = 0.001
-    elif stepper != &#34;Tay2&#34;:
-        t.dt = 0.01
+if __name__ == &#34;__main__&#34;:
+    import matplotlib as mpl
+    import numpy as np
+    from matplotlib import pyplot as plt
 
-    # Dynamical operator
-    Dyn = {&#39;M&#39;: Nx, &#39;model&#39;: steppers(stepper)}
+    import dapper.mods as modelling
+    from dapper.mods import with_recursion, with_rk4
 
-    # (Random) initial condition
-    X0 = modelling.GaussRV(mu=x0(Nx), C=0.001)
+    # mpl.rcParams[&#39;toolbar&#39;] = &#39;None&#39;
+    ###########################
+    # Setup
+    ###########################
+    PRMS = &#39;Lorenz&#39;
+    if PRMS == &#39;Wilks&#39;:
+        from dapper.mods.LorenzUV.wilks05 import LUV
+    else:
+        from dapper.mods.LorenzUV.lorenz96 import LUV
+    nU = LUV.nU
 
-    # Observation operator
-    jj = range(Nx)  # obs_inds
-    Obs = modelling.partial_Id_Obs(Nx, jj)
-    Obs[&#39;noise&#39;] = R
+    K  = 400
+    dt = 0.005
+    t0 = np.nan
 
-    return modelling.HiddenMarkovModel(Dyn, Obs, t, X0)</code></pre>
+    modelling.set_seed(30)  # 3 5 7 13 15 30
+    x0 = np.random.randn(LUV.M)
+
+    true_step  = with_rk4(LUV.dxdt, autonom=True)
+    model_step = with_rk4(LUV.dxdt_trunc, autonom=True)
+    true_K     = with_recursion(true_step, prog=1)
+
+    ###########################
+    # Compute truth trajectory
+    ###########################
+    x0 = true_K(x0, int(2/dt), t0, dt)[-1]  # BurnIn
+    xx = true_K(x0, K, t0, dt)
+
+    ###########################
+    # Compute unresovled scales
+    ###########################
+    gg = np.zeros((K, nU))  # &#34;Unresolved tendency&#34;
+    for k, x in enumerate(xx[:-1]):
+        X = x[:nU]
+        Z = model_step(X, t0, dt)
+        D = Z - xx[k+1, :nU]
+        gg[k] = 1/dt*D
+
+    # Automated regression for deterministic parameterizations
+    pc = {}
+    for order in [0, 1, 2, 3, 4]:
+        pc[order] = np.polyfit(xx[:-1, :nU].ravel(), gg.ravel(), deg=order)
+
+    ###########################
+    # Scatter plot
+    ###########################
+    def blend_rgb(rgb, a, bg_rgb=(1, 1, 1)):
+        &#34;&#34;&#34;Fake RGB transparency by blending it to some background.
+
+        Useful for creating gradients.
+
+        Also useful for creating &#39;transparency&#39; for exporting to eps.
+        But there&#39;s no actualy transparency, so superposition of lines
+        will not work. For that: export to pdf, or make do without.
+
+        - `rgb`: N-by-3 rgb, or a color code.
+        - `a`: alpha value
+        - `bg_rgb`: background in rgb. Default: white
+
+        Based on stackoverflow.com/a/33375738/38281
+        &#34;&#34;&#34;
+        if isinstance(rgb, str):
+            rgb = mpl.colors.colorConverter.to_rgb(rgb)
+        return [a*c1 + (1-a)*c2 for (c1, c2) in zip(rgb, bg_rgb)]
+
+    xx = xx[:-1, :nU]
+    dk = int(8/dt/50)  # step size
+    xx = xx[::dk].ravel()
+    gg = gg[::dk].ravel()
+
+    fig, ax = plt.subplots()
+    ax.scatter(xx, gg, facecolors=&#39;none&#39;, edgecolors=blend_rgb(&#39;k&#39;, 0.5), s=40)
+    # ax.plot(xx,gg,&#39;o&#39;,color=[0.7]*3)
+    ax.set_ylabel(r&#39;Unresolved tendency ($q_{k,i}/\Delta t$)&#39;)
+    ax.set_xlabel(&#39;Resolved variable ($X_{k,i}$)&#39;)
+
+    ###########################
+    # Lorenz&#39;96 Parameterization annotations
+    ###########################
+    if PRMS != &#39;Wilks&#39;:
+        ax.set_xlim(-8, 12)
+        ax.set_ylim(-3, 6)
+        uu = np.linspace(*ax.get_xlim(), 201)
+
+        # Plot pc
+        ax.plot(uu, np.poly1d(pc[0])(uu), &#39;g&#39;, lw=4.0)
+        ax.plot(uu, np.poly1d(pc[1])(uu), &#39;r&#39;, lw=4.0)
+        ax.plot(uu, np.poly1d(pc[4])(uu), &#39;b&#39;, lw=4.0)
+
+    ###########################
+    # Wilks2005 Parameterization annotations
+    ###########################
+    else:
+        ax.set_xlim(-10, 17)
+        ax.set_ylim(-10, 20)
+        uu = np.linspace(*ax.get_xlim(), 201)
+
+        def p0(x): return 3.82+0.00*x
+        # lin.reg(gg,xx)
+        def p1(x): return 0.74+0.82*x
+        # Arnold&#39;2013:
+        def p3(x): return .341+1.30*x - .0136*x**2 - .00235*x**3
+        # Wilks&#39;2005:
+        def p4(x): return .262+1.45*x - .0121*x**2 - .00713*x**3 + .000296*x**4
+        uu = np.linspace(-10, 17, 201)
+        plt.plot(uu, p0(uu), &#39;g&#39;, lw=4.0)
+        plt.plot(uu, p1(uu), &#39;r&#39;, lw=4.0)
+        plt.plot(uu, p4(uu), &#39;b&#39;, lw=4.0)
+        # plt.plot(uu,p3(uu),&#39;y&#39;,lw=3.0)
+
+        def an(T, xy, xyT, HA=&#39;left&#39;):
+            ah = ax.annotate(T,
+                             xy=xy, xycoords=&#39;data&#39;,
+                             xytext=xyT, textcoords=&#39;data&#39;,
+                             fontsize=16,
+                             horizontalalignment=HA,
+                             arrowprops=dict(
+                                 arrowstyle=&#34;-&gt;&#34;,
+                                 connectionstyle=&#34;arc3&#34;, lw=2))
+            return ah
+
+        s4 = &#39;$0.262$\n$+1.45X$\n$-0.0121X^2$\n$-0.00713X^3$\n$+0.000296X^4$&#39;
+        an(&#39;$3.82$&#39;, (10, 3.82), (10, -2), &#39;center&#39;)
+        an(&#39;$0.74+0.82X$&#39;, (-7.4, -5.4), (1, -6))
+        an(s4, (7, 8), (0, 10), &#39;right&#39;)</code></pre>
 </details>
 </section>
 <section>
@@ -81,46 +215,6 @@ def HMMs(stepper=&#34;Tay2&#34;, resolution=&#34;Low&#34;, R=1):
 <section>
 </section>
 <section>
-<h2 class="section-title" id="header-functions">Functions</h2>
-<dl>
-<dt id="dapper.mods.Lorenz96s.grudzien2020.HMMs"><code class="name flex">
-<span>def <span class="ident">HMMs</span></span>(<span>stepper='Tay2', resolution='Low', R=1)</span>
-</code></dt>
-<dd>
-<div class="desc"><p>Define the various HMMs used.</p></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/Lorenz96s/grudzien2020.py#L8-L32" class="git-link">Browse git</a>
-</summary>
-<pre><code class="python">def HMMs(stepper=&#34;Tay2&#34;, resolution=&#34;Low&#34;, R=1):
-    &#34;&#34;&#34;Define the various HMMs used.&#34;&#34;&#34;
-    # Use small version of L96. Has 4 non-stable Lyapunov exponents.
-    Nx = 10
-
-    # Time sequence
-    # Grudzien&#39;2020 uses the below chronology with KObs=25000, BurnIn=5000.
-    t = modelling.Chronology(dt=0.005, dtObs=.1, T=30, Tplot=Tplot, BurnIn=10)
-    if resolution == &#34;High&#34;:
-        t.dt = 0.001
-    elif stepper != &#34;Tay2&#34;:
-        t.dt = 0.01
-
-    # Dynamical operator
-    Dyn = {&#39;M&#39;: Nx, &#39;model&#39;: steppers(stepper)}
-
-    # (Random) initial condition
-    X0 = modelling.GaussRV(mu=x0(Nx), C=0.001)
-
-    # Observation operator
-    jj = range(Nx)  # obs_inds
-    Obs = modelling.partial_Id_Obs(Nx, jj)
-    Obs[&#39;noise&#39;] = R
-
-    return modelling.HiddenMarkovModel(Dyn, Obs, t, X0)</code></pre>
-</details>
-</dd>
-</dl>
 </section>
 <section>
 </section>
@@ -134,7 +228,7 @@ def HMMs(stepper=&#34;Tay2&#34;, resolution=&#34;Low&#34;, R=1):
 </header>
 <div class="gcse-search" style="height: 70px"
 data-as_oq="inurl:github.com/nansencenter/DAPPER site:nansencenter.github.io/DAPPER"
-data-gaCategoryParameter="dapper.mods.Lorenz96s.grudzien2020">
+data-gaCategoryParameter="dapper.mods.LorenzUV.illust_parameterizations">
 </div>
 <h1>Index</h1>
 <div class="toc">
@@ -143,12 +237,7 @@ data-gaCategoryParameter="dapper.mods.Lorenz96s.grudzien2020">
 <ul id="index">
 <li><h3>Super-module</h3>
 <ul>
-<li><code><a title="dapper.mods.Lorenz96s" href="index.html">dapper.mods.Lorenz96s</a></code></li>
-</ul>
-</li>
-<li><h3><a href="#header-functions">Functions</a></h3>
-<ul class="">
-<li><code><a title="dapper.mods.Lorenz96s.grudzien2020.HMMs" href="#dapper.mods.Lorenz96s.grudzien2020.HMMs">HMMs</a></code></li>
+<li><code><a title="dapper.mods.LorenzUV" href="index.html">dapper.mods.LorenzUV</a></code></li>
 </ul>
 </li>
 </ul>

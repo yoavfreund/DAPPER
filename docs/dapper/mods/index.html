@@ -80,9 +80,8 @@ iiP = (..., slice(Nx, None))
 </ul>
 </li>
 <li>
-<p>You should also define an example initial state, <code>x0</code>.
-This facilitates
-the specification of initial conditions for different synthetic
+<p>Optional: define a suggested/example initial state, <code>x0</code>.
+This facilitates the specification of initial conditions for different synthetic
 experiments, as random variables centred on <code>x0</code>.
 It is also a
 convenient way just to specify the system size as <code>len(x0)</code>.
@@ -171,14 +170,12 @@ DAPPER, used for cross-referenced with literature to verify the workings of DAPP
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/__init__.py#L1-L198" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/__init__.py#L1-L196" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">&#34;&#34;&#34;Models included with DAPPER.
 
 .. include:: ./README.md
 &#34;&#34;&#34;
-
-__pdoc__ = {&#34;explore_props&#34;: False}
 
 import copy as cp
 import inspect
@@ -456,6 +453,12 @@ class Operator(struct_tools.NicePrint):
 </dd>
 <!-- CHANGE: Short submodule name -->
 <!-- https://github.com/pdoc3/pdoc/issues/265#issuecomment-702426471 -->
+<dt><code class="name"><a title="dapper.mods.explore_props" href="explore_props.html">explore_props</a></code></dt>
+<dd>
+<div class="desc"><p>Estimtate the Lyapunov spectrum and other props. of the dynamics of the models.</p></div>
+</dd>
+<!-- CHANGE: Short submodule name -->
+<!-- https://github.com/pdoc3/pdoc/issues/265#issuecomment-702426471 -->
 <dt><code class="name"><a title="dapper.mods.integration" href="integration.html">integration</a></code></dt>
 <dd>
 <div class="desc"><p>Time stepping (integration) tools.</p></div>
@@ -515,7 +518,7 @@ and <code>dapper/mods/Lorenz96/miyoshi2011.py</code></dd>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/__init__.py#L29-L152" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/__init__.py#L27-L150" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class HiddenMarkovModel(struct_tools.NicePrint):
     &#34;&#34;&#34;Container for a Hidden Markov Model (HMM).
@@ -661,7 +664,7 @@ and <code>dapper/mods/Lorenz96/miyoshi2011.py</code></dd>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/__init__.py#L117-L118" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/__init__.py#L115-L116" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">@property
 def Nx(self): return self.Dyn.M</code></pre>
@@ -673,7 +676,7 @@ def Nx(self): return self.Dyn.M</code></pre>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/__init__.py#L119-L120" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/__init__.py#L117-L118" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">@property
 def Ny(self): return self.Obs.M</code></pre>
@@ -690,7 +693,7 @@ def Ny(self): return self.Obs.M</code></pre>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/__init__.py#L124-L140" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/__init__.py#L122-L138" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def simulate(self, desc=&#39;Truth &amp; Obs&#39;):
     &#34;&#34;&#34;Generate synthetic truth and observations.&#34;&#34;&#34;
@@ -719,7 +722,7 @@ def Ny(self): return self.Obs.M</code></pre>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/__init__.py#L142-L143" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/__init__.py#L140-L141" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def copy(self):
     return cp.deepcopy(self)</code></pre>
@@ -747,7 +750,7 @@ array, producing <code>GaussRV(C=noise)</code>.</dd>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/__init__.py#L155-L198" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/__init__.py#L153-L196" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Operator(struct_tools.NicePrint):
     &#34;&#34;&#34;Container for the dynamical and the observational maps.
@@ -873,6 +876,9 @@ data-gaCategoryParameter="dapper.mods">
 <!-- CHANGE: Short submodule name -->
 <!-- https://github.com/pdoc3/pdoc/issues/265#issuecomment-702426471 -->
 <li><code><a title="dapper.mods.VL20" href="VL20/index.html">VL20</a></code></li>
+<!-- CHANGE: Short submodule name -->
+<!-- https://github.com/pdoc3/pdoc/issues/265#issuecomment-702426471 -->
+<li><code><a title="dapper.mods.explore_props" href="explore_props.html">explore_props</a></code></li>
 <!-- CHANGE: Short submodule name -->
 <!-- https://github.com/pdoc3/pdoc/issues/265#issuecomment-702426471 -->
 <li><code><a title="dapper.mods.integration" href="integration.html">integration</a></code></li>

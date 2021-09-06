@@ -16,6 +16,7 @@ https://nansencenter.github.io/DAPPER/docs/dapper/mods/Ikeda/
 https://nansencenter.github.io/DAPPER/docs/dapper/mods/Ikeda/some_settings_01.html
 https://nansencenter.github.io/DAPPER/docs/dapper/mods/KS/
 https://nansencenter.github.io/DAPPER/docs/dapper/mods/KS/bocquet2019.html
+https://nansencenter.github.io/DAPPER/docs/dapper/mods/KS/compare_schemes.html
 https://nansencenter.github.io/DAPPER/docs/dapper/mods/L96s/
 https://nansencenter.github.io/DAPPER/docs/dapper/mods/LA/
 https://nansencenter.github.io/DAPPER/docs/dapper/mods/LA/evensen2009.html
@@ -50,6 +51,8 @@ https://nansencenter.github.io/DAPPER/docs/dapper/mods/Lorenz96s/
 https://nansencenter.github.io/DAPPER/docs/dapper/mods/Lorenz96s/grudzien2020.html
 https://nansencenter.github.io/DAPPER/docs/dapper/mods/LorenzIII/
 https://nansencenter.github.io/DAPPER/docs/dapper/mods/LorenzUV/
+https://nansencenter.github.io/DAPPER/docs/dapper/mods/LorenzUV/illust_LorenzUV.html
+https://nansencenter.github.io/DAPPER/docs/dapper/mods/LorenzUV/illust_parameterizations.html
 https://nansencenter.github.io/DAPPER/docs/dapper/mods/LorenzUV/lorenz96.html
 https://nansencenter.github.io/DAPPER/docs/dapper/mods/LorenzUV/wilks05.html
 https://nansencenter.github.io/DAPPER/docs/dapper/mods/LotkaVolterra/
@@ -59,6 +62,7 @@ https://nansencenter.github.io/DAPPER/docs/dapper/mods/QG/counillon2009.html
 https://nansencenter.github.io/DAPPER/docs/dapper/mods/QG/f90/
 https://nansencenter.github.io/DAPPER/docs/dapper/mods/QG/sakov2008.html
 https://nansencenter.github.io/DAPPER/docs/dapper/mods/VL20/
+https://nansencenter.github.io/DAPPER/docs/dapper/mods/explore_props.html
 https://nansencenter.github.io/DAPPER/docs/dapper/mods/integration.html
 https://nansencenter.github.io/DAPPER/docs/dapper/mods/utils.html
 https://nansencenter.github.io/DAPPER/docs/dapper/stats.html

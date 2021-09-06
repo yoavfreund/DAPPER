@@ -67,14 +67,14 @@ from dapper.mods.integration import rk4
 
 from .extras import LPs, d2x_dtdx, dstep_dx
 
-__pdoc__ = {&#34;demo&#34;: False}
-
 Force = 8.0
 Tplot = 10
 
 
 def x0(M):
-    return np.eye(M)[0]
+    x = np.zeros(M)
+    x[0] = 1
+    return x
 
 
 def shift(x, n):
@@ -195,10 +195,12 @@ def step(x0, t, dt):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/Lorenz96/__init__.py#L25-L26" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/Lorenz96/__init__.py#L23-L26" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def x0(M):
-    return np.eye(M)[0]</code></pre>
+    x = np.zeros(M)
+    x[0] = 1
+    return x</code></pre>
 </details>
 </dd>
 <dt id="dapper.mods.Lorenz96.shift"><code class="name flex">

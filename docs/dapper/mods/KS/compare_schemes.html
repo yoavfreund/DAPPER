@@ -5,8 +5,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
 <meta name="generator" content="pdoc 0.10.0" />
-<title>dapper.mods.Lorenz96s.grudzien2020 API documentation</title>
-<meta name="description" content="Settings as in `bib.grudzien2020numerical`." />
+<title>dapper.mods.KS.compare_schemes API documentation</title>
+<meta name="description" content="Compare integration time-stepping schemes for KS equation …" />
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/typography.min.css" integrity="sha256-7l/o7C8jubJiy74VsKTidCy1yBkRtiUGbVkYBylBqUg=" crossorigin>
 <link rel="stylesheet preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/styles/github.min.css" crossorigin>
@@ -33,47 +33,97 @@ body.gsc-overflow-hidden #sidebar {overflow: visible;}
 <main>
 <article id="content">
 <header>
-<h1 class="title">Module <code>dapper.mods.Lorenz96s.grudzien2020</code></h1>
+<h1 class="title">Module <code>dapper.mods.KS.compare_schemes</code></h1>
 </header>
 <section id="section-intro">
-<p>Settings as in <code><a title="bib.grudzien2020numerical" href="../../../bib.html#bib.grudzien2020numerical">grudzien2020numerical</a></code>.</p>
+<p>Compare integration time-stepping schemes for KS equation.</p>
+<p>Conclusions: 'ETD-RK4' is superior to 'SI-RK3',</p>
+<ul>
+<li>Superiority deteriorates when adding noise to ICs.</li>
+<li>Superiority fairly independent of N.</li>
+<li>The naive methods (rk4, rk1) are quite terrible.</li>
+</ul>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/Lorenz96s/grudzien2020.py#L1-L32" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/KS/compare_schemes.py#L1-L76" class="git-link">Browse git</a>
 </summary>
-<pre><code class="python">&#34;&#34;&#34;Settings as in `bib.grudzien2020numerical`.&#34;&#34;&#34;
+<pre><code class="python">&#34;&#34;&#34;Compare integration time-stepping schemes for KS equation.
 
-import dapper.mods as modelling
-from dapper.mods.Lorenz96 import Tplot, x0
-from dapper.mods.Lorenz96s import steppers
+Conclusions: &#39;ETD-RK4&#39; is superior to &#39;SI-RK3&#39;,
 
+- Superiority deteriorates when adding noise to ICs.
+- Superiority fairly independent of N.
+- The naive methods (rk4, rk1) are quite terrible.
+&#34;&#34;&#34;
 
-def HMMs(stepper=&#34;Tay2&#34;, resolution=&#34;Low&#34;, R=1):
-    &#34;&#34;&#34;Define the various HMMs used.&#34;&#34;&#34;
-    # Use small version of L96. Has 4 non-stable Lyapunov exponents.
-    Nx = 10
+if __name__ == &#34;__main__&#34;:
+    import time
 
-    # Time sequence
-    # Grudzien&#39;2020 uses the below chronology with KObs=25000, BurnIn=5000.
-    t = modelling.Chronology(dt=0.005, dtObs=.1, T=30, Tplot=Tplot, BurnIn=10)
-    if resolution == &#34;High&#34;:
-        t.dt = 0.001
-    elif stepper != &#34;Tay2&#34;:
-        t.dt = 0.01
+    import numpy as np
+    from matplotlib import pyplot as plt
 
-    # Dynamical operator
-    Dyn = {&#39;M&#39;: Nx, &#39;model&#39;: steppers(stepper)}
+    from dapper.mods.KS import Model
 
-    # (Random) initial condition
-    X0 = modelling.GaussRV(mu=x0(Nx), C=0.001)
+    model = Model()
 
-    # Observation operator
-    jj = range(Nx)  # obs_inds
-    Obs = modelling.partial_Id_Obs(Nx, jj)
-    Obs[&#39;noise&#39;] = R
+    print(&#34;THERE WILL BE WARNINGS GENERATED.&#34;)
+    print(&#34;This is normal, because some schemes cause NaNs for some dt&#39;s.&#34;)
 
-    return modelling.HiddenMarkovModel(Dyn, Obs, t, X0)</code></pre>
+    # Experiment range
+    minexpo = -8  # use -11 to observe saturation due to num. prec.
+    hh = 2.0**np.arange(minexpo, 0)  # list of dt
+
+    # Params
+    T = 30
+    N = 4
+
+    # IC -- NB: integration accuracy depends on noise level
+    E0 = model.x0_Kassam + 1e-3*np.random.randn(N, model.Nx)
+
+    # Allocate stats
+    mref        = &#39;step_ETD_RK4&#39;
+    methods     = [mref]
+    methods    += [key for key in model if key.startswith(&#34;step_&#34;) and key != mref]
+    NamedFloats = np.dtype([(m, float) for m in methods])
+    errors      = np.zeros(len(hh), dtype=NamedFloats)
+    durations   = np.zeros(len(hh), dtype=NamedFloats)
+
+    for i, dt in enumerate(hh):
+
+        # Model for this dt.
+        model = Model(dt=dt)
+
+        for m in methods:
+            E = E0.copy()
+            t0 = time.time()
+            # Integration
+            for _ in 1+np.arange(int(round(T/dt))):
+                E = model[m](E, np.nan, dt)
+            durations[m][i] = time.time() - t0
+
+            # Compare with reference
+            if m == mref and dt == hh[0]:
+                assert dt == min(hh), &#34;Must define ref from smallest dt.&#34;
+                ref = E
+            errors[m][i] = np.max(abs(ref - E))
+
+    # Plot stats
+    plt.figure()
+    for m in methods:
+        plt.loglog(durations[m], errors[m], &#39;-o&#39;, label=m)
+        plt.text(durations[m][0], errors[m][0], &#39;dt min&#39;)
+        # plt.text  (durations[m][-1], errors[m][-1], &#39;dt max&#39;)
+    plt.legend()
+    plt.xlabel(&#39;Total computation time (s)&#39;)
+    plt.ylabel(&#39;Max err (vs ref) at T=%d&#39; % T)
+    plt.grid(True, &#39;minor&#39;)
+    plt.title(&#39;Ens size: %d&#39; % N)
+    plt.show()
+
+    # Plot ultimate states -- Not interesting, except for debugging
+    # plt.figure()
+    # plt.plot(grid,E.T)</code></pre>
 </details>
 </section>
 <section>
@@ -81,46 +131,6 @@ def HMMs(stepper=&#34;Tay2&#34;, resolution=&#34;Low&#34;, R=1):
 <section>
 </section>
 <section>
-<h2 class="section-title" id="header-functions">Functions</h2>
-<dl>
-<dt id="dapper.mods.Lorenz96s.grudzien2020.HMMs"><code class="name flex">
-<span>def <span class="ident">HMMs</span></span>(<span>stepper='Tay2', resolution='Low', R=1)</span>
-</code></dt>
-<dd>
-<div class="desc"><p>Define the various HMMs used.</p></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/Lorenz96s/grudzien2020.py#L8-L32" class="git-link">Browse git</a>
-</summary>
-<pre><code class="python">def HMMs(stepper=&#34;Tay2&#34;, resolution=&#34;Low&#34;, R=1):
-    &#34;&#34;&#34;Define the various HMMs used.&#34;&#34;&#34;
-    # Use small version of L96. Has 4 non-stable Lyapunov exponents.
-    Nx = 10
-
-    # Time sequence
-    # Grudzien&#39;2020 uses the below chronology with KObs=25000, BurnIn=5000.
-    t = modelling.Chronology(dt=0.005, dtObs=.1, T=30, Tplot=Tplot, BurnIn=10)
-    if resolution == &#34;High&#34;:
-        t.dt = 0.001
-    elif stepper != &#34;Tay2&#34;:
-        t.dt = 0.01
-
-    # Dynamical operator
-    Dyn = {&#39;M&#39;: Nx, &#39;model&#39;: steppers(stepper)}
-
-    # (Random) initial condition
-    X0 = modelling.GaussRV(mu=x0(Nx), C=0.001)
-
-    # Observation operator
-    jj = range(Nx)  # obs_inds
-    Obs = modelling.partial_Id_Obs(Nx, jj)
-    Obs[&#39;noise&#39;] = R
-
-    return modelling.HiddenMarkovModel(Dyn, Obs, t, X0)</code></pre>
-</details>
-</dd>
-</dl>
 </section>
 <section>
 </section>
@@ -134,7 +144,7 @@ def HMMs(stepper=&#34;Tay2&#34;, resolution=&#34;Low&#34;, R=1):
 </header>
 <div class="gcse-search" style="height: 70px"
 data-as_oq="inurl:github.com/nansencenter/DAPPER site:nansencenter.github.io/DAPPER"
-data-gaCategoryParameter="dapper.mods.Lorenz96s.grudzien2020">
+data-gaCategoryParameter="dapper.mods.KS.compare_schemes">
 </div>
 <h1>Index</h1>
 <div class="toc">
@@ -143,12 +153,7 @@ data-gaCategoryParameter="dapper.mods.Lorenz96s.grudzien2020">
 <ul id="index">
 <li><h3>Super-module</h3>
 <ul>
-<li><code><a title="dapper.mods.Lorenz96s" href="index.html">dapper.mods.Lorenz96s</a></code></li>
-</ul>
-</li>
-<li><h3><a href="#header-functions">Functions</a></h3>
-<ul class="">
-<li><code><a title="dapper.mods.Lorenz96s.grudzien2020.HMMs" href="#dapper.mods.Lorenz96s.grudzien2020.HMMs">HMMs</a></code></li>
+<li><code><a title="dapper.mods.KS" href="index.html">dapper.mods.KS</a></code></li>
 </ul>
 </li>
 </ul>

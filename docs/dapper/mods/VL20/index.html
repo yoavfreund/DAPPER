@@ -41,7 +41,7 @@ body.gsc-overflow-hidden #sidebar {overflow: visible;}
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/VL20/__init__.py#L1-L74" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/VL20/__init__.py#L1-L72" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">&#34;&#34;&#34;
 Single-scale Lorenz-96 with an added thermodynamic component.
@@ -49,8 +49,6 @@ Single-scale Lorenz-96 with an added thermodynamic component.
 Refs: `bib.vissio2020mechanics`
 &#34;&#34;&#34;
 import numpy as np
-
-__pdoc__ = {&#34;demo&#34;: False}
 
 
 class model_instance():
@@ -137,7 +135,7 @@ class model_instance():
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/VL20/__init__.py#L11-L74" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/VL20/__init__.py#L9-L72" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class model_instance():
     &#34;&#34;&#34;
@@ -214,7 +212,7 @@ class model_instance():
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/VL20/__init__.py#L29-L30" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/VL20/__init__.py#L27-L28" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def shift(self, x, n):
     return np.roll(x, -n, axis=-1)</code></pre>
@@ -228,7 +226,7 @@ class model_instance():
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/VL20/__init__.py#L32-L36" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/VL20/__init__.py#L30-L34" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def unpack(self, x):
     &#34;&#34;&#34;Unpack model input to model parameters and state vector&#34;&#34;&#34;
@@ -245,7 +243,7 @@ class model_instance():
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/VL20/__init__.py#L38-L50" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/VL20/__init__.py#L36-L48" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def dxdt(self, x):
     &#34;&#34;&#34;Full (coupled) dxdt.&#34;&#34;&#34;
@@ -270,7 +268,7 @@ class model_instance():
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/VL20/__init__.py#L52-L74" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/VL20/__init__.py#L50-L72" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def d2x_dtdx(self, x):
     &#34;&#34;&#34;Tangent linear model&#34;&#34;&#34;

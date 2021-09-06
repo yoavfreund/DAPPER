@@ -55,7 +55,7 @@ is built around the Markov assumption.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/LorenzUV/__init__.py#L1-L115" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/LorenzUV/__init__.py#L1-L112" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">&#34;&#34;&#34;The 2-scale/layer/speed coupled version of Lorenz-96.
 
@@ -80,9 +80,6 @@ import numpy as np
 import dapper.mods.Lorenz96 as L96
 import dapper.tools.liveplotting as LP
 from dapper.mods.integration import integrate_TLM
-
-__pdoc__ = {mod: False for mod in [
-    &#34;demo&#34;, &#34;illust_LorenzUV&#34;, &#34;illust_parameterizations&#34;]}
 
 
 def reversible(fun):
@@ -179,6 +176,18 @@ class model_instance():
 <dl>
 <!-- CHANGE: Short submodule name -->
 <!-- https://github.com/pdoc3/pdoc/issues/265#issuecomment-702426471 -->
+<dt><code class="name"><a title="dapper.mods.LorenzUV.illust_LorenzUV" href="illust_LorenzUV.html">illust_LorenzUV</a></code></dt>
+<dd>
+<div class="desc"><p>Prettier, static illustration of Lorenz two-speed/scale/layer model.</p></div>
+</dd>
+<!-- CHANGE: Short submodule name -->
+<!-- https://github.com/pdoc3/pdoc/issues/265#issuecomment-702426471 -->
+<dt><code class="name"><a title="dapper.mods.LorenzUV.illust_parameterizations" href="illust_parameterizations.html">illust_parameterizations</a></code></dt>
+<dd>
+<div class="desc"><p>Illusrate parameterizations …</p></div>
+</dd>
+<!-- CHANGE: Short submodule name -->
+<!-- https://github.com/pdoc3/pdoc/issues/265#issuecomment-702426471 -->
 <dt><code class="name"><a title="dapper.mods.LorenzUV.lorenz96" href="lorenz96.html">lorenz96</a></code></dt>
 <dd>
 <div class="desc"><p>As in <code><a title="bib.lorenz1996predictability" href="../../../bib.html#bib.lorenz1996predictability">lorenz1996predictability</a></code>.</p></div>
@@ -204,7 +213,7 @@ class model_instance():
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/LorenzUV/__init__.py#L29-L38" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/LorenzUV/__init__.py#L26-L35" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def reversible(fun):
     &#34;&#34;&#34;Reverse input/output (instead of manipulating indices).&#34;&#34;&#34;
@@ -226,7 +235,7 @@ class model_instance():
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/LorenzUV/__init__.py#L31-L37" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/LorenzUV/__init__.py#L28-L34" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def newfun(x, *args, reverse=False, **kwargs):
     if reverse:
@@ -245,7 +254,7 @@ class model_instance():
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/LorenzUV/__init__.py#L31-L37" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/LorenzUV/__init__.py#L28-L34" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def newfun(x, *args, reverse=False, **kwargs):
     if reverse:
@@ -271,7 +280,7 @@ class model_instance():
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/LorenzUV/__init__.py#L45-L115" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/LorenzUV/__init__.py#L42-L112" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class model_instance():
     &#34;&#34;&#34;Use OOP to facilitate having multiple parameter settings simultaneously.
@@ -355,7 +364,7 @@ class model_instance():
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/LorenzUV/__init__.py#L71-L74" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/LorenzUV/__init__.py#L68-L71" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def unpack(self, x):
     nU, J, h, b, c = self.nU, self.J, self.h, self.b, self.c
@@ -371,7 +380,7 @@ class model_instance():
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/LorenzUV/__init__.py#L76-L79" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/LorenzUV/__init__.py#L73-L76" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def dxdt_trunc(self, x):
     &#34;&#34;&#34;Compute truncated `dxdt:` slow variables (`U`) only.&#34;&#34;&#34;
@@ -387,7 +396,7 @@ class model_instance():
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/LorenzUV/__init__.py#L81-L85" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/LorenzUV/__init__.py#L78-L82" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def dxdt_parameterized(self, x, t):
     &#34;&#34;&#34;Compute truncated `dxdt` with parameterization of fast variables (`V`).&#34;&#34;&#34;
@@ -404,7 +413,7 @@ class model_instance():
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/LorenzUV/__init__.py#L87-L97" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/LorenzUV/__init__.py#L84-L94" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def dxdt(self, x):
     &#34;&#34;&#34;Compute full (coupled) `dxdt`.&#34;&#34;&#34;
@@ -427,7 +436,7 @@ class model_instance():
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/LorenzUV/__init__.py#L99-L109" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/LorenzUV/__init__.py#L96-L106" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def d2x_dtdx(self, x):
     nU, J, h, b, c, U, V = self.unpack(x)
@@ -450,7 +459,7 @@ class model_instance():
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/LorenzUV/__init__.py#L111-L112" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/LorenzUV/__init__.py#L108-L109" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def dstep_dx(self, x, t, dt):
     return integrate_TLM(self.d2x_dtdx_auto(x), dt, method=&#39;analytic&#39;)</code></pre>
@@ -464,7 +473,7 @@ class model_instance():
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/LorenzUV/__init__.py#L114-L115" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/LorenzUV/__init__.py#L111-L112" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def LPs(self, jj):
     return [(1, LP.spatial1d(jj, dims=list(range(self.nU))))]</code></pre>
@@ -498,6 +507,12 @@ data-gaCategoryParameter="dapper.mods.LorenzUV">
 </li>
 <li><h3><a href="#header-submodules">Sub-modules</a></h3>
 <ul>
+<!-- CHANGE: Short submodule name -->
+<!-- https://github.com/pdoc3/pdoc/issues/265#issuecomment-702426471 -->
+<li><code><a title="dapper.mods.LorenzUV.illust_LorenzUV" href="illust_LorenzUV.html">illust_LorenzUV</a></code></li>
+<!-- CHANGE: Short submodule name -->
+<!-- https://github.com/pdoc3/pdoc/issues/265#issuecomment-702426471 -->
+<li><code><a title="dapper.mods.LorenzUV.illust_parameterizations" href="illust_parameterizations.html">illust_parameterizations</a></code></li>
 <!-- CHANGE: Short submodule name -->
 <!-- https://github.com/pdoc3/pdoc/issues/265#issuecomment-702426471 -->
 <li><code><a title="dapper.mods.LorenzUV.lorenz96" href="lorenz96.html">lorenz96</a></code></li>
