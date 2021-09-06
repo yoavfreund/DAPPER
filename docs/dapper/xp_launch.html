@@ -41,7 +41,7 @@ body.gsc-overflow-hidden #sidebar {overflow: visible;}
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L1-L632" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L1-L633" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">&#34;&#34;&#34;Tools (notably `xpList`) for setup and running of experiments (known as `xp`s).
 
@@ -505,6 +505,7 @@ class xpList(list):
 
         The results are saved in `rc.dirs.data / save_as`,
         unless `save_as` is `False`/`None`.
+        Note: multiprocessing (locally or in the cloud) requires saving/loading data.
 
         Depending on `mp`, `run_experiment` is delegated as follows:
 
@@ -954,7 +955,7 @@ then you'll create many more than you intend.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L607-L632" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L608-L633" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def combinator(param_dict, **glob_dict):
     &#34;&#34;&#34;Mass creation of `xp`&#39;s by combining the value lists in the parameter dicts.
@@ -1033,7 +1034,7 @@ as opposed to this class (<code><a title="dapper.xp_launch.xpList" href="#dapper
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L200-L604" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L200-L605" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class xpList(list):
     &#34;&#34;&#34;Subclass of `list` specialized for experiment (&#34;xp&#34;) objects.
@@ -1298,6 +1299,7 @@ as opposed to this class (<code><a title="dapper.xp_launch.xpList" href="#dapper
 
         The results are saved in `rc.dirs.data / save_as`,
         unless `save_as` is `False`/`None`.
+        Note: multiprocessing (locally or in the cloud) requires saving/loading data.
 
         Depending on `mp`, `run_experiment` is delegated as follows:
 
@@ -1724,7 +1726,8 @@ need be included.</p>
 <div class="desc"><p>Essentially: <code>for xp in self: run_experiment(xp, ..., **kwargs)</code>.</p>
 <p>See <code><a title="dapper.xp_launch.run_experiment" href="#dapper.xp_launch.run_experiment">run_experiment()</a></code> for documentation on the <code>kwargs</code> and <code>fail_gently</code>.</p>
 <p>The results are saved in <code>rc.dirs.data / save_as</code>,
-unless <code>save_as</code> is <code>False</code>/<code>None</code>.</p>
+unless <code>save_as</code> is <code>False</code>/<code>None</code>.
+Note: multiprocessing (locally or in the cloud) requires saving/loading data.</p>
 <p>Depending on <code>mp</code>, <code><a title="dapper.xp_launch.run_experiment" href="#dapper.xp_launch.run_experiment">run_experiment()</a></code> is delegated as follows:</p>
 <ul>
 <li><code>False</code>: caller process (no parallelisation)</li>
@@ -1746,7 +1749,7 @@ in <code>sys.path[0]</code> are uploaded.</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L456-L604" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L456-L605" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def launch(self, HMM, save_as=&#34;noname&#34;, mp=False, fail_gently=None, **kwargs):
     &#34;&#34;&#34;Essentially: `for xp in self: run_experiment(xp, ..., **kwargs)`.
@@ -1755,6 +1758,7 @@ in <code>sys.path[0]</code> are uploaded.</li>
 
     The results are saved in `rc.dirs.data / save_as`,
     unless `save_as` is `False`/`None`.
+    Note: multiprocessing (locally or in the cloud) requires saving/loading data.
 
     Depending on `mp`, `run_experiment` is delegated as follows:
 

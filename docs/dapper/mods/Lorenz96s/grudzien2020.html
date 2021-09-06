@@ -55,7 +55,7 @@ def HMMs(stepper=&#34;Tay2&#34;, resolution=&#34;Low&#34;, R=1):
     Nx = 10
 
     # Time sequence
-    # Grudzien&#39;2020 uses the below chronology with KObs=25000, BurnIn=TODO.
+    # Grudzien&#39;2020 uses the below chronology with KObs=25000, BurnIn=5000.
     t = modelling.Chronology(dt=0.005, dtObs=.1, T=30, Tplot=Tplot, BurnIn=10)
     if resolution == &#34;High&#34;:
         t.dt = 0.001
@@ -99,7 +99,7 @@ def HMMs(stepper=&#34;Tay2&#34;, resolution=&#34;Low&#34;, R=1):
     Nx = 10
 
     # Time sequence
-    # Grudzien&#39;2020 uses the below chronology with KObs=25000, BurnIn=TODO.
+    # Grudzien&#39;2020 uses the below chronology with KObs=25000, BurnIn=5000.
     t = modelling.Chronology(dt=0.005, dtObs=.1, T=30, Tplot=Tplot, BurnIn=10)
     if resolution == &#34;High&#34;:
         t.dt = 0.001
