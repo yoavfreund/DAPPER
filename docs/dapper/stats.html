@@ -60,12 +60,14 @@ but after they have been averaged in time (after the assimilation has finished).
 This is done according to the methods listed in <code>dpr.rc.field_summaries</code>.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>Although sometimes pretty close, <code>rmv</code> (a.k.a. <code>spread.rms</code>) is not (supposed
-to be) an un-biased estimator of <code>rmse</code> (a.k.a. <code>err.rms</code>).
-This is because
-of the square roots involved in the field summary.
+<p><code>rmv</code> (a.k.a. <code>spread.rms</code>) is not (supposed to be) an unbiased estimator
+of <code>rmse</code> (a.k.a. <code>err.rms</code>).
+When the <code>spread</code> and <code>err</code> are relatively
+homogeneous, the difference is slight, otherwise a bias is introduced via
+the square root in the field summary.
 Instead, <code>spread.ms</code> (i.e.
-the mean variance) is the unbiased estimator of <code>err.ms</code>.</p>
+the mean
+variance) is the unbiased estimator of <code>err.ms</code>.</p>
 </div>
 <h3 id="regional-field-summaries">Regional field summaries</h3>
 <p>If the <code>HiddenMarkovModel</code> has the attribute <code>.sectors</code> with value, e.g.,</p>
