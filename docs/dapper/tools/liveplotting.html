@@ -343,8 +343,8 @@ class sliding_diagnostics:
         divN = 1/getattr(stats.xp, &#39;N&#39;, 99)
         # Columns: transf, shape, plt kwargs
         styles[&#39;RMS&#39;] = {
-            &#39;err.rms&#39;: [None, None, dict(c=&#39;k&#39;, label=&#39;Error&#39;)],
-            &#39;std.rms&#39;: [None, None, dict(c=&#39;b&#39;, label=&#39;Spread&#39;, alpha=0.6)],
+            &#39;err.rms&#39;   : [None, None, dict(c=&#39;k&#39;, label=&#39;Error&#39;)],
+            &#39;spread.rms&#39;: [None, None, dict(c=&#39;b&#39;, label=&#39;Spread&#39;, alpha=0.6)],
         }
         styles[&#39;Values&#39;] = {
             &#39;skew&#39;: [None, None, dict(c=&#39;g&#39;, label=star+r&#39;Skew/$\sigma^3$&#39;)],
@@ -759,8 +759,8 @@ def sliding_marginals(
     params_orig = DotDict(**locals())
 
     def init(fignum, stats, key0, plot_u, E, P, **kwargs):
-        xx, yy, mu, std, chrono = \
-            stats.xx, stats.yy, stats.mu, stats.std, stats.HMM.t
+        xx, yy, mu, spread, chrono = \
+            stats.xx, stats.yy, stats.mu, stats.spread, stats.HMM.t
 
         # Set parameters (kwargs takes precedence over params_orig)
         p = DotDict(**{
@@ -856,7 +856,7 @@ def sliding_marginals(
                 if &#39;mu&#39; in d:
                     d.mu.insert(ind, mu[key][DimsX])
                 if &#39;s&#39; in d:
-                    d.s .insert(ind, mu[key][DimsX] + [[1], [-1]]*std[key][DimsX])
+                    d.s .insert(ind, mu[key][DimsX] + [[1], [-1]]*spread[key][DimsX])
                 if True:
                     d.t .insert(ind, chrono.tt[k])
                 if True:
@@ -916,7 +916,7 @@ def phase_particles(
 
     def init(fignum, stats, key0, plot_u, E, P, **kwargs):
         xx, yy, mu, _, chrono = \
-            stats.xx, stats.yy, stats.mu, stats.std, stats.HMM.t
+            stats.xx, stats.yy, stats.mu, stats.spread, stats.HMM.t
 
         # Set parameters (kwargs takes precedence over params_orig)
         p = DotDict(**{
@@ -1267,7 +1267,7 @@ def spatial1d(
             k, kObs, faus = key
 
             if p.conf_mult:
-                sigma = mu[key] + p.conf_mult * stats.std[key] * [[1], [-1]]
+                sigma = mu[key] + p.conf_mult * stats.spread[key] * [[1], [-1]]
                 lines_s[0].set_ydata(wrap(sigma[0, p.dims]))
                 lines_s[1].set_ydata(wrap(sigma[1, p.dims]))
                 line_mu   .set_ydata(wrap(mu[key][p.dims]))
@@ -1330,7 +1330,7 @@ def spatial2d(
         ax_23 = fig.add_axes([bb.x1+0.03, bb.y0 + dy, 0.04, bb.height - 2*dy])
 
         # Extract data arrays
-        xx, _, mu, std, err = stats.xx, stats.yy, stats.mu, stats.std, stats.err
+        xx, _, mu, spread, err = stats.xx, stats.yy, stats.mu, stats.spread, stats.err
         k = key0[0]
         tt = stats.HMM.t.tt
 
@@ -1339,17 +1339,17 @@ def spatial2d(
         im_11 = ax_11.imshow(square(mu[key0]), cmap=cm)
         im_12 = ax_12.imshow(square(xx[k]), cmap=cm)
         # hot is better, but needs +1 colorbar
-        im_21 = ax_21.imshow(square(std[key0]), cmap=plt.cm.bwr)
+        im_21 = ax_21.imshow(square(spread[key0]), cmap=plt.cm.bwr)
         im_22 = ax_22.imshow(square(err[key0]), cmap=plt.cm.bwr)
         ims = (im_11, im_12, im_21, im_22)
         # Obs init -- a list where item 0 is the handle of something invisible.
         lh = list(ax_12.plot(0, 0)[0:1])
 
         sx = &#39;$\\psi$&#39;
-        ax_11.set_title(&#39;mean &#39;+sx)
-        ax_12.set_title(&#39;true &#39;+sx)
-        ax_21.set_title(&#39;std. &#39;+sx)
-        ax_22.set_title(&#39;err. &#39;+sx)
+        ax_11.set_title(&#39;mean &#39;    + sx)
+        ax_12.set_title(&#39;true &#39;    + sx)
+        ax_21.set_title(&#39;spread. &#39; + sx)
+        ax_22.set_title(&#39;err. &#39;    + sx)
 
         # TODO 7
         # for ax in axs.flatten():
@@ -1385,7 +1385,7 @@ def spatial2d(
 
             im_11.set_data(square(mu[key]))
             im_12.set_data(square(xx[k]))
-            im_21.set_data(square(std[key]))
+            im_21.set_data(square(spread[key]))
             im_22.set_data(square(err[key]))
 
             # Remove previous obs
@@ -1508,8 +1508,8 @@ default_liveplotters = [
     params_orig = DotDict(**locals())
 
     def init(fignum, stats, key0, plot_u, E, P, **kwargs):
-        xx, yy, mu, std, chrono = \
-            stats.xx, stats.yy, stats.mu, stats.std, stats.HMM.t
+        xx, yy, mu, spread, chrono = \
+            stats.xx, stats.yy, stats.mu, stats.spread, stats.HMM.t
 
         # Set parameters (kwargs takes precedence over params_orig)
         p = DotDict(**{
@@ -1605,7 +1605,7 @@ default_liveplotters = [
                 if &#39;mu&#39; in d:
                     d.mu.insert(ind, mu[key][DimsX])
                 if &#39;s&#39; in d:
-                    d.s .insert(ind, mu[key][DimsX] + [[1], [-1]]*std[key][DimsX])
+                    d.s .insert(ind, mu[key][DimsX] + [[1], [-1]]*spread[key][DimsX])
                 if True:
                     d.t .insert(ind, chrono.tt[k])
                 if True:
@@ -1675,7 +1675,7 @@ default_liveplotters = [
 
     def init(fignum, stats, key0, plot_u, E, P, **kwargs):
         xx, yy, mu, _, chrono = \
-            stats.xx, stats.yy, stats.mu, stats.std, stats.HMM.t
+            stats.xx, stats.yy, stats.mu, stats.spread, stats.HMM.t
 
         # Set parameters (kwargs takes precedence over params_orig)
         p = DotDict(**{
@@ -2111,7 +2111,7 @@ because there's usually not that much data to sort through.</p></div>
             k, kObs, faus = key
 
             if p.conf_mult:
-                sigma = mu[key] + p.conf_mult * stats.std[key] * [[1], [-1]]
+                sigma = mu[key] + p.conf_mult * stats.spread[key] * [[1], [-1]]
                 lines_s[0].set_ydata(wrap(sigma[0, p.dims]))
                 lines_s[1].set_ydata(wrap(sigma[1, p.dims]))
                 line_mu   .set_ydata(wrap(mu[key][p.dims]))
@@ -2184,7 +2184,7 @@ because there's usually not that much data to sort through.</p></div>
         ax_23 = fig.add_axes([bb.x1+0.03, bb.y0 + dy, 0.04, bb.height - 2*dy])
 
         # Extract data arrays
-        xx, _, mu, std, err = stats.xx, stats.yy, stats.mu, stats.std, stats.err
+        xx, _, mu, spread, err = stats.xx, stats.yy, stats.mu, stats.spread, stats.err
         k = key0[0]
         tt = stats.HMM.t.tt
 
@@ -2193,17 +2193,17 @@ because there's usually not that much data to sort through.</p></div>
         im_11 = ax_11.imshow(square(mu[key0]), cmap=cm)
         im_12 = ax_12.imshow(square(xx[k]), cmap=cm)
         # hot is better, but needs +1 colorbar
-        im_21 = ax_21.imshow(square(std[key0]), cmap=plt.cm.bwr)
+        im_21 = ax_21.imshow(square(spread[key0]), cmap=plt.cm.bwr)
         im_22 = ax_22.imshow(square(err[key0]), cmap=plt.cm.bwr)
         ims = (im_11, im_12, im_21, im_22)
         # Obs init -- a list where item 0 is the handle of something invisible.
         lh = list(ax_12.plot(0, 0)[0:1])
 
         sx = &#39;$\\psi$&#39;
-        ax_11.set_title(&#39;mean &#39;+sx)
-        ax_12.set_title(&#39;true &#39;+sx)
-        ax_21.set_title(&#39;std. &#39;+sx)
-        ax_22.set_title(&#39;err. &#39;+sx)
+        ax_11.set_title(&#39;mean &#39;    + sx)
+        ax_12.set_title(&#39;true &#39;    + sx)
+        ax_21.set_title(&#39;spread. &#39; + sx)
+        ax_22.set_title(&#39;err. &#39;    + sx)
 
         # TODO 7
         # for ax in axs.flatten():
@@ -2239,7 +2239,7 @@ because there's usually not that much data to sort through.</p></div>
 
             im_11.set_data(square(mu[key]))
             im_12.set_data(square(xx[k]))
-            im_21.set_data(square(std[key]))
+            im_21.set_data(square(spread[key]))
             im_22.set_data(square(err[key]))
 
             # Remove previous obs
@@ -2637,8 +2637,8 @@ plt.draw() to work on a moderately fast computer.</li>
         divN = 1/getattr(stats.xp, &#39;N&#39;, 99)
         # Columns: transf, shape, plt kwargs
         styles[&#39;RMS&#39;] = {
-            &#39;err.rms&#39;: [None, None, dict(c=&#39;k&#39;, label=&#39;Error&#39;)],
-            &#39;std.rms&#39;: [None, None, dict(c=&#39;b&#39;, label=&#39;Spread&#39;, alpha=0.6)],
+            &#39;err.rms&#39;   : [None, None, dict(c=&#39;k&#39;, label=&#39;Error&#39;)],
+            &#39;spread.rms&#39;: [None, None, dict(c=&#39;b&#39;, label=&#39;Spread&#39;, alpha=0.6)],
         }
         styles[&#39;Values&#39;] = {
             &#39;skew&#39;: [None, None, dict(c=&#39;g&#39;, label=star+r&#39;Skew/$\sigma^3$&#39;)],

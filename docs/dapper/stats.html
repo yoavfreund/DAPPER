@@ -37,70 +37,86 @@ body.gsc-overflow-hidden #sidebar {overflow: visible;}
 </header>
 <section id="section-intro">
 <p>Statistics for the assessment of DA methods.</p>
-<p><code><a title="dapper.stats.Stats" href="#dapper.stats.Stats">Stats</a></code> is a data container with associated methods to compute the default
-battery of <strong>time series</strong> of statistics.</p>
-<p><code><a title="dapper.stats.Avrgs" href="#dapper.stats.Avrgs">Avrgs</a></code> is a data container for the same statistics,
+<p><code><a title="dapper.stats.Stats" href="#dapper.stats.Stats">Stats</a></code> is a data container for ([mostly] time series of) statistics.
+It comes with a battery of methods to compute the default statistics.</p>
+<p><code><a title="dapper.stats.Avrgs" href="#dapper.stats.Avrgs">Avrgs</a></code> is a data container <em>for the same statistics</em>,
 but after they have been averaged in time (after the assimilation has finished).</p>
-<p>Instances of these objects are created by <code><a title="dapper.da_methods.da_method" href="da_methods/index.html#dapper.da_methods.da_method">da_method()</a></code> objects
-and written to their <code>.stats</code> and <code>.avrgs</code> attributes.</p>
+<p>Instances of these objects are created by <code><a title="dapper.da_methods.da_method" href="da_methods/index.html#dapper.da_methods.da_method">da_method()</a></code>
+(i.e. "<code>xp</code>") objects and written to their <code>.stats</code> and <code>.avrgs</code> attributes.</p>
+<h2 id="default-statistics">Default statistics</h2>
+<p>List them using</p>
+<pre><code class="language-python-repl">&gt;&gt;&gt; list(vars(xp.stats))
+... list(vars(xp.avrgs))
+</code></pre>
+<h3 id="the-faust-keyattribute">The <code>FAUSt</code> key/attribute</h3>
+<p>The time series of statistics (the attributes of <code>.stats</code>) may have attributes
+<code>.f</code>, <code>.a</code>, <code>.s</code>, <code>.u</code>, referring to whether the statistic is for a "forecast",
+"analysis", or "smoothing" estimate (as is decided when the calls to
+<code><a title="dapper.stats.Stats.assess" href="#dapper.stats.Stats.assess">Stats.assess()</a></code> is made), or a "universal" (forecast, but at intermediate
+[non-obs.-time]) estimate.</p>
+<p>The same applies for the time-averages of <code>.avrgs</code>.</p>
+<h3 id="field-summaries">Field summaries</h3>
+<p>The statistics are also averaged in space.
+This is done according to the methods listed in <code>dpr.rc.field_summaries</code>.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Although sometimes pretty close, <code>rmv</code> (a.k.a. <code>spread.rms</code>) is not (supposed
+to be) an un-biased estimator of <code>rmse</code> (a.k.a. <code>err.rms</code>).
+This is because
+of the square roots involved in the field summary.
+Instead, <code>spread.ms</code> (i.e.
+the mean variance) is the unbiased estimator of <code>err.ms</code>.</p>
+</div>
+<h3 id="regional-field-summaries">Regional field summaries</h3>
+<p>If the <code>HiddenMarkovModel</code> has the attribute <code>.sectors</code> with value, e.g.,</p>
+<pre><code class="language-python-repl">&gt;&gt;&gt; HMM.sectors = {
+...     &quot;ocean&quot;: inds_of_state_of_the_ocean,
+...     &quot;atmos&quot;: inds_of_state_of_the_atmosphere,
+... }
+</code></pre>
+<p>then <code>.stats.rms</code> and <code>.avrgs.rms</code> will also have attributes
+named after the keys of <code>HMM.sectors</code>, e.g. <code>stats.err.rms.ocean</code>.
+This also goes for any other (than <code>rms</code>) type of field summary method.</p>
+<h2 id="declaring-new-custom-statistics">Declaring new, custom statistics</h2>
 <p>Only the time series created with <code><a title="dapper.stats.Stats.new_series" href="#dapper.stats.Stats.new_series">Stats.new_series()</a></code> will be in the format
 operated on by <code><a title="dapper.stats.Stats.average_in_time" href="#dapper.stats.Stats.average_in_time">Stats.average_in_time()</a></code>.
 For example, create <code>ndarray</code> of
 length <code>KObs+1</code> to hold the time series of estimated inflation values:</p>
-<pre><code class="language-python-repl">&gt;&gt;&gt; self.stats.new_series('infl', 1, KObs+1)  # doctest: +SKIP
+<pre><code class="language-python-repl">&gt;&gt;&gt; self.stats.new_series('infl', 1, KObs+1)
 </code></pre>
 <p>Alternatively you can overwrite a default statistic; for example:</p>
-<pre><code class="language-python-repl">&gt;&gt;&gt; error_time_series = xx - ensemble_time_series.mean(axis=1)  # doctest: +SKIP
-... self.stats.err.rms.a = np.sqrt(np.mean(error_time_series**2, axis=-1))
+<pre><code class="language-python-repl">&gt;&gt;&gt; error_time_series_a = xx - ensemble_time_series_a.mean(axis=1)
+... self.stats.err.rms.a = np.sqrt(np.mean(error_time_series_a**2, axis=-1))
 </code></pre>
 <p>Of course, you could just do this</p>
-<pre><code class="language-python-repl">&gt;&gt;&gt; self.stats.my_custom_stat = value  # doctest: +SKIP
+<pre><code class="language-python-repl">&gt;&gt;&gt; self.stats.my_custom_stat = value
 </code></pre>
-<p>Moreover, recall that <code>xp.launch</code> (without <code>free=False</code>) will delete
+<p>However, <code><a title="dapper.xp_launch.run_experiment" href="xp_launch.html#dapper.xp_launch.run_experiment">run_experiment()</a></code> (without <code>free=False</code>) will delete
 the <code><a title="dapper.stats.Stats" href="#dapper.stats.Stats">Stats</a></code> object from <code>xp</code> after the assimilation, in order to save memory.
-Therefore, in order to have <code>my_custom_stat</code> be available among <code>xp.avrgs</code>,
-it must be "registered":</p>
-<pre><code class="language-python-repl">&gt;&gt;&gt; self.stats.stat_register.append(&quot;my_custom_stat&quot;)  # doctest: +SKIP
+Therefore, in order to have <code>my_custom_stat</code> be available among <code>xp.avrgs</code>, it
+must be "registered":</p>
+<pre><code class="language-python-repl">&gt;&gt;&gt; self.stats.stat_register.append(&quot;my_custom_stat&quot;)
 </code></pre>
 <p>Alternatively, you can do both at once</p>
-<pre><code class="language-python-repl">&gt;&gt;&gt; self.stat(&quot;my_custom_stat&quot;, value)  # doctest: +SKIP
+<pre><code class="language-python-repl">&gt;&gt;&gt; self.stat(&quot;my_custom_stat&quot;, value)
 </code></pre>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L1-L810" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L1-L796" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">&#34;&#34;&#34;Statistics for the assessment of DA methods.
 
-`Stats` is a data container with associated methods to compute the default
-battery of **time series** of statistics.
+`Stats` is a data container for ([mostly] time series of) statistics.
+It comes with a battery of methods to compute the default statistics.
 
-`Avrgs` is a data container for the same statistics,
+`Avrgs` is a data container *for the same statistics*,
 but after they have been averaged in time (after the assimilation has finished).
 
-Instances of these objects are created by `dapper.da_methods.da_method` objects
-and written to their `.stats` and `.avrgs` attributes.
+Instances of these objects are created by `dapper.da_methods.da_method`
+(i.e. &#34;`xp`&#34;) objects and written to their `.stats` and `.avrgs` attributes.
 
-Only the time series created with `Stats.new_series` will be in the format
-operated on by `Stats.average_in_time`.  For example, create `ndarray` of
-length `KObs+1` to hold the time series of estimated inflation values:
-&gt;&gt;&gt; self.stats.new_series(&#39;infl&#39;, 1, KObs+1)  # doctest: +SKIP
-
-Alternatively you can overwrite a default statistic; for example:
-&gt;&gt;&gt; error_time_series = xx - ensemble_time_series.mean(axis=1)  # doctest: +SKIP
-... self.stats.err.rms.a = np.sqrt(np.mean(error_time_series**2, axis=-1))
-
-Of course, you could just do this
-&gt;&gt;&gt; self.stats.my_custom_stat = value  # doctest: +SKIP
-
-Moreover, recall that `xp.launch` (without `free=False`) will delete
-the `Stats` object from `xp` after the assimilation, in order to save memory.
-Therefore, in order to have `my_custom_stat` be available among `xp.avrgs`,
-it must be &#34;registered&#34;:
-&gt;&gt;&gt; self.stats.stat_register.append(&#34;my_custom_stat&#34;)  # doctest: +SKIP
-
-Alternatively, you can do both at once
-&gt;&gt;&gt; self.stat(&#34;my_custom_stat&#34;, value)  # doctest: +SKIP
+.. include:: ../docs/stats_etc.md
 &#34;&#34;&#34;
 
 import warnings
@@ -117,6 +133,8 @@ import dapper.tools.series as series
 from dapper.dpr_config import rc
 from dapper.tools.matrices import CovMat
 from dapper.tools.progressbar import progbar
+
+__pdoc__ = {&#34;align_col&#34;: False}
 
 
 class Stats(series.StatPrint):
@@ -145,11 +163,13 @@ class Stats(series.StatPrint):
 
         # Methods for summarizing multivariate stats (&#34;fields&#34;) as scalars
         # Don&#39;t use nanmean here; nan&#39;s should get propagated!
+        en_mean = lambda x: np.mean(x, axis=0)  # noqa
         self.field_summaries = dict(
-            m   = lambda x: np.mean(x),                  # mean-field
-            rms = lambda x: np.sqrt(np.mean(x**2)),      # root-mean-square
-            ma  = lambda x: np.mean(np.abs(x)),          # mean-absolute
-            gm  = lambda x: np.exp(np.mean(np.log(x))),  # geometric mean
+            m   = lambda x: en_mean(x),                  # mean-field
+            ms  = lambda x: en_mean(x**2),               # root-mean-square
+            rms = lambda x: np.sqrt(en_mean(x**2)),      # root-mean-square
+            ma  = lambda x: en_mean(np.abs(x)),          # mean-absolute
+            gm  = lambda x: np.exp(en_mean(np.log(x))),  # geometric mean
         )
         # Only keep the methods listed in rc
         self.field_summaries = struct_tools.intersect(self.field_summaries,
@@ -166,10 +186,10 @@ class Stats(series.StatPrint):
         ######################################
         # Allocate time series of various stats
         ######################################
-        self.new_series(&#39;mu&#39;    , Nx, MS=&#39;sec&#39;)  # Mean
-        self.new_series(&#39;std&#39;   , Nx, MS=&#39;sec&#39;)  # Std. dev. (&#34;spread&#34;)
-        self.new_series(&#39;err&#39;   , Nx, MS=&#39;sec&#39;)  # Error (mu - truth)
-        self.new_series(&#39;gscore&#39;, Nx, MS=&#39;sec&#39;)  # Gaussian (log) score
+        self.new_series(&#39;mu&#39;    , Nx, field_mean=&#39;sectors&#39;)  # Mean
+        self.new_series(&#39;spread&#39;, Nx, field_mean=&#39;sectors&#39;)  # Std. dev. (&#34;spread&#34;)
+        self.new_series(&#39;err&#39;   , Nx, field_mean=&#39;sectors&#39;)  # Error (mu - truth)
+        self.new_series(&#39;gscore&#39;, Nx, field_mean=&#39;sectors&#39;)  # Gaussian (log) score
 
         # To save memory, we only store these field means:
         self.new_series(&#39;mad&#39; , 1)  # Mean abs deviations
@@ -178,7 +198,7 @@ class Stats(series.StatPrint):
 
         if hasattr(xp, &#39;N&#39;):
             N            = xp.N
-            self.new_series(&#39;w&#39;, N, MS=True)    # Importance weights
+            self.new_series(&#39;w&#39;, N, field_mean=True)  # Importance weights
             self.new_series(&#39;rh&#39;, Nx, dtype=int)  # Rank histogram
 
             self._is_ens = True
@@ -192,7 +212,7 @@ class Stats(series.StatPrint):
         if do_spectral:
             # Note: the mean-field and RMS time-series of
             # (i) svals and (ii) umisf should match the corresponding series of
-            # (i) std and (ii) err.
+            # (i) spread and (ii) err.
             self.new_series(&#39;svals&#39;, minN)  # Principal component (SVD) scores
             self.new_series(&#39;umisf&#39;, minN)  # Error in component directions
 
@@ -208,7 +228,7 @@ class Stats(series.StatPrint):
         self.new_series(&#39;wroot&#39; , 1, KObs+1)
         self.new_series(&#39;resmpl&#39;, 1, KObs+1)
 
-    def new_series(self, name, shape, length=&#39;FAUSt&#39;, MS=False, **kws):
+    def new_series(self, name, shape, length=&#39;FAUSt&#39;, field_mean=False, **kws):
         &#34;&#34;&#34;Create (and register) a statistics time series, initialized with `nan`s.
 
         If `length` is an integer, a `DataSeries` (a trivial subclass of
@@ -240,11 +260,11 @@ class Stats(series.StatPrint):
 
         # Summary (scalar) series:
         if shape != ():
-            if MS:
+            if field_mean:
                 for suffix in self.field_summaries:
                     make_series(getattr(self, name), suffix, ())
             # Make a nested level for sectors
-            if MS == &#39;sec&#39;:
+            if field_mean == &#39;sectors&#39;:
                 for ss in self.sector_summaries:
                     suffix, sector = ss.split(&#39;.&#39;)
                     make_series(struct_tools.deep_getattr(
@@ -257,15 +277,15 @@ class Stats(series.StatPrint):
 
     def assess(self, k, kObs=None, faus=None,
                E=None, w=None, mu=None, Cov=None):
-        &#34;&#34;&#34;Common interface for both assess_ens and _ext.
+        &#34;&#34;&#34;Common interface for both `Stats.assess_ens` and `Stats.assess_ext`.
 
-        The _ens assessment function gets called if E is not None,
-        and _ext if mu is not None.
+        The `_ens` assessment function gets called if `E is not None`,
+        and `_ext` if `mu is not None`.
 
-        faus: One or more of [&#39;f&#39;,&#39; a&#39;, &#39;u&#39;], indicating
+        faus: One or more of `[&#39;f&#39;,&#39; a&#39;, &#39;u&#39;, &#39;s&#39;]`, indicating
               that the result should be stored in (respectively)
               the forecast/analysis/universal attribute.
-              Default: &#39;u&#39; if kObs is None else &#39;au&#39; (&#39;a&#39; and &#39;u&#39;).
+              Default: `&#39;u&#39; if kObs is None else &#39;au&#39; (&#39;a&#39; and &#39;u&#39;)`.
         &#34;&#34;&#34;
         # Initial consistency checks.
         if k == 0:
@@ -345,7 +365,7 @@ class Stats(series.StatPrint):
 
     def derivative_stats(self, now):
         &#34;&#34;&#34;Stats that derive from others (=&gt; not specific for _ens or _ext).&#34;&#34;&#34;
-        now.gscore = 2*np.log(now.std) + (now.err/now.std)**2
+        now.gscore = 2*np.log(now.spread) + (now.err/now.spread)**2
 
     def assess_ens(self, now, x, E, w):
         &#34;&#34;&#34;Ensemble and Particle filter (weighted/importance) assessment.&#34;&#34;&#34;
@@ -366,8 +386,8 @@ class Stats(series.StatPrint):
 
         now.mu  = w @ E
         now.err = now.mu - x
-        A = E - now.mu
 
+        A = E - now.mu
         # While A**2 is approx as fast as A*A,
         # A**3 is 10x slower than A**2 (or A**2.0).
         # =&gt; Use A2 = A**2, A3 = A*A2, A4=A*A3.
@@ -380,14 +400,14 @@ class Stats(series.StatPrint):
         var *= ub
 
         # Compute standard deviation (&#34;Spread&#34;)
-        std = np.sqrt(var)  # NB: biased (even though var is unbiased)
-        now.std = std
+        s = np.sqrt(var)  # NB: biased (even though var is unbiased)
+        now.spread = s
 
         # For simplicity, use naive (biased) formulae, derived
         # from &#34;empirical measure&#34;. See doc/unbiased_skew_kurt.jpg.
         # Normalize by var. Compute &#34;excess&#34; kurt, which is 0 for Gaussians.
         A_pow *= A
-        now.skew = np.nanmean(w @ A_pow / (std*std*std))
+        now.skew = np.nanmean(w @ A_pow / (s*s*s))
         A_pow *= A
         now.kurt = np.nanmean(w @ A_pow / var**2 - 3)
 
@@ -423,14 +443,14 @@ class Stats(series.StatPrint):
         now.err = now.mu - x
 
         var = P.diag if isinstance(P, CovMat) else np.diag(P)
-        now.std = np.sqrt(var)
+        now.spread = np.sqrt(var)
 
-        # Here, sqrt(2/pi) is the ratio, of MAD/STD for Gaussians
-        now.mad = np.nanmean(now.std) * np.sqrt(2/np.pi)
+        # Here, sqrt(2/pi) is the ratio, of MAD/Spread for Gaussians
+        now.mad = np.nanmean(now.spread) * np.sqrt(2/np.pi)
 
         if hasattr(self, &#39;svals&#39;):
             P         = P.full if isinstance(P, CovMat) else P
-            s2, U      = sla.eigh(P)
+            s2, U     = sla.eigh(P)
             now.svals = np.sqrt(np.maximum(s2, 0.0))[::-1]
             now.umisf = (U.T @ now.err)[::-1]
 
@@ -563,7 +583,7 @@ class Avrgs(series.StatPrint, struct_tools.DotDict):
 
     Embellishments:
 
-    - `dapper.series.StatPrint`
+    - `dapper.tools.StatPrint`
     - `Avrgs.tabulate`
     - `getattr` that supports abbreviations.
     &#34;&#34;&#34;
@@ -572,7 +592,7 @@ class Avrgs(series.StatPrint, struct_tools.DotDict):
         columns = tabulate_avrgs([self], statkeys, decimals=decimals)
         return tabulate(columns, headers=&#34;keys&#34;).replace(&#39;␣&#39;, &#39; &#39;)
 
-    abbrevs = {&#39;rmse&#39;: &#39;err.rms&#39;, &#39;rmss&#39;: &#39;std.rms&#39;, &#39;rmv&#39;: &#39;std.rms&#39;}
+    abbrevs = {&#39;rmse&#39;: &#39;err.rms&#39;, &#39;rmss&#39;: &#39;spread.rms&#39;, &#39;rmv&#39;: &#39;spread.rms&#39;}
 
     # Use getattribute coz it gets called before getattr.
     def __getattribute__(self, key):
@@ -854,7 +874,7 @@ def unbias_var(w=None, N_eff=None, avoid_pathological=False):
     ----------
     w: ndarray, optional
         Importance weights. Must sum to 1.
-        Only one of w and N_eff can be None. Default: None
+        Only one of `w` and `N_eff` can be `None`. Default: `None`
 
     N_eff: float, optional
         The &#34;effective&#34; size of the weighted ensemble.
@@ -862,7 +882,7 @@ def unbias_var(w=None, N_eff=None, avoid_pathological=False):
         The unbiasing factor is $$ N_{eff} / (N_{eff} - 1) $$.
 
     avoid_pathological: bool, optional
-        Avoid weight collapse. Default: False
+        Avoid weight collapse. Default: `False`
 
     Returns
     -------
@@ -875,6 +895,7 @@ def unbias_var(w=None, N_eff=None, avoid_pathological=False):
     &#34;&#34;&#34;
     if N_eff is None:
         N_eff = 1/(w@w)
+
     if avoid_pathological and weight_degeneracy(w):
         ub = 1  # Don&#39;t do in case of weights collapse
     else:
@@ -898,7 +919,7 @@ def unbias_var(w=None, N_eff=None, avoid_pathological=False):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L478-L486" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L463-L471" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def register_stat(self, name, value):
     &#34;&#34;&#34;Do `self.name = value` and register `name` as in self&#39;s `stat_register`.
@@ -909,100 +930,6 @@ def unbias_var(w=None, N_eff=None, avoid_pathological=False):
     if not hasattr(self, &#34;stat_register&#34;):
         self.stat_register = []
     self.stat_register.append(name)</code></pre>
-</details>
-</dd>
-<dt id="dapper.stats.align_col"><code class="name flex">
-<span>def <span class="ident">align_col</span></span>(<span>col, pad='␣', missingval='', just=&#x27;&gt;&#x27;)</span>
-</code></dt>
-<dd>
-<div class="desc"><p>Align column.</p>
-<p>Treats <code>int</code>s and fixed-point <code>float</code>/<code>str</code> especially, aligning on the point.</p>
-<p>Example:</p>
-<pre><code class="language-python-repl">&gt;&gt;&gt; xx = [1, 1., 1.234, 12.34, 123.4, &quot;1.2e-3&quot;, None, np.nan, &quot;inf&quot;, (1, 2)]
-&gt;&gt;&gt; print(*align_col(xx), sep=&quot;\n&quot;)
-␣␣1␣␣␣␣
-␣␣1.0␣␣
-␣␣1.234
-␣12.34␣
-123.4␣␣
-␣1.2e-3
-␣␣␣␣␣␣␣
-␣␣␣␣nan
-␣␣␣␣inf
-␣(1, 2)
-</code></pre></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L539-L605" class="git-link">Browse git</a>
-</summary>
-<pre><code class="python">def align_col(col, pad=&#39;␣&#39;, missingval=&#39;&#39;, just=&#34;&gt;&#34;):
-    r&#34;&#34;&#34;Align column.
-
-    Treats `int`s and fixed-point `float`/`str` especially, aligning on the point.
-
-    Example:
-    &gt;&gt;&gt; xx = [1, 1., 1.234, 12.34, 123.4, &#34;1.2e-3&#34;, None, np.nan, &#34;inf&#34;, (1, 2)]
-    &gt;&gt;&gt; print(*align_col(xx), sep=&#34;\n&#34;)
-    ␣␣1␣␣␣␣
-    ␣␣1.0␣␣
-    ␣␣1.234
-    ␣12.34␣
-    123.4␣␣
-    ␣1.2e-3
-    ␣␣␣␣␣␣␣
-    ␣␣␣␣nan
-    ␣␣␣␣inf
-    ␣(1, 2)
-    &#34;&#34;&#34;
-    def split_decimal(x):
-        x = str(x)
-        try:
-            y = float(x)
-        except ValueError:
-            pass
-        else:
-            if np.isfinite(y) and (&#34;e&#34; not in x.lower()):
-                a, *b = x.split(&#34;.&#34;)
-                if b == []:
-                    b = &#34;int&#34;
-                else:
-                    b = b[0]
-                return a, b
-        return x, False
-
-    # Find max nInt, nDec
-    nInt = nDec = -1
-    for x in col:
-        ints, decs = split_decimal(x)
-        if decs:
-            nInt = max(nInt, len(ints))
-            if decs != &#34;int&#34;:
-                nDec = max(nDec, len(decs))
-
-    # Format entries. Floats get aligned on point.
-    def frmt(x):
-        if x is None:
-            return missingval
-        ints, decs = split_decimal(x)
-        x = f&#34;{ints.rjust(nInt, pad)}&#34;
-        if decs == &#34;int&#34;:
-            if nDec &gt;= 0:
-                x += pad + pad*nDec
-        elif decs:
-            x += &#34;.&#34; + f&#34;{decs.ljust(nDec, pad)}&#34;
-        else:
-            x = ints
-        return x
-
-    # Format
-    col = [frmt(x) for x in col]
-    # Find max width
-    Max = max(len(x) for x in col)
-    # Right-justify
-    shift = str.rjust if just == &#34;&gt;&#34; else str.ljust
-    col = [shift(x, Max, pad) for x in col]
-    return col</code></pre>
 </details>
 </dd>
 <dt id="dapper.stats.unpack_uqs"><code class="name flex">
@@ -1026,7 +953,7 @@ Default: <code>None</code>. In this case, the formatting is left to the <code>uq
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L608-L662" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L593-L647" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def unpack_uqs(uq_list, decimals=None):
     &#34;&#34;&#34;Convert list of `uq`s into dict of lists (of equal-length) of attributes.
@@ -1093,7 +1020,7 @@ Default: <code>None</code>. In this case, the formatting is left to the <code>uq
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L665-L683" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L650-L668" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def tabulate_avrgs(avrgs_list, statkeys=(), decimals=None):
     &#34;&#34;&#34;Tabulate avrgs (val±prec).&#34;&#34;&#34;
@@ -1143,7 +1070,7 @@ where N is the ensemble size. Default: False</dd>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L686-L721" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L671-L706" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def center(E, axis=0, rescale=False):
     r&#34;&#34;&#34;Center ensemble.
@@ -1193,7 +1120,7 @@ when used to center observation perturbations.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L724-L730" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L709-L715" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def mean0(E, axis=0, rescale=True):
     &#34;&#34;&#34;Like `center`, but only return the anomalies (not the mean).
@@ -1224,7 +1151,7 @@ when used to center observation perturbations.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L733-L753" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L718-L738" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def inflate_ens(E, factor):
     &#34;&#34;&#34;Inflate the ensemble (center, inflate, re-combine).
@@ -1271,7 +1198,7 @@ should be nearly one since sum(w) = 1</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L756-L775" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L741-L760" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def weight_degeneracy(w, prec=1e-10):
     &#34;&#34;&#34;Check if the weights are degenerate.
@@ -1304,13 +1231,13 @@ should be nearly one since sum(w) = 1</p>
 <dl>
 <dt><strong><code>w</code></strong> :&ensp;<code>ndarray</code>, optional</dt>
 <dd>Importance weights. Must sum to 1.
-Only one of w and N_eff can be None. Default: None</dd>
+Only one of <code>w</code> and <code>N_eff</code> can be <code>None</code>. Default: <code>None</code></dd>
 <dt><strong><code>N_eff</code></strong> :&ensp;<code>float</code>, optional</dt>
 <dd>The "effective" size of the weighted ensemble.
 If not provided, it is computed from the weights.
 The unbiasing factor is <span><span class="MathJax_Preview"> N_{eff} / (N_{eff} - 1) </span><script type="math/tex; mode=display"> N_{eff} / (N_{eff} - 1) </script></span>.</dd>
 <dt><strong><code>avoid_pathological</code></strong> :&ensp;<code>bool</code>, optional</dt>
-<dd>Avoid weight collapse. Default: False</dd>
+<dd>Avoid weight collapse. Default: <code>False</code></dd>
 </dl>
 <h2 id="returns">Returns</h2>
 <dl>
@@ -1322,7 +1249,7 @@ The unbiasing factor is <span><span class="MathJax_Preview"> N_{eff} / (N_{eff} 
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L778-L810" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L763-L796" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def unbias_var(w=None, N_eff=None, avoid_pathological=False):
     &#34;&#34;&#34;Compute unbias-ing factor for variance estimation.
@@ -1331,7 +1258,7 @@ The unbiasing factor is <span><span class="MathJax_Preview"> N_{eff} / (N_{eff} 
     ----------
     w: ndarray, optional
         Importance weights. Must sum to 1.
-        Only one of w and N_eff can be None. Default: None
+        Only one of `w` and `N_eff` can be `None`. Default: `None`
 
     N_eff: float, optional
         The &#34;effective&#34; size of the weighted ensemble.
@@ -1339,7 +1266,7 @@ The unbiasing factor is <span><span class="MathJax_Preview"> N_{eff} / (N_{eff} 
         The unbiasing factor is $$ N_{eff} / (N_{eff} - 1) $$.
 
     avoid_pathological: bool, optional
-        Avoid weight collapse. Default: False
+        Avoid weight collapse. Default: `False`
 
     Returns
     -------
@@ -1352,6 +1279,7 @@ The unbiasing factor is <span><span class="MathJax_Preview"> N_{eff} / (N_{eff} 
     &#34;&#34;&#34;
     if N_eff is None:
         N_eff = 1/(w@w)
+
     if avoid_pathological and weight_degeneracy(w):
         ub = 1  # Don&#39;t do in case of weights collapse
     else:
@@ -1374,7 +1302,7 @@ The unbiasing factor is <span><span class="MathJax_Preview"> N_{eff} / (N_{eff} 
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L50-L475" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L33-L460" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Stats(series.StatPrint):
     &#34;&#34;&#34;Contains and computes statistics of the DA methods.&#34;&#34;&#34;
@@ -1402,11 +1330,13 @@ The unbiasing factor is <span><span class="MathJax_Preview"> N_{eff} / (N_{eff} 
 
         # Methods for summarizing multivariate stats (&#34;fields&#34;) as scalars
         # Don&#39;t use nanmean here; nan&#39;s should get propagated!
+        en_mean = lambda x: np.mean(x, axis=0)  # noqa
         self.field_summaries = dict(
-            m   = lambda x: np.mean(x),                  # mean-field
-            rms = lambda x: np.sqrt(np.mean(x**2)),      # root-mean-square
-            ma  = lambda x: np.mean(np.abs(x)),          # mean-absolute
-            gm  = lambda x: np.exp(np.mean(np.log(x))),  # geometric mean
+            m   = lambda x: en_mean(x),                  # mean-field
+            ms  = lambda x: en_mean(x**2),               # root-mean-square
+            rms = lambda x: np.sqrt(en_mean(x**2)),      # root-mean-square
+            ma  = lambda x: en_mean(np.abs(x)),          # mean-absolute
+            gm  = lambda x: np.exp(en_mean(np.log(x))),  # geometric mean
         )
         # Only keep the methods listed in rc
         self.field_summaries = struct_tools.intersect(self.field_summaries,
@@ -1423,10 +1353,10 @@ The unbiasing factor is <span><span class="MathJax_Preview"> N_{eff} / (N_{eff} 
         ######################################
         # Allocate time series of various stats
         ######################################
-        self.new_series(&#39;mu&#39;    , Nx, MS=&#39;sec&#39;)  # Mean
-        self.new_series(&#39;std&#39;   , Nx, MS=&#39;sec&#39;)  # Std. dev. (&#34;spread&#34;)
-        self.new_series(&#39;err&#39;   , Nx, MS=&#39;sec&#39;)  # Error (mu - truth)
-        self.new_series(&#39;gscore&#39;, Nx, MS=&#39;sec&#39;)  # Gaussian (log) score
+        self.new_series(&#39;mu&#39;    , Nx, field_mean=&#39;sectors&#39;)  # Mean
+        self.new_series(&#39;spread&#39;, Nx, field_mean=&#39;sectors&#39;)  # Std. dev. (&#34;spread&#34;)
+        self.new_series(&#39;err&#39;   , Nx, field_mean=&#39;sectors&#39;)  # Error (mu - truth)
+        self.new_series(&#39;gscore&#39;, Nx, field_mean=&#39;sectors&#39;)  # Gaussian (log) score
 
         # To save memory, we only store these field means:
         self.new_series(&#39;mad&#39; , 1)  # Mean abs deviations
@@ -1435,7 +1365,7 @@ The unbiasing factor is <span><span class="MathJax_Preview"> N_{eff} / (N_{eff} 
 
         if hasattr(xp, &#39;N&#39;):
             N            = xp.N
-            self.new_series(&#39;w&#39;, N, MS=True)    # Importance weights
+            self.new_series(&#39;w&#39;, N, field_mean=True)  # Importance weights
             self.new_series(&#39;rh&#39;, Nx, dtype=int)  # Rank histogram
 
             self._is_ens = True
@@ -1449,7 +1379,7 @@ The unbiasing factor is <span><span class="MathJax_Preview"> N_{eff} / (N_{eff} 
         if do_spectral:
             # Note: the mean-field and RMS time-series of
             # (i) svals and (ii) umisf should match the corresponding series of
-            # (i) std and (ii) err.
+            # (i) spread and (ii) err.
             self.new_series(&#39;svals&#39;, minN)  # Principal component (SVD) scores
             self.new_series(&#39;umisf&#39;, minN)  # Error in component directions
 
@@ -1465,7 +1395,7 @@ The unbiasing factor is <span><span class="MathJax_Preview"> N_{eff} / (N_{eff} 
         self.new_series(&#39;wroot&#39; , 1, KObs+1)
         self.new_series(&#39;resmpl&#39;, 1, KObs+1)
 
-    def new_series(self, name, shape, length=&#39;FAUSt&#39;, MS=False, **kws):
+    def new_series(self, name, shape, length=&#39;FAUSt&#39;, field_mean=False, **kws):
         &#34;&#34;&#34;Create (and register) a statistics time series, initialized with `nan`s.
 
         If `length` is an integer, a `DataSeries` (a trivial subclass of
@@ -1497,11 +1427,11 @@ The unbiasing factor is <span><span class="MathJax_Preview"> N_{eff} / (N_{eff} 
 
         # Summary (scalar) series:
         if shape != ():
-            if MS:
+            if field_mean:
                 for suffix in self.field_summaries:
                     make_series(getattr(self, name), suffix, ())
             # Make a nested level for sectors
-            if MS == &#39;sec&#39;:
+            if field_mean == &#39;sectors&#39;:
                 for ss in self.sector_summaries:
                     suffix, sector = ss.split(&#39;.&#39;)
                     make_series(struct_tools.deep_getattr(
@@ -1514,15 +1444,15 @@ The unbiasing factor is <span><span class="MathJax_Preview"> N_{eff} / (N_{eff} 
 
     def assess(self, k, kObs=None, faus=None,
                E=None, w=None, mu=None, Cov=None):
-        &#34;&#34;&#34;Common interface for both assess_ens and _ext.
+        &#34;&#34;&#34;Common interface for both `Stats.assess_ens` and `Stats.assess_ext`.
 
-        The _ens assessment function gets called if E is not None,
-        and _ext if mu is not None.
+        The `_ens` assessment function gets called if `E is not None`,
+        and `_ext` if `mu is not None`.
 
-        faus: One or more of [&#39;f&#39;,&#39; a&#39;, &#39;u&#39;], indicating
+        faus: One or more of `[&#39;f&#39;,&#39; a&#39;, &#39;u&#39;, &#39;s&#39;]`, indicating
               that the result should be stored in (respectively)
               the forecast/analysis/universal attribute.
-              Default: &#39;u&#39; if kObs is None else &#39;au&#39; (&#39;a&#39; and &#39;u&#39;).
+              Default: `&#39;u&#39; if kObs is None else &#39;au&#39; (&#39;a&#39; and &#39;u&#39;)`.
         &#34;&#34;&#34;
         # Initial consistency checks.
         if k == 0:
@@ -1602,7 +1532,7 @@ The unbiasing factor is <span><span class="MathJax_Preview"> N_{eff} / (N_{eff} 
 
     def derivative_stats(self, now):
         &#34;&#34;&#34;Stats that derive from others (=&gt; not specific for _ens or _ext).&#34;&#34;&#34;
-        now.gscore = 2*np.log(now.std) + (now.err/now.std)**2
+        now.gscore = 2*np.log(now.spread) + (now.err/now.spread)**2
 
     def assess_ens(self, now, x, E, w):
         &#34;&#34;&#34;Ensemble and Particle filter (weighted/importance) assessment.&#34;&#34;&#34;
@@ -1623,8 +1553,8 @@ The unbiasing factor is <span><span class="MathJax_Preview"> N_{eff} / (N_{eff} 
 
         now.mu  = w @ E
         now.err = now.mu - x
-        A = E - now.mu
 
+        A = E - now.mu
         # While A**2 is approx as fast as A*A,
         # A**3 is 10x slower than A**2 (or A**2.0).
         # =&gt; Use A2 = A**2, A3 = A*A2, A4=A*A3.
@@ -1637,14 +1567,14 @@ The unbiasing factor is <span><span class="MathJax_Preview"> N_{eff} / (N_{eff} 
         var *= ub
 
         # Compute standard deviation (&#34;Spread&#34;)
-        std = np.sqrt(var)  # NB: biased (even though var is unbiased)
-        now.std = std
+        s = np.sqrt(var)  # NB: biased (even though var is unbiased)
+        now.spread = s
 
         # For simplicity, use naive (biased) formulae, derived
         # from &#34;empirical measure&#34;. See doc/unbiased_skew_kurt.jpg.
         # Normalize by var. Compute &#34;excess&#34; kurt, which is 0 for Gaussians.
         A_pow *= A
-        now.skew = np.nanmean(w @ A_pow / (std*std*std))
+        now.skew = np.nanmean(w @ A_pow / (s*s*s))
         A_pow *= A
         now.kurt = np.nanmean(w @ A_pow / var**2 - 3)
 
@@ -1680,14 +1610,14 @@ The unbiasing factor is <span><span class="MathJax_Preview"> N_{eff} / (N_{eff} 
         now.err = now.mu - x
 
         var = P.diag if isinstance(P, CovMat) else np.diag(P)
-        now.std = np.sqrt(var)
+        now.spread = np.sqrt(var)
 
-        # Here, sqrt(2/pi) is the ratio, of MAD/STD for Gaussians
-        now.mad = np.nanmean(now.std) * np.sqrt(2/np.pi)
+        # Here, sqrt(2/pi) is the ratio, of MAD/Spread for Gaussians
+        now.mad = np.nanmean(now.spread) * np.sqrt(2/np.pi)
 
         if hasattr(self, &#39;svals&#39;):
             P         = P.full if isinstance(P, CovMat) else P
-            s2, U      = sla.eigh(P)
+            s2, U     = sla.eigh(P)
             now.svals = np.sqrt(np.maximum(s2, 0.0))[::-1]
             now.umisf = (U.T @ now.err)[::-1]
 
@@ -1816,7 +1746,7 @@ The unbiasing factor is <span><span class="MathJax_Preview"> N_{eff} / (N_{eff} 
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L181-L184" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L166-L169" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">@property
 def data_series(self):
@@ -1828,7 +1758,7 @@ def data_series(self):
 <h3>Methods</h3>
 <dl>
 <dt id="dapper.stats.Stats.new_series"><code class="name flex">
-<span>def <span class="ident">new_series</span></span>(<span>self, name, shape, length='FAUSt', MS=False, **kws)</span>
+<span>def <span class="ident">new_series</span></span>(<span>self, name, shape, length='FAUSt', field_mean=False, **kws)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Create (and register) a statistics time series, initialized with <code>nan</code>s.</p>
@@ -1840,9 +1770,9 @@ Thus, you cannot use <code>dtype=bool</code> or <code>int</code> for stats that 
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L139-L179" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L124-L164" class="git-link">Browse git</a>
 </summary>
-<pre><code class="python">def new_series(self, name, shape, length=&#39;FAUSt&#39;, MS=False, **kws):
+<pre><code class="python">def new_series(self, name, shape, length=&#39;FAUSt&#39;, field_mean=False, **kws):
     &#34;&#34;&#34;Create (and register) a statistics time series, initialized with `nan`s.
 
     If `length` is an integer, a `DataSeries` (a trivial subclass of
@@ -1874,11 +1804,11 @@ Thus, you cannot use <code>dtype=bool</code> or <code>int</code> for stats that 
 
     # Summary (scalar) series:
     if shape != ():
-        if MS:
+        if field_mean:
             for suffix in self.field_summaries:
                 make_series(getattr(self, name), suffix, ())
         # Make a nested level for sectors
-        if MS == &#39;sec&#39;:
+        if field_mean == &#39;sectors&#39;:
             for ss in self.sector_summaries:
                 suffix, sector = ss.split(&#39;.&#39;)
                 make_series(struct_tools.deep_getattr(
@@ -1889,29 +1819,29 @@ Thus, you cannot use <code>dtype=bool</code> or <code>int</code> for stats that 
 <span>def <span class="ident">assess</span></span>(<span>self, k, kObs=None, faus=None, E=None, w=None, mu=None, Cov=None)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Common interface for both assess_ens and _ext.</p>
-<p>The _ens assessment function gets called if E is not None,
-and _ext if mu is not None.</p>
-<p>faus: One or more of ['f',' a', 'u'], indicating
+<div class="desc"><p>Common interface for both <code><a title="dapper.stats.Stats.assess_ens" href="#dapper.stats.Stats.assess_ens">Stats.assess_ens()</a></code> and <code><a title="dapper.stats.Stats.assess_ext" href="#dapper.stats.Stats.assess_ext">Stats.assess_ext()</a></code>.</p>
+<p>The <code>_ens</code> assessment function gets called if <code>E is not None</code>,
+and <code>_ext</code> if <code>mu is not None</code>.</p>
+<p>faus: One or more of <code>['f',' a', 'u', 's']</code>, indicating
 that the result should be stored in (respectively)
 the forecast/analysis/universal attribute.
-Default: 'u' if kObs is None else 'au' ('a' and 'u').</p></div>
+Default: <code>'u' if kObs is None else 'au' ('a' and 'u')</code>.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L186-L260" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L171-L245" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def assess(self, k, kObs=None, faus=None,
            E=None, w=None, mu=None, Cov=None):
-    &#34;&#34;&#34;Common interface for both assess_ens and _ext.
+    &#34;&#34;&#34;Common interface for both `Stats.assess_ens` and `Stats.assess_ext`.
 
-    The _ens assessment function gets called if E is not None,
-    and _ext if mu is not None.
+    The `_ens` assessment function gets called if `E is not None`,
+    and `_ext` if `mu is not None`.
 
-    faus: One or more of [&#39;f&#39;,&#39; a&#39;, &#39;u&#39;], indicating
+    faus: One or more of `[&#39;f&#39;,&#39; a&#39;, &#39;u&#39;, &#39;s&#39;]`, indicating
           that the result should be stored in (respectively)
           the forecast/analysis/universal attribute.
-          Default: &#39;u&#39; if kObs is None else &#39;au&#39; (&#39;a&#39; and &#39;u&#39;).
+          Default: `&#39;u&#39; if kObs is None else &#39;au&#39; (&#39;a&#39; and &#39;u&#39;)`.
     &#34;&#34;&#34;
     # Initial consistency checks.
     if k == 0:
@@ -1986,7 +1916,7 @@ Default: 'u' if kObs is None else 'au' ('a' and 'u').</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L262-L272" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L247-L257" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def summarize_marginals(self, now):
     &#34;&#34;&#34;Compute Mean-field and RMS values&#34;&#34;&#34;
@@ -2009,11 +1939,11 @@ Default: 'u' if kObs is None else 'au' ('a' and 'u').</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L274-L276" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L259-L261" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def derivative_stats(self, now):
     &#34;&#34;&#34;Stats that derive from others (=&gt; not specific for _ens or _ext).&#34;&#34;&#34;
-    now.gscore = 2*np.log(now.std) + (now.err/now.std)**2</code></pre>
+    now.gscore = 2*np.log(now.spread) + (now.err/now.spread)**2</code></pre>
 </details>
 </dd>
 <dt id="dapper.stats.Stats.assess_ens"><code class="name flex">
@@ -2024,7 +1954,7 @@ Default: 'u' if kObs is None else 'au' ('a' and 'u').</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L278-L340" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L263-L325" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def assess_ens(self, now, x, E, w):
     &#34;&#34;&#34;Ensemble and Particle filter (weighted/importance) assessment.&#34;&#34;&#34;
@@ -2045,8 +1975,8 @@ Default: 'u' if kObs is None else 'au' ('a' and 'u').</p></div>
 
     now.mu  = w @ E
     now.err = now.mu - x
-    A = E - now.mu
 
+    A = E - now.mu
     # While A**2 is approx as fast as A*A,
     # A**3 is 10x slower than A**2 (or A**2.0).
     # =&gt; Use A2 = A**2, A3 = A*A2, A4=A*A3.
@@ -2059,14 +1989,14 @@ Default: 'u' if kObs is None else 'au' ('a' and 'u').</p></div>
     var *= ub
 
     # Compute standard deviation (&#34;Spread&#34;)
-    std = np.sqrt(var)  # NB: biased (even though var is unbiased)
-    now.std = std
+    s = np.sqrt(var)  # NB: biased (even though var is unbiased)
+    now.spread = s
 
     # For simplicity, use naive (biased) formulae, derived
     # from &#34;empirical measure&#34;. See doc/unbiased_skew_kurt.jpg.
     # Normalize by var. Compute &#34;excess&#34; kurt, which is 0 for Gaussians.
     A_pow *= A
-    now.skew = np.nanmean(w @ A_pow / (std*std*std))
+    now.skew = np.nanmean(w @ A_pow / (s*s*s))
     A_pow *= A
     now.kurt = np.nanmean(w @ A_pow / var**2 - 3)
 
@@ -2099,7 +2029,7 @@ Default: 'u' if kObs is None else 'au' ('a' and 'u').</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L342-L363" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L327-L348" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def assess_ext(self, now, x, mu, P):
     &#34;&#34;&#34;Kalman filter (Gaussian) assessment.&#34;&#34;&#34;
@@ -2113,14 +2043,14 @@ Default: 'u' if kObs is None else 'au' ('a' and 'u').</p></div>
     now.err = now.mu - x
 
     var = P.diag if isinstance(P, CovMat) else np.diag(P)
-    now.std = np.sqrt(var)
+    now.spread = np.sqrt(var)
 
-    # Here, sqrt(2/pi) is the ratio, of MAD/STD for Gaussians
-    now.mad = np.nanmean(now.std) * np.sqrt(2/np.pi)
+    # Here, sqrt(2/pi) is the ratio, of MAD/Spread for Gaussians
+    now.mad = np.nanmean(now.spread) * np.sqrt(2/np.pi)
 
     if hasattr(self, &#39;svals&#39;):
         P         = P.full if isinstance(P, CovMat) else P
-        s2, U      = sla.eigh(P)
+        s2, U     = sla.eigh(P)
         now.svals = np.sqrt(np.maximum(s2, 0.0))[::-1]
         now.umisf = (U.T @ now.err)[::-1]</code></pre>
 </details>
@@ -2138,7 +2068,7 @@ time inds for averaging</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L365-L425" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L350-L410" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def average_in_time(self, kk=None, kkObs=None, free=False):
     &#34;&#34;&#34;Avarage all univariate (scalar) time series.
@@ -2223,7 +2153,7 @@ time inds for averaging</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L427-L475" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L412-L460" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def replay(self, figlist=&#34;default&#34;, speed=np.inf, t1=0, t2=None, **kwargs):
     &#34;&#34;&#34;Replay LivePlot with what&#39;s been stored in &#39;self&#39;.
@@ -2286,7 +2216,7 @@ time inds for averaging</li>
 <div class="desc"><p>A <code>dict</code> specialized for the averages of statistics.</p>
 <p>Embellishments:</p>
 <ul>
-<li><code>dapper.series.StatPrint</code></li>
+<li><code>dapper.tools.StatPrint</code></li>
 <li><code><a title="dapper.stats.Avrgs.tabulate" href="#dapper.stats.Avrgs.tabulate">Avrgs.tabulate()</a></code></li>
 <li><code>getattr</code> that supports abbreviations.</li>
 </ul>
@@ -2294,14 +2224,14 @@ time inds for averaging</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L489-L514" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L474-L499" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Avrgs(series.StatPrint, struct_tools.DotDict):
     &#34;&#34;&#34;A `dict` specialized for the averages of statistics.
 
     Embellishments:
 
-    - `dapper.series.StatPrint`
+    - `dapper.tools.StatPrint`
     - `Avrgs.tabulate`
     - `getattr` that supports abbreviations.
     &#34;&#34;&#34;
@@ -2310,7 +2240,7 @@ time inds for averaging</li>
         columns = tabulate_avrgs([self], statkeys, decimals=decimals)
         return tabulate(columns, headers=&#34;keys&#34;).replace(&#39;␣&#39;, &#39; &#39;)
 
-    abbrevs = {&#39;rmse&#39;: &#39;err.rms&#39;, &#39;rmss&#39;: &#39;std.rms&#39;, &#39;rmv&#39;: &#39;std.rms&#39;}
+    abbrevs = {&#39;rmse&#39;: &#39;err.rms&#39;, &#39;rmss&#39;: &#39;spread.rms&#39;, &#39;rmv&#39;: &#39;spread.rms&#39;}
 
     # Use getattribute coz it gets called before getattr.
     def __getattribute__(self, key):
@@ -2348,7 +2278,7 @@ time inds for averaging</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L499-L501" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L484-L486" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def tabulate(self, statkeys=(), decimals=None):
     columns = tabulate_avrgs([self], statkeys, decimals=decimals)
@@ -2373,7 +2303,15 @@ data-gaCategoryParameter="dapper.stats">
 </div>
 <h1>Index</h1>
 <div class="toc">
-<ul></ul>
+<ul>
+<li><a href="#default-statistics">Default statistics</a><ul>
+<li><a href="#the-faust-keyattribute">The FAUSt key/attribute</a></li>
+<li><a href="#field-summaries">Field summaries</a></li>
+<li><a href="#regional-field-summaries">Regional field summaries</a></li>
+</ul>
+</li>
+<li><a href="#declaring-new-custom-statistics">Declaring new, custom statistics</a></li>
+</ul>
 </div>
 <ul id="index">
 <li><h3>Super-module</h3>
@@ -2384,7 +2322,6 @@ data-gaCategoryParameter="dapper.stats">
 <li><h3><a href="#header-functions">Functions</a></h3>
 <ul class="two-column">
 <li><code><a title="dapper.stats.register_stat" href="#dapper.stats.register_stat">register_stat</a></code></li>
-<li><code><a title="dapper.stats.align_col" href="#dapper.stats.align_col">align_col</a></code></li>
 <li><code><a title="dapper.stats.unpack_uqs" href="#dapper.stats.unpack_uqs">unpack_uqs</a></code></li>
 <li><code><a title="dapper.stats.tabulate_avrgs" href="#dapper.stats.tabulate_avrgs">tabulate_avrgs</a></code></li>
 <li><code><a title="dapper.stats.center" href="#dapper.stats.center">center</a></code></li>

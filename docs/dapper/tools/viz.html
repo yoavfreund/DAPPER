@@ -40,7 +40,7 @@ body.gsc-overflow-hidden #sidebar {overflow: visible;}
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/viz.py#L1-L529" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/viz.py#L1-L530" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">&#34;&#34;&#34;Tools for plotting.&#34;&#34;&#34;
 
@@ -438,23 +438,24 @@ def plot_err_components(stats):
     stats: `dapper.stats.Stats`
 
     .. note::
-      it was chosen to plot(ii, mean_in_time(abs(err_i))),
+      it was chosen to `plot(ii, mean_in_time(abs(err_i)))`,
       and thus the corresponding spread measure is MAD.
-      If one chose instead: plot(ii, std_in_time(err_i)),
-      then the corresponding measure of spread would have been std.
+      If one chose instead: `plot(ii, std_spread_in_time(err_i))`,
+      then the corresponding measure of spread would have been `spread`.
       This choice was made in part because (wrt. subplot 2)
-      the singular values (svals) correspond to rotated MADs,
-      and because rms(umisf) seems to convoluted for interpretation.
+      the singular values (`svals`) correspond to rotated MADs,
+      and because `rms(umisf)` seems too convoluted for interpretation.
     &#34;&#34;&#34;
     fig, (ax0, ax1, ax2) = place.freshfig(&#34;Error components&#34;, figsize=(6, 6), nrows=3)
 
     chrono = stats.HMM.t
     Nx     = stats.xx.shape[1]
 
-    err   = np.mean(np.abs(stats.err.a), 0)
-    sprd  = np.mean(stats.std.a, 0)
-    umsft = np.mean(np.abs(stats.umisf.a), 0)
-    usprd = np.mean(stats.svals.a, 0)
+    en_mean = lambda x: np.mean(x, axis=0)  # noqa
+    err   = en_mean(abs(stats.err.a))
+    sprd  = en_mean(stats.spread.a)
+    umsft = en_mean(abs(stats.umisf.a))
+    usprd = en_mean(stats.svals.a)
 
     ax0.plot(arange(Nx), err, &#39;k&#39;, lw=2, label=&#39;Error&#39;)
     if Nx &lt; 10**3:
@@ -1201,18 +1202,18 @@ For that, use <code>plt.pause</code> or <code>plt.show</code> instead.</p></div>
 </dl>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>it was chosen to plot(ii, mean_in_time(abs(err_i))),
+<p>it was chosen to <code>plot(ii, mean_in_time(abs(err_i)))</code>,
 and thus the corresponding spread measure is MAD.
-If one chose instead: plot(ii, std_in_time(err_i)),
-then the corresponding measure of spread would have been std.
+If one chose instead: <code>plot(ii, std_spread_in_time(err_i))</code>,
+then the corresponding measure of spread would have been <code>spread</code>.
 This choice was made in part because (wrt. subplot 2)
-the singular values (svals) correspond to rotated MADs,
-and because rms(umisf) seems to convoluted for interpretation.</p>
+the singular values (<code>svals</code>) correspond to rotated MADs,
+and because <code>rms(umisf)</code> seems too convoluted for interpretation.</p>
 </div></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/viz.py#L389-L450" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/viz.py#L389-L451" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def plot_err_components(stats):
     &#34;&#34;&#34;Plot components of the error.
@@ -1222,23 +1223,24 @@ and because rms(umisf) seems to convoluted for interpretation.</p>
     stats: `dapper.stats.Stats`
 
     .. note::
-      it was chosen to plot(ii, mean_in_time(abs(err_i))),
+      it was chosen to `plot(ii, mean_in_time(abs(err_i)))`,
       and thus the corresponding spread measure is MAD.
-      If one chose instead: plot(ii, std_in_time(err_i)),
-      then the corresponding measure of spread would have been std.
+      If one chose instead: `plot(ii, std_spread_in_time(err_i))`,
+      then the corresponding measure of spread would have been `spread`.
       This choice was made in part because (wrt. subplot 2)
-      the singular values (svals) correspond to rotated MADs,
-      and because rms(umisf) seems to convoluted for interpretation.
+      the singular values (`svals`) correspond to rotated MADs,
+      and because `rms(umisf)` seems too convoluted for interpretation.
     &#34;&#34;&#34;
     fig, (ax0, ax1, ax2) = place.freshfig(&#34;Error components&#34;, figsize=(6, 6), nrows=3)
 
     chrono = stats.HMM.t
     Nx     = stats.xx.shape[1]
 
-    err   = np.mean(np.abs(stats.err.a), 0)
-    sprd  = np.mean(stats.std.a, 0)
-    umsft = np.mean(np.abs(stats.umisf.a), 0)
-    usprd = np.mean(stats.svals.a, 0)
+    en_mean = lambda x: np.mean(x, axis=0)  # noqa
+    err   = en_mean(abs(stats.err.a))
+    sprd  = en_mean(stats.spread.a)
+    umsft = en_mean(abs(stats.umisf.a))
+    usprd = en_mean(stats.svals.a)
 
     ax0.plot(arange(Nx), err, &#39;k&#39;, lw=2, label=&#39;Error&#39;)
     if Nx &lt; 10**3:
@@ -1291,7 +1293,7 @@ and because rms(umisf) seems to convoluted for interpretation.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/viz.py#L453-L496" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/viz.py#L454-L497" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def plot_rank_histogram(stats):
     &#34;&#34;&#34;Plot rank histogram of ensemble.
@@ -1359,7 +1361,7 @@ and because rms(umisf) seems to convoluted for interpretation.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/viz.py#L499-L529" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/viz.py#L500-L530" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def axis_scale_by_array(ax, arr, axis=&#39;y&#39;, nbins=3):
     &#34;&#34;&#34;Scale axis so that the arr entries appear equidistant.

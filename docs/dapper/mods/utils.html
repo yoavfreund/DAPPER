@@ -40,7 +40,7 @@ body.gsc-overflow-hidden #sidebar {overflow: visible;}
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/utils.py#L1-L229" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/utils.py#L1-L231" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">&#34;&#34;&#34;Utilities to help define hidden Markov models.&#34;&#34;&#34;
 
@@ -66,7 +66,6 @@ class NamedFunc():
 
     def __init__(self, func, name):
         self._function = func
-        self._old_name = func.__name__
         self._new_name = name
         functools.update_wrapper(self, func)
 
@@ -74,10 +73,10 @@ class NamedFunc():
         return self._function(*args, **kwargs)
 
     def __str__(self):
-        return self._new_name + &#34;()&#34;
+        return self._new_name
 
     def __repr__(self):
-        return str(self) + f&#34; &lt;NamedFunc of {self._old_name}&gt;&#34;
+        return str(self) + &#34;\n&#34; + repr(self._function)
 
 
 def name_func(name):
@@ -111,7 +110,7 @@ def ens_compatible(func):
 
 
 def Id_op():
-    &#34;&#34;&#34;Id operator.&#34;&#34;&#34;
+    &#34;&#34;&#34;Id operator for first argument.&#34;&#34;&#34;
     return NamedFunc(lambda *args: args[0], &#34;Id operator&#34;)
 
 
@@ -207,8 +206,11 @@ def partial_Id_Obs(Nx, obs_inds):
     &#34;&#34;&#34;
     Ny = len(obs_inds)
     H = direct_obs_matrix(Nx, obs_inds)
+
+    @name_func(f&#34;Direct obs. at {obs_inds}&#34;)
     @ens_compatible
     def model(x, t): return x[obs_inds]
+    @name_func(f&#34;Constant matrix\n{H}&#34;)
     def linear(x, t): return H
     Obs = {
         &#39;M&#39;: Ny,
@@ -304,7 +306,7 @@ def linspace_int(Nx, Ny, periodic=True):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/utils.py#L39-L43" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/utils.py#L38-L42" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def name_func(name):
     &#34;&#34;&#34;Decorator for creating NamedFunc.&#34;&#34;&#34;
@@ -328,7 +330,7 @@ def linspace_int(Nx, Ny, periodic=True):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/utils.py#L46-L66" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/utils.py#L45-L65" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def ens_compatible(func):
     &#34;&#34;&#34;Decorate to transpose before and after, i.e. `func(input.T).T`.
@@ -357,14 +359,14 @@ def linspace_int(Nx, Ny, periodic=True):
 <span>def <span class="ident">Id_op</span></span>(<span>)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Id operator.</p></div>
+<div class="desc"><p>Id operator for first argument.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/utils.py#L69-L71" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/utils.py#L68-L70" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def Id_op():
-    &#34;&#34;&#34;Id operator.&#34;&#34;&#34;
+    &#34;&#34;&#34;Id operator for first argument.&#34;&#34;&#34;
     return NamedFunc(lambda *args: args[0], &#34;Id operator&#34;)</code></pre>
 </details>
 </dd>
@@ -376,7 +378,7 @@ def linspace_int(Nx, Ny, periodic=True):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/utils.py#L74-L77" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/utils.py#L73-L76" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def Id_mat(M):
     &#34;&#34;&#34;Id matrix.&#34;&#34;&#34;
@@ -400,7 +402,7 @@ Anyways, <code>dt</code> must be an integer multiple of <code>dt0</code>.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/utils.py#L80-L118" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/utils.py#L79-L117" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def linear_model_setup(ModelMatrix, dt0):
     r&#34;&#34;&#34;Make the Dyn/Obs field of a HMM representing a linear model.
@@ -463,7 +465,7 @@ Anyways, <code>dt</code> must be an integer multiple of <code>dt0</code>.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/utils.py#L121-L143" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/utils.py#L120-L142" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def direct_obs_matrix(Nx, obs_inds):
     &#34;&#34;&#34;Generate matrix that &#34;picks&#34; state elements `obs_inds` out of `range(Nx)`.
@@ -512,7 +514,7 @@ observation operator/model and tangent linear observation operator</dd>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/utils.py#L146-L174" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/utils.py#L145-L176" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def partial_Id_Obs(Nx, obs_inds):
     &#34;&#34;&#34;Specify identity observations of a subset of obs. indices.
@@ -534,8 +536,11 @@ observation operator/model and tangent linear observation operator</dd>
     &#34;&#34;&#34;
     Ny = len(obs_inds)
     H = direct_obs_matrix(Nx, obs_inds)
+
+    @name_func(f&#34;Direct obs. at {obs_inds}&#34;)
     @ens_compatible
     def model(x, t): return x[obs_inds]
+    @name_func(f&#34;Constant matrix\n{H}&#34;)
     def linear(x, t): return H
     Obs = {
         &#39;M&#39;: Ny,
@@ -565,7 +570,7 @@ observation operator/model and tangent linear observation operator</dd>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/utils.py#L177-L193" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/utils.py#L179-L195" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def Id_Obs(Nx):
     &#34;&#34;&#34;Specify identity observations of entire state.
@@ -618,7 +623,7 @@ array([0, 2, 4, 6, 8])
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/utils.py#L196-L229" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/utils.py#L198-L231" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def linspace_int(Nx, Ny, periodic=True):
     &#34;&#34;&#34;Provide a range of `Ny` equispaced integers between `0` and `Nx-1`.
@@ -670,14 +675,13 @@ array([0, 2, 4, 6, 8])
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/utils.py#L20-L36" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/utils.py#L20-L35" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class NamedFunc():
     &#34;Provides custom repr for functions.&#34;
 
     def __init__(self, func, name):
         self._function = func
-        self._old_name = func.__name__
         self._new_name = name
         functools.update_wrapper(self, func)
 
@@ -685,10 +689,10 @@ array([0, 2, 4, 6, 8])
         return self._function(*args, **kwargs)
 
     def __str__(self):
-        return self._new_name + &#34;()&#34;
+        return self._new_name
 
     def __repr__(self):
-        return str(self) + f&#34; &lt;NamedFunc of {self._old_name}&gt;&#34;</code></pre>
+        return str(self) + &#34;\n&#34; + repr(self._function)</code></pre>
 </details>
 </dd>
 </dl>
