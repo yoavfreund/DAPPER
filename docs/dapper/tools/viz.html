@@ -241,18 +241,18 @@ def set_ilim(ax, i, Min=None, Max=None):
         ax.set_zlim(Min, Max)
 
 
-def estimate_good_plot_length(xx, chrono=None, mult=100):
+def estimate_good_plot_length(xx, tseq=None, mult=100):
     &#34;&#34;&#34;Estimate the range of the xx slices for plotting.
 
     The length is based on the estimated time scale (wavelength)
     of the system.
-    Provide sensible fall-backs (better if chrono is supplied).
+    Provide sensible fall-backs (better if tseq is supplied).
 
     Parameters
     ----------
     xx: ndarray
         Plotted array
-    chrono: `dapper.tools.chronos.Chronology`, optional
+    tseq: `dapper.tools.chronos.Chronology`, optional
         object with property dkObS. Defaults: None
     mult: int, optional
         Number of waves for plotting. Defaults: 100
@@ -264,7 +264,7 @@ def estimate_good_plot_length(xx, chrono=None, mult=100):
 
     Example
     -------
-    &gt;&gt;&gt; K_lag = estimate_good_plot_length(stats.xx, chrono, mult=80) # doctest: +SKIP
+    &gt;&gt;&gt; K_lag = estimate_good_plot_length(stats.xx, tseq, mult=80) # doctest: +SKIP
     &#34;&#34;&#34;
     if xx.ndim == 2:
         # If mult-dim, then average over dims (by ravel)....
@@ -278,15 +278,15 @@ def estimate_good_plot_length(xx, chrono=None, mult=100):
     except ValueError:
         K = 0
 
-    if chrono is not None:
-        t = chrono
-        K = int(min(max(K, t.dkObs), t.K))
-        T = round2sigfig(t.tt[K], 2)  # Could return T; T&gt;tt[-1]
-        K = find_1st_ind(t.tt &gt;= T)
+    if tseq is not None:
+        tseq = tseq
+        K = int(min(max(K, tseq.dkObs), tseq.K))
+        T = round2sigfig(tseq.tt[K], 2)  # Could return T; T&gt;tt[-1]
+        K = find_1st_ind(tseq.tt &gt;= T)
         if K:
             return K
         else:
-            return t.K
+            return tseq.K
     else:
         K = int(min(max(K, 1), len(xx)))
         T = round2sigfig(K, 2)
@@ -353,22 +353,22 @@ def plot_pause(interval):
         _plot_pause(interval, focus_figure=False)
 
 
-def plot_hovmoller(xx, chrono=None, **kwargs):
+def plot_hovmoller(xx, tseq=None, **kwargs):
     &#34;&#34;&#34;Plot Hovmöller diagram.
 
     Parameters
     ----------
     xx: ndarray
         Plotted array
-    chrono: `dapper.tools.chronos.Chronology`, optional
+    tseq: `dapper.tools.chronos.Chronology`, optional
         object with property dkObS. Defaults: None
     &#34;&#34;&#34;
     fig, ax = place.freshfig(&#34;Hovmoller&#34;, figsize=(4, 3.5))
 
-    if chrono is not None:
-        mask = chrono.tt &lt;= chrono.Tplot*2
-        kk   = chrono.kk[mask]
-        tt   = chrono.tt[mask]
+    if tseq is not None:
+        mask = tseq.tt &lt;= tseq.Tplot*2
+        kk   = tseq.kk[mask]
+        tt   = tseq.tt[mask]
         ax.set_ylabel(&#39;Time (t)&#39;)
     else:
         K    = estimate_good_plot_length(xx, mult=20)
@@ -448,7 +448,7 @@ def plot_err_components(stats):
     &#34;&#34;&#34;
     fig, (ax0, ax1, ax2) = place.freshfig(&#34;Error components&#34;, figsize=(6, 6), nrows=3)
 
-    chrono = stats.HMM.t
+    tseq = stats.HMM.tseq
     Nx     = stats.xx.shape[1]
 
     en_mean = lambda x: np.mean(x, axis=0)  # noqa
@@ -484,7 +484,7 @@ def plot_err_components(stats):
     else:
         not_available_text(ax1)
 
-    rmse = stats.err.rms.a[chrono.maskObs_BI]
+    rmse = stats.err.rms.a[tseq.maskObs_BI]
     ax2.hist(rmse, bins=30, density=False)
     ax2.set_ylabel(&#39;Num. of occurence (_a)&#39;)
     ax2.set_xlabel(&#39;RMSE&#39;)
@@ -502,7 +502,7 @@ def plot_rank_histogram(stats):
     ----------
     stats: `dapper.stats.Stats`
     &#34;&#34;&#34;
-    chrono = stats.HMM.t
+    tseq = stats.HMM.tseq
 
     has_been_computed = \
         hasattr(stats, &#39;rh&#39;) and \
@@ -514,7 +514,7 @@ def plot_rank_histogram(stats):
     ax.set_xlabel(&#39;ensemble member index (n)&#39;)
 
     if has_been_computed:
-        ranks = stats.rh.a[chrono.maskObs_BI]
+        ranks = stats.rh.a[tseq.maskObs_BI]
         Nx    = ranks.shape[1]
         N     = stats.xp.N
         if not hasattr(stats, &#39;w&#39;):
@@ -525,7 +525,7 @@ def plot_rank_histogram(stats):
             # Weight ranks by inverse of particle weight. Why? Coz, with correct
             # importance weights, the &#34;expected value&#34; histogram is then flat.
             # Potential improvement: interpolate weights between particles.
-            w  = stats.w.a[chrono.maskObs_BI]
+            w  = stats.w.a[tseq.maskObs_BI]
             K  = len(w)
             w  = np.hstack([w, np.ones((K, 1))/N])  # define weights for rank N+1
             w  = array([w[arange(K), ranks[arange(K), i]] for i in range(Nx)])
@@ -899,18 +899,18 @@ Defaults: False</dd>
 </details>
 </dd>
 <dt id="dapper.tools.viz.estimate_good_plot_length"><code class="name flex">
-<span>def <span class="ident">estimate_good_plot_length</span></span>(<span>xx, chrono=None, mult=100)</span>
+<span>def <span class="ident">estimate_good_plot_length</span></span>(<span>xx, tseq=None, mult=100)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Estimate the range of the xx slices for plotting.</p>
 <p>The length is based on the estimated time scale (wavelength)
 of the system.
-Provide sensible fall-backs (better if chrono is supplied).</p>
+Provide sensible fall-backs (better if tseq is supplied).</p>
 <h2 id="parameters">Parameters</h2>
 <dl>
 <dt><strong><code>xx</code></strong> :&ensp;<code>ndarray</code></dt>
 <dd>Plotted array</dd>
-<dt><strong><code>chrono</code></strong> :&ensp;<code><a title="dapper.tools.chronos.Chronology" href="chronos.html#dapper.tools.chronos.Chronology">Chronology</a></code>, optional</dt>
+<dt><strong><code>tseq</code></strong> :&ensp;<code><a title="dapper.tools.chronos.Chronology" href="chronos.html#dapper.tools.chronos.Chronology">Chronology</a></code>, optional</dt>
 <dd>object with property dkObS. Defaults: None</dd>
 <dt><strong><code>mult</code></strong> :&ensp;<code>int</code>, optional</dt>
 <dd>Number of waves for plotting. Defaults: 100</dd>
@@ -921,25 +921,25 @@ Provide sensible fall-backs (better if chrono is supplied).</p>
 <dd>length for plotting</dd>
 </dl>
 <h2 id="example">Example</h2>
-<pre><code class="language-python-repl">&gt;&gt;&gt; K_lag = estimate_good_plot_length(stats.xx, chrono, mult=80) # doctest: +SKIP
+<pre><code class="language-python-repl">&gt;&gt;&gt; K_lag = estimate_good_plot_length(stats.xx, tseq, mult=80) # doctest: +SKIP
 </code></pre></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 <a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/viz.py#L200-L249" class="git-link">Browse git</a>
 </summary>
-<pre><code class="python">def estimate_good_plot_length(xx, chrono=None, mult=100):
+<pre><code class="python">def estimate_good_plot_length(xx, tseq=None, mult=100):
     &#34;&#34;&#34;Estimate the range of the xx slices for plotting.
 
     The length is based on the estimated time scale (wavelength)
     of the system.
-    Provide sensible fall-backs (better if chrono is supplied).
+    Provide sensible fall-backs (better if tseq is supplied).
 
     Parameters
     ----------
     xx: ndarray
         Plotted array
-    chrono: `dapper.tools.chronos.Chronology`, optional
+    tseq: `dapper.tools.chronos.Chronology`, optional
         object with property dkObS. Defaults: None
     mult: int, optional
         Number of waves for plotting. Defaults: 100
@@ -951,7 +951,7 @@ Provide sensible fall-backs (better if chrono is supplied).</p>
 
     Example
     -------
-    &gt;&gt;&gt; K_lag = estimate_good_plot_length(stats.xx, chrono, mult=80) # doctest: +SKIP
+    &gt;&gt;&gt; K_lag = estimate_good_plot_length(stats.xx, tseq, mult=80) # doctest: +SKIP
     &#34;&#34;&#34;
     if xx.ndim == 2:
         # If mult-dim, then average over dims (by ravel)....
@@ -965,15 +965,15 @@ Provide sensible fall-backs (better if chrono is supplied).</p>
     except ValueError:
         K = 0
 
-    if chrono is not None:
-        t = chrono
-        K = int(min(max(K, t.dkObs), t.K))
-        T = round2sigfig(t.tt[K], 2)  # Could return T; T&gt;tt[-1]
-        K = find_1st_ind(t.tt &gt;= T)
+    if tseq is not None:
+        tseq = tseq
+        K = int(min(max(K, tseq.dkObs), tseq.K))
+        T = round2sigfig(tseq.tt[K], 2)  # Could return T; T&gt;tt[-1]
+        K = find_1st_ind(tseq.tt &gt;= T)
         if K:
             return K
         else:
-            return t.K
+            return tseq.K
     else:
         K = int(min(max(K, 1), len(xx)))
         T = round2sigfig(K, 2)
@@ -1055,7 +1055,7 @@ For that, use <code>plt.pause</code> or <code>plt.show</code> instead.</p></div>
 </details>
 </dd>
 <dt id="dapper.tools.viz.plot_hovmoller"><code class="name flex">
-<span>def <span class="ident">plot_hovmoller</span></span>(<span>xx, chrono=None, **kwargs)</span>
+<span>def <span class="ident">plot_hovmoller</span></span>(<span>xx, tseq=None, **kwargs)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Plot Hovmöller diagram.</p>
@@ -1063,7 +1063,7 @@ For that, use <code>plt.pause</code> or <code>plt.show</code> instead.</p></div>
 <dl>
 <dt><strong><code>xx</code></strong> :&ensp;<code>ndarray</code></dt>
 <dd>Plotted array</dd>
-<dt><strong><code>chrono</code></strong> :&ensp;<code><a title="dapper.tools.chronos.Chronology" href="chronos.html#dapper.tools.chronos.Chronology">Chronology</a></code>, optional</dt>
+<dt><strong><code>tseq</code></strong> :&ensp;<code><a title="dapper.tools.chronos.Chronology" href="chronos.html#dapper.tools.chronos.Chronology">Chronology</a></code>, optional</dt>
 <dd>object with property dkObS. Defaults: None</dd>
 </dl></div>
 <details class="source">
@@ -1071,22 +1071,22 @@ For that, use <code>plt.pause</code> or <code>plt.show</code> instead.</p></div>
 <span>Expand source code</span>
 <a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/viz.py#L312-L342" class="git-link">Browse git</a>
 </summary>
-<pre><code class="python">def plot_hovmoller(xx, chrono=None, **kwargs):
+<pre><code class="python">def plot_hovmoller(xx, tseq=None, **kwargs):
     &#34;&#34;&#34;Plot Hovmöller diagram.
 
     Parameters
     ----------
     xx: ndarray
         Plotted array
-    chrono: `dapper.tools.chronos.Chronology`, optional
+    tseq: `dapper.tools.chronos.Chronology`, optional
         object with property dkObS. Defaults: None
     &#34;&#34;&#34;
     fig, ax = place.freshfig(&#34;Hovmoller&#34;, figsize=(4, 3.5))
 
-    if chrono is not None:
-        mask = chrono.tt &lt;= chrono.Tplot*2
-        kk   = chrono.kk[mask]
-        tt   = chrono.tt[mask]
+    if tseq is not None:
+        mask = tseq.tt &lt;= tseq.Tplot*2
+        kk   = tseq.kk[mask]
+        tt   = tseq.tt[mask]
         ax.set_ylabel(&#39;Time (t)&#39;)
     else:
         K    = estimate_good_plot_length(xx, mult=20)
@@ -1233,7 +1233,7 @@ and because <code>rms(umisf)</code> seems too convoluted for interpretation.</p>
     &#34;&#34;&#34;
     fig, (ax0, ax1, ax2) = place.freshfig(&#34;Error components&#34;, figsize=(6, 6), nrows=3)
 
-    chrono = stats.HMM.t
+    tseq = stats.HMM.tseq
     Nx     = stats.xx.shape[1]
 
     en_mean = lambda x: np.mean(x, axis=0)  # noqa
@@ -1269,7 +1269,7 @@ and because <code>rms(umisf)</code> seems too convoluted for interpretation.</p>
     else:
         not_available_text(ax1)
 
-    rmse = stats.err.rms.a[chrono.maskObs_BI]
+    rmse = stats.err.rms.a[tseq.maskObs_BI]
     ax2.hist(rmse, bins=30, density=False)
     ax2.set_ylabel(&#39;Num. of occurence (_a)&#39;)
     ax2.set_xlabel(&#39;RMSE&#39;)
@@ -1302,7 +1302,7 @@ and because <code>rms(umisf)</code> seems too convoluted for interpretation.</p>
     ----------
     stats: `dapper.stats.Stats`
     &#34;&#34;&#34;
-    chrono = stats.HMM.t
+    tseq = stats.HMM.tseq
 
     has_been_computed = \
         hasattr(stats, &#39;rh&#39;) and \
@@ -1314,7 +1314,7 @@ and because <code>rms(umisf)</code> seems too convoluted for interpretation.</p>
     ax.set_xlabel(&#39;ensemble member index (n)&#39;)
 
     if has_been_computed:
-        ranks = stats.rh.a[chrono.maskObs_BI]
+        ranks = stats.rh.a[tseq.maskObs_BI]
         Nx    = ranks.shape[1]
         N     = stats.xp.N
         if not hasattr(stats, &#39;w&#39;):
@@ -1325,7 +1325,7 @@ and because <code>rms(umisf)</code> seems too convoluted for interpretation.</p>
             # Weight ranks by inverse of particle weight. Why? Coz, with correct
             # importance weights, the &#34;expected value&#34; histogram is then flat.
             # Potential improvement: interpolate weights between particles.
-            w  = stats.w.a[chrono.maskObs_BI]
+            w  = stats.w.a[tseq.maskObs_BI]
             K  = len(w)
             w  = np.hstack([w, np.ones((K, 1))/N])  # define weights for rank N+1
             w  = array([w[arange(K), ranks[arange(K), i]] for i in range(Nx)])

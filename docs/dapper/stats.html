@@ -460,11 +460,11 @@ class Stats(series.StatPrint):
         - `kk`    time inds for averaging
         - `kkObs` time inds for averaging obs
         &#34;&#34;&#34;
-        chrono = self.HMM.t
+        tseq = self.HMM.tseq
         if kk is None:
-            kk     = chrono.mask_BI
+            kk     = tseq.mask_BI
         if kkObs is None:
-            kkObs  = chrono.maskObs_BI
+            kkObs  = tseq.maskObs_BI
 
         def average1(tseries):
             avrgs = Avrgs()
@@ -529,9 +529,9 @@ class Stats(series.StatPrint):
         and so cannot be replayed.
         &#34;&#34;&#34;
         # Time settings
-        chrono = self.HMM.t
+        tseq = self.HMM.tseq
         if t2 is None:
-            t2 = t1 + chrono.Tplot
+            t2 = t1 + tseq.Tplot
 
         # Ens does not get stored in stats, so we cannot replay that.
         # If the LPs are initialized with P0!=None, then they will avoid ens plotting.
@@ -551,7 +551,7 @@ class Stats(series.StatPrint):
         desc = self.xp.da_method + &#34; (replay)&#34;
 
         # Play through assimilation cycles
-        for k, kObs, t, _dt in progbar(chrono.ticker, desc):
+        for k, kObs, t, _dt in progbar(tseq.ticker, desc):
             if t1 &lt;= t &lt;= t2:
                 if kObs is not None:
                     LP.update((k, kObs, &#39;f&#39;), None, None)
@@ -1627,11 +1627,11 @@ The unbiasing factor is <span><span class="MathJax_Preview"> N_{eff} / (N_{eff} 
         - `kk`    time inds for averaging
         - `kkObs` time inds for averaging obs
         &#34;&#34;&#34;
-        chrono = self.HMM.t
+        tseq = self.HMM.tseq
         if kk is None:
-            kk     = chrono.mask_BI
+            kk     = tseq.mask_BI
         if kkObs is None:
-            kkObs  = chrono.maskObs_BI
+            kkObs  = tseq.maskObs_BI
 
         def average1(tseries):
             avrgs = Avrgs()
@@ -1696,9 +1696,9 @@ The unbiasing factor is <span><span class="MathJax_Preview"> N_{eff} / (N_{eff} 
         and so cannot be replayed.
         &#34;&#34;&#34;
         # Time settings
-        chrono = self.HMM.t
+        tseq = self.HMM.tseq
         if t2 is None:
-            t2 = t1 + chrono.Tplot
+            t2 = t1 + tseq.Tplot
 
         # Ens does not get stored in stats, so we cannot replay that.
         # If the LPs are initialized with P0!=None, then they will avoid ens plotting.
@@ -1718,7 +1718,7 @@ The unbiasing factor is <span><span class="MathJax_Preview"> N_{eff} / (N_{eff} 
         desc = self.xp.da_method + &#34; (replay)&#34;
 
         # Play through assimilation cycles
-        for k, kObs, t, _dt in progbar(chrono.ticker, desc):
+        for k, kObs, t, _dt in progbar(tseq.ticker, desc):
             if t1 &lt;= t &lt;= t2:
                 if kObs is not None:
                     LP.update((k, kObs, &#39;f&#39;), None, None)
@@ -2076,11 +2076,11 @@ time inds for averaging</li>
     - `kk`    time inds for averaging
     - `kkObs` time inds for averaging obs
     &#34;&#34;&#34;
-    chrono = self.HMM.t
+    tseq = self.HMM.tseq
     if kk is None:
-        kk     = chrono.mask_BI
+        kk     = tseq.mask_BI
     if kkObs is None:
-        kkObs  = chrono.maskObs_BI
+        kkObs  = tseq.maskObs_BI
 
     def average1(tseries):
         avrgs = Avrgs()
@@ -2168,9 +2168,9 @@ time inds for averaging</li>
     and so cannot be replayed.
     &#34;&#34;&#34;
     # Time settings
-    chrono = self.HMM.t
+    tseq = self.HMM.tseq
     if t2 is None:
-        t2 = t1 + chrono.Tplot
+        t2 = t1 + tseq.Tplot
 
     # Ens does not get stored in stats, so we cannot replay that.
     # If the LPs are initialized with P0!=None, then they will avoid ens plotting.
@@ -2190,7 +2190,7 @@ time inds for averaging</li>
     desc = self.xp.da_method + &#34; (replay)&#34;
 
     # Play through assimilation cycles
-    for k, kObs, t, _dt in progbar(chrono.ticker, desc):
+    for k, kObs, t, _dt in progbar(tseq.ticker, desc):
         if t1 &lt;= t &lt;= t2:
             if kObs is not None:
                 LP.update((k, kObs, &#39;f&#39;), None, None)

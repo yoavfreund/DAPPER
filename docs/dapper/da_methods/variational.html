@@ -40,7 +40,7 @@ body.gsc-overflow-hidden #sidebar {overflow: visible;}
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/variational.py#L1-L376" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/variational.py#L1-L375" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">&#34;&#34;&#34;Variational DA methods (iEnKS, 4D-Var, etc).&#34;&#34;&#34;
 
@@ -138,8 +138,7 @@ class iEnKS:
     #   * Trouble playing nice with &#39;-N&#39; inflation estimation.
 
     def assimilate(self, HMM, xx, yy):
-        chrono, X0, stats = HMM.t, HMM.X0, self.stats
-        R, KObs  = HMM.Obs.noise.C, HMM.t.KObs
+        R, KObs  = HMM.Obs.noise.C, HMM.tseq.KObs
         Rm12 = R.sym_sqrt_inv
 
         assert HMM.Dyn.noise.C == 0, (
@@ -152,14 +151,14 @@ class iEnKS:
             EPS = 1.0  # ... prefer using  T=EPS*T, yielding a conditional cloud shape
 
         # Initial ensemble
-        E = X0.sample(self.N)
+        E = HMM.X0.sample(self.N)
 
         # Forward ensemble to kObs = 0 if Lag = 0
         t = 0
         k = 0
         if self.Lag == 0:
-            for k, t, dt in chrono.cycle(kObs=0):
-                stats.assess(k-1, None, &#39;u&#39;, E=E)
+            for k, t, dt in HMM.tseq.cycle(kObs=0):
+                self.stats.assess(k-1, None, &#39;u&#39;, E=E)
                 E = HMM.Dyn(E, t-dt, dt)
 
         # Loop over DA windows (DAW).
@@ -167,24 +166,24 @@ class iEnKS:
             kLag = kObs-self.Lag
             DAW  = range(max(0, kLag+1), min(kObs, KObs) + 1)
 
-            # Assimilation (if ∃ &#34;not-fully-assimlated&#34; obs).
+            # Assimilation (if ∃ &#34;not-fully-assimlated&#34; Obs).
             if kObs &lt;= KObs:
-                E = iEnKS_update(self.upd_a, E, DAW, HMM, stats,
+                E = iEnKS_update(self.upd_a, E, DAW, HMM, self.stats,
                                  EPS, yy[kObs], (k, kObs, t), Rm12,
                                  self.xN, self.MDA, (self.nIter, self.wtol))
                 E = post_process(E, self.infl, self.rot)
 
             # Slide/shift DAW by propagating smoothed (&#39;s&#39;) ensemble from [kLag].
             if kLag &gt;= 0:
-                stats.assess(chrono.kkObs[kLag], kLag, &#39;s&#39;, E=E)
+                self.stats.assess(HMM.tseq.kkObs[kLag], kLag, &#39;s&#39;, E=E)
             cycle_window = range(max(kLag+1, 0), min(max(kLag+1+1, 0), KObs+1))
 
             for kCycle in cycle_window:
-                for k, t, dt in chrono.cycle(kCycle):
-                    stats.assess(k-1, None, &#39;u&#39;, E=E)
+                for k, t, dt in HMM.tseq.cycle(kCycle):
+                    self.stats.assess(k-1, None, &#39;u&#39;, E=E)
                     E = HMM.Dyn(E, t-dt, dt)
 
-        stats.assess(k, KObs, &#39;us&#39;, E=E)
+        self.stats.assess(k, KObs, &#39;us&#39;, E=E)
 
 
 def iEnKS_update(upd_a, E, DAW, HMM, stats, EPS, y, time, Rm12, xN, MDA, threshold):
@@ -200,7 +199,7 @@ def iEnKS_update(upd_a, E, DAW, HMM, stats, EPS, y, time, Rm12, xN, MDA, thresho
 
     # Init iterations.
     N1 = N-1
-    X0, x0 = center(E)    # Decompose ensemble.
+    HMM.X0, x0 = center(E)    # Decompose ensemble.
     w      = np.zeros(N)  # Control vector for the mean state.
     T      = np.eye(N)    # Anomalies transform matrix.
     Tinv   = np.eye(N)
@@ -209,10 +208,10 @@ def iEnKS_update(upd_a, E, DAW, HMM, stats, EPS, y, time, Rm12, xN, MDA, thresho
 
     for iteration in np.arange(nIter):
         # Reconstruct smoothed ensemble.
-        E = x0 + (w + EPS*T)@X0
+        E = x0 + (w + EPS*T)@HMM.X0
         # Forecast.
         for kCycle in DAW:
-            for k, t, dt in HMM.t.cycle(kCycle):  # noqa
+            for k, t, dt in HMM.tseq.cycle(kCycle):  # noqa
                 E = HMM.Dyn(E, t-dt, dt)
         # Observe.
         Eo = HMM.Obs(E, t)
@@ -229,10 +228,10 @@ def iEnKS_update(upd_a, E, DAW, HMM, stats, EPS, y, time, Rm12, xN, MDA, thresho
         T_old = T
 
         # Prepare analysis.
-        Y, xo  = center(Eo)         # Get obs {anomalies, mean}.
-        dy     = (y - xo) @ Rm12.T  # Transform obs space.
-        Y      = Y        @ Rm12.T  # Transform obs space.
-        Y0     = Tinv @ Y           # &#34;De-condition&#34; the obs anomalies.
+        Y, xo  = center(Eo)         # Get HMM.Obs {anomalies, mean}.
+        dy     = (y - xo) @ Rm12.T  # Transform HMM.Obs space.
+        Y      = Y        @ Rm12.T  # Transform HMM.Obs space.
+        Y0     = Tinv @ Y           # &#34;De-condition&#34; the HMM.Obs anomalies.
         V, s, UT = svd0(Y0)         # Decompose Y0.
 
         # Set &#34;cov normlzt fctr&#34; za (&#34;effective ensemble size&#34;)
@@ -302,7 +301,7 @@ def iEnKS_update(upd_a, E, DAW, HMM, stats, EPS, y, time, Rm12, xN, MDA, thresho
         stats.infl[kObs] = np.sqrt(N1/za)
 
     # Final (smoothed) estimate of E at [kLag].
-    E = x0 + (w+T)@X0
+    E = x0 + (w+T)@HMM.X0
 
     return E
 
@@ -328,10 +327,9 @@ class Var4D:
     xB: float               = 1.0
 
     def assimilate(self, HMM, xx, yy):
-        Dyn, Obs, chrono, X0, stats = HMM.Dyn, HMM.Obs, HMM.t, HMM.X0, self.stats
-        R, KObs = HMM.Obs.noise.C, HMM.t.KObs
+        R, KObs = HMM.Obs.noise.C, HMM.tseq.KObs
         Rm12 = R.sym_sqrt_inv
-        Nx = Dyn.M
+        Nx = HMM.Dyn.M
 
         # Set background covariance. Note that it is static (compare to iEnKS).
         if isinstance(self.B, np.ndarray):
@@ -348,15 +346,15 @@ class Var4D:
         B12 = CovMat(B).sym_sqrt
 
         # Init
-        x = X0.mu
-        stats.assess(0, mu=x, Cov=B)
+        x = HMM.X0.mu
+        self.stats.assess(0, mu=x, Cov=B)
 
         # Loop over DA windows (DAW).
         for kObs in progbar(np.arange(-1, KObs+self.Lag+1)):
             kLag = kObs-self.Lag
             DAW = range(max(0, kLag+1), min(kObs, KObs) + 1)
 
-            # Assimilation (if ∃ &#34;not-fully-assimlated&#34; obs).
+            # Assimilation (if ∃ &#34;not-fully-assimlated&#34; Obs).
             if 0 &lt;= kObs &lt;= KObs:
 
                 # Init iterations.
@@ -369,22 +367,22 @@ class Var4D:
                     X = B12  # Aggregate composite TLMs onto B12
                     # Forecast.
                     for kCycle in DAW:
-                        for k, t, dt in chrono.cycle(kCycle):  # noqa
-                            X = Dyn.linear(x, t-dt, dt) @ X
-                            x = Dyn(x, t-dt, dt)
+                        for k, t, dt in HMM.tseq.cycle(kCycle):  # noqa
+                            X = HMM.Dyn.linear(x, t-dt, dt) @ X
+                            x = HMM.Dyn(x, t-dt, dt)
 
-                    # Assess forecast stats
+                    # Assess forecast self.stats
                     if iteration == 0:
-                        stats.assess(k, kObs, &#39;f&#39;, mu=x, Cov=X@X.T)
+                        self.stats.assess(k, kObs, &#39;f&#39;, mu=x, Cov=X@X.T)
 
                     # Observe.
-                    Y  = Obs.linear(x, t) @ X
-                    xo = Obs(x, t)
+                    Y  = HMM.Obs.linear(x, t) @ X
+                    xo = HMM.Obs(x, t)
 
                     # Analysis prep.
-                    y      = yy[kObs]          # Get current obs.
-                    dy     = Rm12 @ (y - xo)   # Transform obs space.
-                    Y      = Rm12 @ Y          # Transform obs space.
+                    y      = yy[kObs]          # Get current HMM.Obs.
+                    dy     = Rm12 @ (y - xo)   # Transform HMM.Obs space.
+                    Y      = Rm12 @ Y          # Transform HMM.Obs space.
                     V, s, UT = svd0(Y.T)       # Decomp for lin-alg update comps.
 
                     # Post. cov (approx) of w,
@@ -399,10 +397,10 @@ class Var4D:
                     if dw@dw &lt; self.wtol*Nx:
                         break
 
-                # Assess (analysis) stats.
+                # Assess (analysis) self.stats.
                 final_increment = X@dw
-                stats.assess(k, kObs, &#39;a&#39;, mu=x+final_increment, Cov=X@Cow1@X.T)
-                stats.iters[kObs] = iteration+1
+                self.stats.assess(k, kObs, &#39;a&#39;, mu=x+final_increment, Cov=X@Cow1@X.T)
+                self.stats.iters[kObs] = iteration+1
 
                 # Final (smoothed) estimate at [kLag].
                 x = x0 + B12@w
@@ -411,13 +409,14 @@ class Var4D:
             # Slide/shift DAW by propagating smoothed (&#39;s&#39;) state from [kLag].
             if -1 &lt;= kLag &lt; KObs:
                 if kLag &gt;= 0:
-                    stats.assess(chrono.kkObs[kLag], kLag, &#39;s&#39;, mu=x, Cov=X@Cow1@X.T)
-                for k, t, dt in chrono.cycle(kLag+1):
-                    stats.assess(k-1, None, &#39;u&#39;, mu=x, Cov=Y@Y.T)
-                    X = Dyn.linear(x, t-dt, dt) @ X
-                    x = Dyn(x, t-dt, dt)
+                    self.stats.assess(HMM.tseq.kkObs[kLag], kLag, &#39;s&#39;,
+                                      mu=x, Cov=X@Cow1@X.T)
+                for k, t, dt in HMM.tseq.cycle(kLag+1):
+                    self.stats.assess(k-1, None, &#39;u&#39;, mu=x, Cov=Y@Y.T)
+                    X = HMM.Dyn.linear(x, t-dt, dt) @ X
+                    x = HMM.Dyn(x, t-dt, dt)
 
-        stats.assess(k, KObs, &#39;us&#39;, mu=x, Cov=X@Cow1@X.T)</code></pre>
+        self.stats.assess(k, KObs, &#39;us&#39;, mu=x, Cov=X@Cow1@X.T)</code></pre>
 </details>
 </section>
 <section>
@@ -437,7 +436,7 @@ specified by <code>upd_a</code> (See <code><a title="dapper.da_methods.variation
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/variational.py#L146-L263" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/variational.py#L145-L262" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def iEnKS_update(upd_a, E, DAW, HMM, stats, EPS, y, time, Rm12, xN, MDA, threshold):
     &#34;&#34;&#34;Perform the iEnKS update.
@@ -452,7 +451,7 @@ specified by <code>upd_a</code> (See <code><a title="dapper.da_methods.variation
 
     # Init iterations.
     N1 = N-1
-    X0, x0 = center(E)    # Decompose ensemble.
+    HMM.X0, x0 = center(E)    # Decompose ensemble.
     w      = np.zeros(N)  # Control vector for the mean state.
     T      = np.eye(N)    # Anomalies transform matrix.
     Tinv   = np.eye(N)
@@ -461,10 +460,10 @@ specified by <code>upd_a</code> (See <code><a title="dapper.da_methods.variation
 
     for iteration in np.arange(nIter):
         # Reconstruct smoothed ensemble.
-        E = x0 + (w + EPS*T)@X0
+        E = x0 + (w + EPS*T)@HMM.X0
         # Forecast.
         for kCycle in DAW:
-            for k, t, dt in HMM.t.cycle(kCycle):  # noqa
+            for k, t, dt in HMM.tseq.cycle(kCycle):  # noqa
                 E = HMM.Dyn(E, t-dt, dt)
         # Observe.
         Eo = HMM.Obs(E, t)
@@ -481,10 +480,10 @@ specified by <code>upd_a</code> (See <code><a title="dapper.da_methods.variation
         T_old = T
 
         # Prepare analysis.
-        Y, xo  = center(Eo)         # Get obs {anomalies, mean}.
-        dy     = (y - xo) @ Rm12.T  # Transform obs space.
-        Y      = Y        @ Rm12.T  # Transform obs space.
-        Y0     = Tinv @ Y           # &#34;De-condition&#34; the obs anomalies.
+        Y, xo  = center(Eo)         # Get HMM.Obs {anomalies, mean}.
+        dy     = (y - xo) @ Rm12.T  # Transform HMM.Obs space.
+        Y      = Y        @ Rm12.T  # Transform HMM.Obs space.
+        Y0     = Tinv @ Y           # &#34;De-condition&#34; the HMM.Obs anomalies.
         V, s, UT = svd0(Y0)         # Decompose Y0.
 
         # Set &#34;cov normlzt fctr&#34; za (&#34;effective ensemble size&#34;)
@@ -554,7 +553,7 @@ specified by <code>upd_a</code> (See <code><a title="dapper.da_methods.variation
         stats.infl[kObs] = np.sqrt(N1/za)
 
     # Final (smoothed) estimate of E at [kLag].
-    E = x0 + (w+T)@X0
+    E = x0 + (w+T)@HMM.X0
 
     return E</code></pre>
 </details>
@@ -617,7 +616,7 @@ Total number of model simulations (of duration dtObs): N * (nIter*Lag + 1).
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/variational.py#L27-L143" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/variational.py#L27-L142" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class iEnKS:
     &#34;&#34;&#34;Iterative EnKS.
@@ -689,8 +688,7 @@ Total number of model simulations (of duration dtObs): N * (nIter*Lag + 1).
     #   * Trouble playing nice with &#39;-N&#39; inflation estimation.
 
     def assimilate(self, HMM, xx, yy):
-        chrono, X0, stats = HMM.t, HMM.X0, self.stats
-        R, KObs  = HMM.Obs.noise.C, HMM.t.KObs
+        R, KObs  = HMM.Obs.noise.C, HMM.tseq.KObs
         Rm12 = R.sym_sqrt_inv
 
         assert HMM.Dyn.noise.C == 0, (
@@ -703,14 +701,14 @@ Total number of model simulations (of duration dtObs): N * (nIter*Lag + 1).
             EPS = 1.0  # ... prefer using  T=EPS*T, yielding a conditional cloud shape
 
         # Initial ensemble
-        E = X0.sample(self.N)
+        E = HMM.X0.sample(self.N)
 
         # Forward ensemble to kObs = 0 if Lag = 0
         t = 0
         k = 0
         if self.Lag == 0:
-            for k, t, dt in chrono.cycle(kObs=0):
-                stats.assess(k-1, None, &#39;u&#39;, E=E)
+            for k, t, dt in HMM.tseq.cycle(kObs=0):
+                self.stats.assess(k-1, None, &#39;u&#39;, E=E)
                 E = HMM.Dyn(E, t-dt, dt)
 
         # Loop over DA windows (DAW).
@@ -718,24 +716,24 @@ Total number of model simulations (of duration dtObs): N * (nIter*Lag + 1).
             kLag = kObs-self.Lag
             DAW  = range(max(0, kLag+1), min(kObs, KObs) + 1)
 
-            # Assimilation (if ∃ &#34;not-fully-assimlated&#34; obs).
+            # Assimilation (if ∃ &#34;not-fully-assimlated&#34; Obs).
             if kObs &lt;= KObs:
-                E = iEnKS_update(self.upd_a, E, DAW, HMM, stats,
+                E = iEnKS_update(self.upd_a, E, DAW, HMM, self.stats,
                                  EPS, yy[kObs], (k, kObs, t), Rm12,
                                  self.xN, self.MDA, (self.nIter, self.wtol))
                 E = post_process(E, self.infl, self.rot)
 
             # Slide/shift DAW by propagating smoothed (&#39;s&#39;) ensemble from [kLag].
             if kLag &gt;= 0:
-                stats.assess(chrono.kkObs[kLag], kLag, &#39;s&#39;, E=E)
+                self.stats.assess(HMM.tseq.kkObs[kLag], kLag, &#39;s&#39;, E=E)
             cycle_window = range(max(kLag+1, 0), min(max(kLag+1+1, 0), KObs+1))
 
             for kCycle in cycle_window:
-                for k, t, dt in chrono.cycle(kCycle):
-                    stats.assess(k-1, None, &#39;u&#39;, E=E)
+                for k, t, dt in HMM.tseq.cycle(kCycle):
+                    self.stats.assess(k-1, None, &#39;u&#39;, E=E)
                     E = HMM.Dyn(E, t-dt, dt)
 
-        stats.assess(k, KObs, &#39;us&#39;, E=E)</code></pre>
+        self.stats.assess(k, KObs, &#39;us&#39;, E=E)</code></pre>
 </details>
 <h3>Class variables</h3>
 <dl>
@@ -798,11 +796,10 @@ Total number of model simulations (of duration dtObs): N * (nIter*Lag + 1).
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/variational.py#L96-L143" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/variational.py#L96-L142" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def assimilate(self, HMM, xx, yy):
-    chrono, X0, stats = HMM.t, HMM.X0, self.stats
-    R, KObs  = HMM.Obs.noise.C, HMM.t.KObs
+    R, KObs  = HMM.Obs.noise.C, HMM.tseq.KObs
     Rm12 = R.sym_sqrt_inv
 
     assert HMM.Dyn.noise.C == 0, (
@@ -815,14 +812,14 @@ Total number of model simulations (of duration dtObs): N * (nIter*Lag + 1).
         EPS = 1.0  # ... prefer using  T=EPS*T, yielding a conditional cloud shape
 
     # Initial ensemble
-    E = X0.sample(self.N)
+    E = HMM.X0.sample(self.N)
 
     # Forward ensemble to kObs = 0 if Lag = 0
     t = 0
     k = 0
     if self.Lag == 0:
-        for k, t, dt in chrono.cycle(kObs=0):
-            stats.assess(k-1, None, &#39;u&#39;, E=E)
+        for k, t, dt in HMM.tseq.cycle(kObs=0):
+            self.stats.assess(k-1, None, &#39;u&#39;, E=E)
             E = HMM.Dyn(E, t-dt, dt)
 
     # Loop over DA windows (DAW).
@@ -830,24 +827,24 @@ Total number of model simulations (of duration dtObs): N * (nIter*Lag + 1).
         kLag = kObs-self.Lag
         DAW  = range(max(0, kLag+1), min(kObs, KObs) + 1)
 
-        # Assimilation (if ∃ &#34;not-fully-assimlated&#34; obs).
+        # Assimilation (if ∃ &#34;not-fully-assimlated&#34; Obs).
         if kObs &lt;= KObs:
-            E = iEnKS_update(self.upd_a, E, DAW, HMM, stats,
+            E = iEnKS_update(self.upd_a, E, DAW, HMM, self.stats,
                              EPS, yy[kObs], (k, kObs, t), Rm12,
                              self.xN, self.MDA, (self.nIter, self.wtol))
             E = post_process(E, self.infl, self.rot)
 
         # Slide/shift DAW by propagating smoothed (&#39;s&#39;) ensemble from [kLag].
         if kLag &gt;= 0:
-            stats.assess(chrono.kkObs[kLag], kLag, &#39;s&#39;, E=E)
+            self.stats.assess(HMM.tseq.kkObs[kLag], kLag, &#39;s&#39;, E=E)
         cycle_window = range(max(kLag+1, 0), min(max(kLag+1+1, 0), KObs+1))
 
         for kCycle in cycle_window:
-            for k, t, dt in chrono.cycle(kCycle):
-                stats.assess(k-1, None, &#39;u&#39;, E=E)
+            for k, t, dt in HMM.tseq.cycle(kCycle):
+                self.stats.assess(k-1, None, &#39;u&#39;, E=E)
                 E = HMM.Dyn(E, t-dt, dt)
 
-    stats.assess(k, KObs, &#39;us&#39;, E=E)</code></pre>
+    self.stats.assess(k, KObs, &#39;us&#39;, E=E)</code></pre>
 </details>
 </dd>
 <dt id="dapper.da_methods.variational.iEnKS.stat"><code class="name flex">
@@ -884,7 +881,7 @@ there is no benefit to the adjoint trick (back-propagation).
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/variational.py#L267-L376" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/variational.py#L266-L375" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Var4D:
     &#34;&#34;&#34;4D-Var.
@@ -906,10 +903,9 @@ there is no benefit to the adjoint trick (back-propagation).
     xB: float               = 1.0
 
     def assimilate(self, HMM, xx, yy):
-        Dyn, Obs, chrono, X0, stats = HMM.Dyn, HMM.Obs, HMM.t, HMM.X0, self.stats
-        R, KObs = HMM.Obs.noise.C, HMM.t.KObs
+        R, KObs = HMM.Obs.noise.C, HMM.tseq.KObs
         Rm12 = R.sym_sqrt_inv
-        Nx = Dyn.M
+        Nx = HMM.Dyn.M
 
         # Set background covariance. Note that it is static (compare to iEnKS).
         if isinstance(self.B, np.ndarray):
@@ -926,15 +922,15 @@ there is no benefit to the adjoint trick (back-propagation).
         B12 = CovMat(B).sym_sqrt
 
         # Init
-        x = X0.mu
-        stats.assess(0, mu=x, Cov=B)
+        x = HMM.X0.mu
+        self.stats.assess(0, mu=x, Cov=B)
 
         # Loop over DA windows (DAW).
         for kObs in progbar(np.arange(-1, KObs+self.Lag+1)):
             kLag = kObs-self.Lag
             DAW = range(max(0, kLag+1), min(kObs, KObs) + 1)
 
-            # Assimilation (if ∃ &#34;not-fully-assimlated&#34; obs).
+            # Assimilation (if ∃ &#34;not-fully-assimlated&#34; Obs).
             if 0 &lt;= kObs &lt;= KObs:
 
                 # Init iterations.
@@ -947,22 +943,22 @@ there is no benefit to the adjoint trick (back-propagation).
                     X = B12  # Aggregate composite TLMs onto B12
                     # Forecast.
                     for kCycle in DAW:
-                        for k, t, dt in chrono.cycle(kCycle):  # noqa
-                            X = Dyn.linear(x, t-dt, dt) @ X
-                            x = Dyn(x, t-dt, dt)
+                        for k, t, dt in HMM.tseq.cycle(kCycle):  # noqa
+                            X = HMM.Dyn.linear(x, t-dt, dt) @ X
+                            x = HMM.Dyn(x, t-dt, dt)
 
-                    # Assess forecast stats
+                    # Assess forecast self.stats
                     if iteration == 0:
-                        stats.assess(k, kObs, &#39;f&#39;, mu=x, Cov=X@X.T)
+                        self.stats.assess(k, kObs, &#39;f&#39;, mu=x, Cov=X@X.T)
 
                     # Observe.
-                    Y  = Obs.linear(x, t) @ X
-                    xo = Obs(x, t)
+                    Y  = HMM.Obs.linear(x, t) @ X
+                    xo = HMM.Obs(x, t)
 
                     # Analysis prep.
-                    y      = yy[kObs]          # Get current obs.
-                    dy     = Rm12 @ (y - xo)   # Transform obs space.
-                    Y      = Rm12 @ Y          # Transform obs space.
+                    y      = yy[kObs]          # Get current HMM.Obs.
+                    dy     = Rm12 @ (y - xo)   # Transform HMM.Obs space.
+                    Y      = Rm12 @ Y          # Transform HMM.Obs space.
                     V, s, UT = svd0(Y.T)       # Decomp for lin-alg update comps.
 
                     # Post. cov (approx) of w,
@@ -977,10 +973,10 @@ there is no benefit to the adjoint trick (back-propagation).
                     if dw@dw &lt; self.wtol*Nx:
                         break
 
-                # Assess (analysis) stats.
+                # Assess (analysis) self.stats.
                 final_increment = X@dw
-                stats.assess(k, kObs, &#39;a&#39;, mu=x+final_increment, Cov=X@Cow1@X.T)
-                stats.iters[kObs] = iteration+1
+                self.stats.assess(k, kObs, &#39;a&#39;, mu=x+final_increment, Cov=X@Cow1@X.T)
+                self.stats.iters[kObs] = iteration+1
 
                 # Final (smoothed) estimate at [kLag].
                 x = x0 + B12@w
@@ -989,13 +985,14 @@ there is no benefit to the adjoint trick (back-propagation).
             # Slide/shift DAW by propagating smoothed (&#39;s&#39;) state from [kLag].
             if -1 &lt;= kLag &lt; KObs:
                 if kLag &gt;= 0:
-                    stats.assess(chrono.kkObs[kLag], kLag, &#39;s&#39;, mu=x, Cov=X@Cow1@X.T)
-                for k, t, dt in chrono.cycle(kLag+1):
-                    stats.assess(k-1, None, &#39;u&#39;, mu=x, Cov=Y@Y.T)
-                    X = Dyn.linear(x, t-dt, dt) @ X
-                    x = Dyn(x, t-dt, dt)
+                    self.stats.assess(HMM.tseq.kkObs[kLag], kLag, &#39;s&#39;,
+                                      mu=x, Cov=X@Cow1@X.T)
+                for k, t, dt in HMM.tseq.cycle(kLag+1):
+                    self.stats.assess(k-1, None, &#39;u&#39;, mu=x, Cov=Y@Y.T)
+                    X = HMM.Dyn.linear(x, t-dt, dt) @ X
+                    x = HMM.Dyn(x, t-dt, dt)
 
-        stats.assess(k, KObs, &#39;us&#39;, mu=x, Cov=X@Cow1@X.T)</code></pre>
+        self.stats.assess(k, KObs, &#39;us&#39;, mu=x, Cov=X@Cow1@X.T)</code></pre>
 </details>
 <h3>Class variables</h3>
 <dl>
@@ -1034,13 +1031,12 @@ there is no benefit to the adjoint trick (back-propagation).
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/variational.py#L286-L376" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/variational.py#L285-L375" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def assimilate(self, HMM, xx, yy):
-    Dyn, Obs, chrono, X0, stats = HMM.Dyn, HMM.Obs, HMM.t, HMM.X0, self.stats
-    R, KObs = HMM.Obs.noise.C, HMM.t.KObs
+    R, KObs = HMM.Obs.noise.C, HMM.tseq.KObs
     Rm12 = R.sym_sqrt_inv
-    Nx = Dyn.M
+    Nx = HMM.Dyn.M
 
     # Set background covariance. Note that it is static (compare to iEnKS).
     if isinstance(self.B, np.ndarray):
@@ -1057,15 +1053,15 @@ there is no benefit to the adjoint trick (back-propagation).
     B12 = CovMat(B).sym_sqrt
 
     # Init
-    x = X0.mu
-    stats.assess(0, mu=x, Cov=B)
+    x = HMM.X0.mu
+    self.stats.assess(0, mu=x, Cov=B)
 
     # Loop over DA windows (DAW).
     for kObs in progbar(np.arange(-1, KObs+self.Lag+1)):
         kLag = kObs-self.Lag
         DAW = range(max(0, kLag+1), min(kObs, KObs) + 1)
 
-        # Assimilation (if ∃ &#34;not-fully-assimlated&#34; obs).
+        # Assimilation (if ∃ &#34;not-fully-assimlated&#34; Obs).
         if 0 &lt;= kObs &lt;= KObs:
 
             # Init iterations.
@@ -1078,22 +1074,22 @@ there is no benefit to the adjoint trick (back-propagation).
                 X = B12  # Aggregate composite TLMs onto B12
                 # Forecast.
                 for kCycle in DAW:
-                    for k, t, dt in chrono.cycle(kCycle):  # noqa
-                        X = Dyn.linear(x, t-dt, dt) @ X
-                        x = Dyn(x, t-dt, dt)
+                    for k, t, dt in HMM.tseq.cycle(kCycle):  # noqa
+                        X = HMM.Dyn.linear(x, t-dt, dt) @ X
+                        x = HMM.Dyn(x, t-dt, dt)
 
-                # Assess forecast stats
+                # Assess forecast self.stats
                 if iteration == 0:
-                    stats.assess(k, kObs, &#39;f&#39;, mu=x, Cov=X@X.T)
+                    self.stats.assess(k, kObs, &#39;f&#39;, mu=x, Cov=X@X.T)
 
                 # Observe.
-                Y  = Obs.linear(x, t) @ X
-                xo = Obs(x, t)
+                Y  = HMM.Obs.linear(x, t) @ X
+                xo = HMM.Obs(x, t)
 
                 # Analysis prep.
-                y      = yy[kObs]          # Get current obs.
-                dy     = Rm12 @ (y - xo)   # Transform obs space.
-                Y      = Rm12 @ Y          # Transform obs space.
+                y      = yy[kObs]          # Get current HMM.Obs.
+                dy     = Rm12 @ (y - xo)   # Transform HMM.Obs space.
+                Y      = Rm12 @ Y          # Transform HMM.Obs space.
                 V, s, UT = svd0(Y.T)       # Decomp for lin-alg update comps.
 
                 # Post. cov (approx) of w,
@@ -1108,10 +1104,10 @@ there is no benefit to the adjoint trick (back-propagation).
                 if dw@dw &lt; self.wtol*Nx:
                     break
 
-            # Assess (analysis) stats.
+            # Assess (analysis) self.stats.
             final_increment = X@dw
-            stats.assess(k, kObs, &#39;a&#39;, mu=x+final_increment, Cov=X@Cow1@X.T)
-            stats.iters[kObs] = iteration+1
+            self.stats.assess(k, kObs, &#39;a&#39;, mu=x+final_increment, Cov=X@Cow1@X.T)
+            self.stats.iters[kObs] = iteration+1
 
             # Final (smoothed) estimate at [kLag].
             x = x0 + B12@w
@@ -1120,13 +1116,14 @@ there is no benefit to the adjoint trick (back-propagation).
         # Slide/shift DAW by propagating smoothed (&#39;s&#39;) state from [kLag].
         if -1 &lt;= kLag &lt; KObs:
             if kLag &gt;= 0:
-                stats.assess(chrono.kkObs[kLag], kLag, &#39;s&#39;, mu=x, Cov=X@Cow1@X.T)
-            for k, t, dt in chrono.cycle(kLag+1):
-                stats.assess(k-1, None, &#39;u&#39;, mu=x, Cov=Y@Y.T)
-                X = Dyn.linear(x, t-dt, dt) @ X
-                x = Dyn(x, t-dt, dt)
+                self.stats.assess(HMM.tseq.kkObs[kLag], kLag, &#39;s&#39;,
+                                  mu=x, Cov=X@Cow1@X.T)
+            for k, t, dt in HMM.tseq.cycle(kLag+1):
+                self.stats.assess(k-1, None, &#39;u&#39;, mu=x, Cov=Y@Y.T)
+                X = HMM.Dyn.linear(x, t-dt, dt) @ X
+                x = HMM.Dyn(x, t-dt, dt)
 
-    stats.assess(k, KObs, &#39;us&#39;, mu=x, Cov=X@Cow1@X.T)</code></pre>
+    self.stats.assess(k, KObs, &#39;us&#39;, mu=x, Cov=X@Cow1@X.T)</code></pre>
 </details>
 </dd>
 <dt id="dapper.da_methods.variational.Var4D.stat"><code class="name flex">

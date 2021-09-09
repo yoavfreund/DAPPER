@@ -50,7 +50,7 @@ from dapper.mods.utils import linspace_int
 from dapper.tools.localization import nd_Id_localization
 
 model.Force = 8.17
-t = modelling.Chronology(0.01, dkObs=10, K=4000, Tplot=10, BurnIn=10)
+tseq = modelling.Chronology(0.01, dkObs=10, K=4000, Tplot=10, BurnIn=10)
 
 Nx = 1000
 
@@ -59,7 +59,7 @@ Dyn = {
     &#39;model&#39;: step,
     # It&#39;s not clear from the paper whether Q=0.5 or 0.25.
     # But I&#39;m pretty sure it&#39;s applied each dtObs (not dt).
-    &#39;noise&#39;: 0.25 / t.dtObs,
+    &#39;noise&#39;: 0.25 / tseq.dtObs,
     # &#39;noise&#39;: 0.5 / t.dtObs,
 }
 
@@ -70,7 +70,7 @@ Obs = modelling.partial_Id_Obs(Nx, jj)
 Obs[&#39;noise&#39;] = 0.1**2
 Obs[&#39;localizer&#39;] = nd_Id_localization((Nx,), (1,), jj, periodic=True)
 
-HMM = modelling.HiddenMarkovModel(Dyn, Obs, t, X0)
+HMM = modelling.HiddenMarkovModel(Dyn, Obs, tseq, X0)
 
 HMM.liveplotters = LPs(jj)
 

@@ -46,7 +46,7 @@ body.gsc-overflow-hidden #sidebar {overflow: visible;}
 import numpy as np
 
 import dapper.mods as modelling
-from dapper.mods.Lorenz96.bocquet2010 import Dyn, t
+from dapper.mods.Lorenz96.bocquet2010 import Dyn, tseq
 
 Nx = 40
 Dyn[&#39;M&#39;] = Nx
@@ -57,7 +57,7 @@ jj = np.arange(0, Nx, 2)
 Obs = modelling.partial_Id_Obs(Nx, jj)
 Obs[&#39;noise&#39;] = 1.5
 
-HMM = modelling.HiddenMarkovModel(Dyn, Obs, t, X0)
+HMM = modelling.HiddenMarkovModel(Dyn, Obs, tseq, X0)
 
 ####################
 # Suggested tuning

@@ -40,7 +40,7 @@ body.gsc-overflow-hidden #sidebar {overflow: visible;}
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/particle.py#L1-L660" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/particle.py#L1-L650" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">&#34;&#34;&#34;Weight- &amp; resampling-based DA methods.&#34;&#34;&#34;
 
@@ -95,20 +95,18 @@ class PartFilt:
     # miN = N*miN
 
     def assimilate(self, HMM, xx, yy):
-        Dyn, Obs, chrono, X0, stats = \
-            HMM.Dyn, HMM.Obs, HMM.t, HMM.X0, self.stats
-        N, Nx, Rm12 = self.N, Dyn.M, Obs.noise.C.sym_sqrt_inv
+        N, Nx, Rm12 = self.N, HMM.Dyn.M, HMM.Obs.noise.C.sym_sqrt_inv
 
-        E = X0.sample(N)
+        E = HMM.X0.sample(N)
         w = 1/N*np.ones(N)
 
-        stats.assess(0, E=E, w=w)
+        self.stats.assess(0, E=E, w=w)
 
-        for k, kObs, t, dt in progbar(chrono.ticker):
-            E = Dyn(E, t-dt, dt)
-            if Dyn.noise.C != 0:
+        for k, kObs, t, dt in progbar(HMM.tseq.ticker):
+            E = HMM.Dyn(E, t-dt, dt)
+            if HMM.Dyn.noise.C != 0:
                 D  = rnd.randn(N, Nx)
-                E += np.sqrt(dt*self.qroot)*(D@Dyn.noise.C.Right)
+                E += np.sqrt(dt*self.qroot)*(D@HMM.Dyn.noise.C.Right)
 
                 if self.qroot != 1.0:
                     # Evaluate p/q (for each col of D) when q:=p**(1/self.qroot).
@@ -116,12 +114,12 @@ class PartFilt:
                     w /= w.sum()
 
             if kObs is not None:
-                stats.assess(k, kObs, &#39;f&#39;, E=E, w=w)
+                self.stats.assess(k, kObs, &#39;f&#39;, E=E, w=w)
 
-                innovs = (yy[kObs] - Obs(E, t)) @ Rm12.T
+                innovs = (yy[kObs] - HMM.Obs(E, t)) @ Rm12.T
                 w      = reweight(w, innovs=innovs)
 
-                if trigger_resampling(w, self.NER, [stats, E, k, kObs]):
+                if trigger_resampling(w, self.NER, [self.stats, E, k, kObs]):
                     C12     = self.reg*auto_bandw(N, Nx)*raw_C12(E, w)
                     # C12  *= np.sqrt(rroot) # Re-include?
                     idx, w  = resample(w, self.resampl, wroot=self.wroot)
@@ -130,7 +128,7 @@ class PartFilt:
                     #     # Compensate for rroot
                     #     w *= np.exp(-0.5*chi2*(1 - 1/rroot))
                     #     w /= w.sum()
-            stats.assess(k, kObs, &#39;u&#39;, E=E, w=w)
+            self.stats.assess(k, kObs, &#39;u&#39;, E=E, w=w)
 
 
 @particle_method
@@ -151,25 +149,23 @@ class OptPF:
     wroot: float = 1.0
 
     def assimilate(self, HMM, xx, yy):
-        Dyn, Obs, chrono, X0, stats = \
-            HMM.Dyn, HMM.Obs, HMM.t, HMM.X0, self.stats
-        N, Nx, R = self.N, Dyn.M, Obs.noise.C.full
+        N, Nx, R = self.N, HMM.Dyn.M, HMM.Obs.noise.C.full
 
-        E = X0.sample(N)
+        E = HMM.X0.sample(N)
         w = 1/N*np.ones(N)
 
-        stats.assess(0, E=E, w=w)
+        self.stats.assess(0, E=E, w=w)
 
-        for k, kObs, t, dt in progbar(chrono.ticker):
-            E = Dyn(E, t-dt, dt)
-            if Dyn.noise.C != 0:
-                E += np.sqrt(dt)*(rnd.randn(N, Nx)@Dyn.noise.C.Right)
+        for k, kObs, t, dt in progbar(HMM.tseq.ticker):
+            E = HMM.Dyn(E, t-dt, dt)
+            if HMM.Dyn.noise.C != 0:
+                E += np.sqrt(dt)*(rnd.randn(N, Nx)@HMM.Dyn.noise.C.Right)
 
             if kObs is not None:
-                stats.assess(k, kObs, &#39;f&#39;, E=E, w=w)
+                self.stats.assess(k, kObs, &#39;f&#39;, E=E, w=w)
                 y = yy[kObs]
 
-                Eo = Obs(E, t)
+                Eo = HMM.Obs(E, t)
                 innovs = y - Eo
 
                 # EnKF-ish update
@@ -179,8 +175,8 @@ class OptPF:
                 C   = Ys.T@Ys + R
                 KG  = As.T@mrdiv(Ys, C)
                 E  += sample_quickly_with(As)[0]
-                D   = Obs.noise.sample(N)
-                dE  = KG @ (y-Obs(E, t)-D).T
+                D   = HMM.Obs.noise.sample(N)
+                dE  = KG @ (y-HMM.Obs(E, t)-D).T
                 E   = E + dE.T
 
                 # Importance weighting
@@ -189,12 +185,12 @@ class OptPF:
                 w      = reweight(w, logL=logL)
 
                 # Resampling
-                if trigger_resampling(w, self.NER, [stats, E, k, kObs]):
+                if trigger_resampling(w, self.NER, [self.stats, E, k, kObs]):
                     C12     = self.reg*auto_bandw(N, Nx)*raw_C12(E, w)
                     idx, w  = resample(w, self.resampl, wroot=self.wroot)
                     E, _    = regularize(C12, E, idx, self.nuj)
 
-            stats.assess(k, kObs, &#39;u&#39;, E=E, w=w)
+            self.stats.assess(k, kObs, &#39;u&#39;, E=E, w=w)
 
 
 @particle_method
@@ -224,20 +220,18 @@ class PFa:
     qroot: float = 1.0
 
     def assimilate(self, HMM, xx, yy):
-        Dyn, Obs, chrono, X0, stats = \
-            HMM.Dyn, HMM.Obs, HMM.t, HMM.X0, self.stats
-        N, Nx, Rm12 = self.N, Dyn.M, Obs.noise.C.sym_sqrt_inv
+        N, Nx, Rm12 = self.N, HMM.Dyn.M, HMM.Obs.noise.C.sym_sqrt_inv
 
-        E = X0.sample(N)
+        E = HMM.X0.sample(N)
         w = 1/N*np.ones(N)
 
-        stats.assess(0, E=E, w=w)
+        self.stats.assess(0, E=E, w=w)
 
-        for k, kObs, t, dt in progbar(chrono.ticker):
-            E = Dyn(E, t-dt, dt)
-            if Dyn.noise.C != 0:
+        for k, kObs, t, dt in progbar(HMM.tseq.ticker):
+            E = HMM.Dyn(E, t-dt, dt)
+            if HMM.Dyn.noise.C != 0:
                 D  = rnd.randn(N, Nx)
-                E += np.sqrt(dt*self.qroot)*(D@Dyn.noise.C.Right)
+                E += np.sqrt(dt*self.qroot)*(D@HMM.Dyn.noise.C.Right)
 
                 if self.qroot != 1.0:
                     # Evaluate p/q (for each col of D) when q:=p**(1/self.qroot).
@@ -245,12 +239,12 @@ class PFa:
                     w /= w.sum()
 
             if kObs is not None:
-                stats.assess(k, kObs, &#39;f&#39;, E=E, w=w)
+                self.stats.assess(k, kObs, &#39;f&#39;, E=E, w=w)
 
-                innovs = (yy[kObs] - Obs(E, t)) @ Rm12.T
+                innovs = (yy[kObs] - HMM.Obs(E, t)) @ Rm12.T
                 w      = reweight(w, innovs=innovs)
 
-                if trigger_resampling(w, self.NER, [stats, E, k, kObs]):
+                if trigger_resampling(w, self.NER, [self.stats, E, k, kObs]):
                     C12    = self.reg*auto_bandw(N, Nx)*raw_C12(E, w)
                     # C12  *= np.sqrt(rroot) # Re-include?
 
@@ -262,7 +256,7 @@ class PFa:
                         if 1/(sw@sw) &lt; N*self.alpha:
                             wroot += 0.2
                         else:
-                            stats.wroot[kObs] = wroot
+                            self.stats.wroot[kObs] = wroot
                             break
                     idx, w  = resample(sw, self.resampl, wroot=1)
 
@@ -271,7 +265,7 @@ class PFa:
                     #     Compensate for rroot
                     #     w *= np.exp(-0.5*chi2*(1 - 1/rroot))
                     #     w /= w.sum()
-            stats.assess(k, kObs, &#39;u&#39;, E=E, w=w)
+            self.stats.assess(k, kObs, &#39;u&#39;, E=E, w=w)
 
 
 @particle_method
@@ -297,27 +291,25 @@ class PFxN_EnKF:
     wroot_max: float = 5.0
 
     def assimilate(self, HMM, xx, yy):
-        Dyn, Obs, chrono, X0, stats = \
-            HMM.Dyn, HMM.Obs, HMM.t, HMM.X0, self.stats
-        N, xN, Nx, Rm12, Ri = \
-            self.N, self.xN, Dyn.M, Obs.noise.C.sym_sqrt_inv, Obs.noise.C.inv
+        N, xN, Nx  = self.N, self.xN, HMM.Dyn.M
+        Rm12, Ri = HMM.Obs.noise.C.sym_sqrt_inv, HMM.Obs.noise.C.inv
 
-        E = X0.sample(N)
+        E = HMM.X0.sample(N)
         w = 1/N*np.ones(N)
 
         DD = None
 
-        stats.assess(0, E=E, w=w)
+        self.stats.assess(0, E=E, w=w)
 
-        for k, kObs, t, dt in progbar(chrono.ticker):
-            E = Dyn(E, t-dt, dt)
-            if Dyn.noise.C != 0:
-                E += np.sqrt(dt)*(rnd.randn(N, Nx)@Dyn.noise.C.Right)
+        for k, kObs, t, dt in progbar(HMM.tseq.ticker):
+            E = HMM.Dyn(E, t-dt, dt)
+            if HMM.Dyn.noise.C != 0:
+                E += np.sqrt(dt)*(rnd.randn(N, Nx)@HMM.Dyn.noise.C.Right)
 
             if kObs is not None:
-                stats.assess(k, kObs, &#39;f&#39;, E=E, w=w)
+                self.stats.assess(k, kObs, &#39;f&#39;, E=E, w=w)
                 y  = yy[kObs]
-                Eo = Obs(E, t)
+                Eo = HMM.Obs(E, t)
                 wD = w.copy()
 
                 # Importance weighting
@@ -325,14 +317,14 @@ class PFxN_EnKF:
                 w      = reweight(w, innovs=innovs)
 
                 # Resampling
-                if trigger_resampling(w, self.NER, [stats, E, k, kObs]):
+                if trigger_resampling(w, self.NER, [self.stats, E, k, kObs]):
                     # Weighted covariance factors
                     Aw = raw_C12(E, wD)
                     Yw = raw_C12(Eo, wD)
 
                     # EnKF-without-pertubations update
                     if N &gt; Nx:
-                        C       = Yw.T @ Yw + Obs.noise.C.full
+                        C       = Yw.T @ Yw + HMM.Obs.noise.C.full
                         KG      = mrdiv(Aw.T@Yw, C)
                         cntrs   = E + (y-Eo)@KG.T
                         Pa      = Aw.T@Aw - KG@Yw.T@Aw
@@ -377,7 +369,7 @@ class PFxN_EnKF:
                     log_pf    = -0.5 * np.sum(innovs_pf**2, axis=1)
 
                     # log(likelihood(x))
-                    innovs = (y - Obs(ED, t)) @ Rm12.T
+                    innovs = (y - HMM.Obs(ED, t)) @ Rm12.T
                     log_L  = -0.5 * np.sum(innovs**2, axis=1)
 
                     # Update weights
@@ -394,7 +386,7 @@ class PFxN_EnKF:
                             break
                         else:
                             wroot += 0.1
-            stats.assess(k, kObs, &#39;u&#39;, E=E, w=w)
+            self.stats.assess(k, kObs, &#39;u&#39;, E=E, w=w)
 
 
 @particle_method
@@ -415,30 +407,28 @@ class PFxN:
     wroot_max: float = 5.0
 
     def assimilate(self, HMM, xx, yy):
-        Dyn, Obs, chrono, X0, stats = \
-            HMM.Dyn, HMM.Obs, HMM.t, HMM.X0, self.stats
-        N, xN, Nx, Rm12 = self.N, self.xN, Dyn.M, Obs.noise.C.sym_sqrt_inv
+        N, xN, Nx, Rm12 = self.N, self.xN, HMM.Dyn.M, HMM.Obs.noise.C.sym_sqrt_inv
 
         DD = None
-        E  = X0.sample(N)
+        E  = HMM.X0.sample(N)
         w  = 1/N*np.ones(N)
 
-        stats.assess(0, E=E, w=w)
+        self.stats.assess(0, E=E, w=w)
 
-        for k, kObs, t, dt in progbar(chrono.ticker):
-            E = Dyn(E, t-dt, dt)
-            if Dyn.noise.C != 0:
-                E += np.sqrt(dt)*(rnd.randn(N, Nx)@Dyn.noise.C.Right)
+        for k, kObs, t, dt in progbar(HMM.tseq.ticker):
+            E = HMM.Dyn(E, t-dt, dt)
+            if HMM.Dyn.noise.C != 0:
+                E += np.sqrt(dt)*(rnd.randn(N, Nx)@HMM.Dyn.noise.C.Right)
 
             if kObs is not None:
-                stats.assess(k, kObs, &#39;f&#39;, E=E, w=w)
+                self.stats.assess(k, kObs, &#39;f&#39;, E=E, w=w)
                 y  = yy[kObs]
                 wD = w.copy()
 
-                innovs = (y - Obs(E, t)) @ Rm12.T
+                innovs = (y - HMM.Obs(E, t)) @ Rm12.T
                 w      = reweight(w, innovs=innovs)
 
-                if trigger_resampling(w, self.NER, [stats, E, k, kObs]):
+                if trigger_resampling(w, self.NER, [self.stats, E, k, kObs]):
                     # Compute kernel colouring matrix
                     cholR = self.Qs*auto_bandw(N, Nx)*raw_C12(E, wD)
                     cholR = chol_reduce(cholR)
@@ -453,7 +443,7 @@ class PFxN:
                     ED += DD[:, :len(cholR)]@cholR
 
                     # Update weights
-                    innovs = (y - Obs(ED, t)) @ Rm12.T
+                    innovs = (y - HMM.Obs(ED, t)) @ Rm12.T
                     wD     = reweight(wD, innovs=innovs)
 
                     # Resample and reduce
@@ -466,11 +456,11 @@ class PFxN:
                             break
                         else:
                             wroot += 0.1
-            stats.assess(k, kObs, &#39;u&#39;, E=E, w=w)
+            self.stats.assess(k, kObs, &#39;u&#39;, E=E, w=w)
 
 
 def trigger_resampling(w, NER, stat_args):
-    &#34;&#34;&#34;Return boolean: N_effective &lt;= threshold. Also write stats.&#34;&#34;&#34;
+    &#34;&#34;&#34;Return boolean: N_effective &lt;= threshold. Also write self.stats.&#34;&#34;&#34;
     N_eff       = 1/(w@w)
     do_resample = N_eff &lt;= len(w)*NER
 
@@ -480,8 +470,8 @@ def trigger_resampling(w, NER, stat_args):
     stats.N_eff[kObs]  = N_eff
     stats.resmpl[kObs] = 1 if do_resample else 0
 
-    # Why have we put stats.assess() here?
-    # Because we need to write stats.N_eff and stats.resmpl before calling
+    # Why have we put self.stats.assess() here?
+    # Because we need to write self.stats.N_eff and self.stats.resmpl before calling
     # assess() so that these curves (in sliding_diagnostics liveplotting
     # are not eliminated (as inactive).
     stats.assess(k, kObs, &#39;a&#39;, E=E, w=w)
@@ -715,14 +705,14 @@ def sample_quickly_with(C12, N=None):
 <span>def <span class="ident">trigger_resampling</span></span>(<span>w, NER, stat_args)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Return boolean: N_effective &lt;= threshold. Also write stats.</p></div>
+<div class="desc"><p>Return boolean: N_effective &lt;= threshold. Also write self.stats.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/particle.py#L428-L445" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/particle.py#L418-L435" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def trigger_resampling(w, NER, stat_args):
-    &#34;&#34;&#34;Return boolean: N_effective &lt;= threshold. Also write stats.&#34;&#34;&#34;
+    &#34;&#34;&#34;Return boolean: N_effective &lt;= threshold. Also write self.stats.&#34;&#34;&#34;
     N_eff       = 1/(w@w)
     do_resample = N_eff &lt;= len(w)*NER
 
@@ -732,8 +722,8 @@ def sample_quickly_with(C12, N=None):
     stats.N_eff[kObs]  = N_eff
     stats.resmpl[kObs] = 1 if do_resample else 0
 
-    # Why have we put stats.assess() here?
-    # Because we need to write stats.N_eff and stats.resmpl before calling
+    # Why have we put self.stats.assess() here?
+    # Because we need to write self.stats.N_eff and self.stats.resmpl before calling
     # assess() so that these curves (in sliding_diagnostics liveplotting
     # are not eliminated (as inactive).
     stats.assess(k, kObs, &#39;a&#39;, E=E, w=w)
@@ -749,7 +739,7 @@ def sample_quickly_with(C12, N=None):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/particle.py#L448-L450" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/particle.py#L438-L440" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def all_but_1_is_None(*args):
     &#34;&#34;&#34;Check if only 1 of the items in list are Truthy.&#34;&#34;&#34;
@@ -772,7 +762,7 @@ def sample_quickly_with(C12, N=None):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/particle.py#L453-L485" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/particle.py#L443-L475" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def reweight(w, lklhd=None, logL=None, innovs=None):
     r&#34;&#34;&#34;Do Bayes&#39; rule (for the empirical distribution of an importance sample).
@@ -820,7 +810,7 @@ and also computed based on a weighted mean.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/particle.py#L488-L505" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/particle.py#L478-L495" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def raw_C12(E, w):
     &#34;&#34;&#34;Compute the &#39;raw&#39; matrix-square-root of the ensemble&#39; covariance.
@@ -851,7 +841,7 @@ and also computed based on a weighted mean.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/particle.py#L508-L515" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/particle.py#L498-L505" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def mask_unique_of_sorted(idx):
     &#34;&#34;&#34;Find unique values assuming `idx` is sorted.
@@ -872,7 +862,7 @@ and also computed based on a weighted mean.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/particle.py#L518-L523" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/particle.py#L508-L513" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def auto_bandw(N, M):
     &#34;&#34;&#34;Optimal bandwidth (not bandwidth^2), as per Scott&#39;s rule-of-thumb.
@@ -898,7 +888,7 @@ Ref: <code><a title="bib.doucet2001sequential" href="../../bib.html#bib.doucet20
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/particle.py#L526-L549" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/particle.py#L516-L539" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def regularize(C12, E, idx, no_uniq_jitter):
     &#34;&#34;&#34;Jitter (add noise).
@@ -966,7 +956,7 @@ have more informative (and less variable) future likelihoods.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/particle.py#L552-L606" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/particle.py#L542-L596" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def resample(w, kind=&#39;Systematic&#39;, N=None, wroot=1.0):
     &#34;&#34;&#34;Multinomial resampling.
@@ -1034,7 +1024,7 @@ have more informative (and less variable) future likelihoods.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/particle.py#L642-L660" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/particle.py#L632-L650" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def sample_quickly_with(C12, N=None):
     &#34;&#34;&#34;Gaussian sampling in the quickest fashion.
@@ -1084,7 +1074,7 @@ See <code><a title="bib.chen2003bayesian" href="../../bib.html#bib.chen2003bayes
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/particle.py#L23-L89" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/particle.py#L23-L87" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class PartFilt:
     r&#34;&#34;&#34;Particle filter ≡ Sequential importance (re)sampling SIS (SIR).
@@ -1117,20 +1107,18 @@ See <code><a title="bib.chen2003bayesian" href="../../bib.html#bib.chen2003bayes
     # miN = N*miN
 
     def assimilate(self, HMM, xx, yy):
-        Dyn, Obs, chrono, X0, stats = \
-            HMM.Dyn, HMM.Obs, HMM.t, HMM.X0, self.stats
-        N, Nx, Rm12 = self.N, Dyn.M, Obs.noise.C.sym_sqrt_inv
+        N, Nx, Rm12 = self.N, HMM.Dyn.M, HMM.Obs.noise.C.sym_sqrt_inv
 
-        E = X0.sample(N)
+        E = HMM.X0.sample(N)
         w = 1/N*np.ones(N)
 
-        stats.assess(0, E=E, w=w)
+        self.stats.assess(0, E=E, w=w)
 
-        for k, kObs, t, dt in progbar(chrono.ticker):
-            E = Dyn(E, t-dt, dt)
-            if Dyn.noise.C != 0:
+        for k, kObs, t, dt in progbar(HMM.tseq.ticker):
+            E = HMM.Dyn(E, t-dt, dt)
+            if HMM.Dyn.noise.C != 0:
                 D  = rnd.randn(N, Nx)
-                E += np.sqrt(dt*self.qroot)*(D@Dyn.noise.C.Right)
+                E += np.sqrt(dt*self.qroot)*(D@HMM.Dyn.noise.C.Right)
 
                 if self.qroot != 1.0:
                     # Evaluate p/q (for each col of D) when q:=p**(1/self.qroot).
@@ -1138,12 +1126,12 @@ See <code><a title="bib.chen2003bayesian" href="../../bib.html#bib.chen2003bayes
                     w /= w.sum()
 
             if kObs is not None:
-                stats.assess(k, kObs, &#39;f&#39;, E=E, w=w)
+                self.stats.assess(k, kObs, &#39;f&#39;, E=E, w=w)
 
-                innovs = (yy[kObs] - Obs(E, t)) @ Rm12.T
+                innovs = (yy[kObs] - HMM.Obs(E, t)) @ Rm12.T
                 w      = reweight(w, innovs=innovs)
 
-                if trigger_resampling(w, self.NER, [stats, E, k, kObs]):
+                if trigger_resampling(w, self.NER, [self.stats, E, k, kObs]):
                     C12     = self.reg*auto_bandw(N, Nx)*raw_C12(E, w)
                     # C12  *= np.sqrt(rroot) # Re-include?
                     idx, w  = resample(w, self.resampl, wroot=self.wroot)
@@ -1152,7 +1140,7 @@ See <code><a title="bib.chen2003bayesian" href="../../bib.html#bib.chen2003bayes
                     #     # Compensate for rroot
                     #     w *= np.exp(-0.5*chi2*(1 - 1/rroot))
                     #     w /= w.sum()
-            stats.assess(k, kObs, &#39;u&#39;, E=E, w=w)</code></pre>
+            self.stats.assess(k, kObs, &#39;u&#39;, E=E, w=w)</code></pre>
 </details>
 <h3>Class variables</h3>
 <dl>
@@ -1199,23 +1187,21 @@ See <code><a title="bib.chen2003bayesian" href="../../bib.html#bib.chen2003bayes
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/particle.py#L53-L89" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/particle.py#L53-L87" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def assimilate(self, HMM, xx, yy):
-    Dyn, Obs, chrono, X0, stats = \
-        HMM.Dyn, HMM.Obs, HMM.t, HMM.X0, self.stats
-    N, Nx, Rm12 = self.N, Dyn.M, Obs.noise.C.sym_sqrt_inv
+    N, Nx, Rm12 = self.N, HMM.Dyn.M, HMM.Obs.noise.C.sym_sqrt_inv
 
-    E = X0.sample(N)
+    E = HMM.X0.sample(N)
     w = 1/N*np.ones(N)
 
-    stats.assess(0, E=E, w=w)
+    self.stats.assess(0, E=E, w=w)
 
-    for k, kObs, t, dt in progbar(chrono.ticker):
-        E = Dyn(E, t-dt, dt)
-        if Dyn.noise.C != 0:
+    for k, kObs, t, dt in progbar(HMM.tseq.ticker):
+        E = HMM.Dyn(E, t-dt, dt)
+        if HMM.Dyn.noise.C != 0:
             D  = rnd.randn(N, Nx)
-            E += np.sqrt(dt*self.qroot)*(D@Dyn.noise.C.Right)
+            E += np.sqrt(dt*self.qroot)*(D@HMM.Dyn.noise.C.Right)
 
             if self.qroot != 1.0:
                 # Evaluate p/q (for each col of D) when q:=p**(1/self.qroot).
@@ -1223,12 +1209,12 @@ See <code><a title="bib.chen2003bayesian" href="../../bib.html#bib.chen2003bayes
                 w /= w.sum()
 
         if kObs is not None:
-            stats.assess(k, kObs, &#39;f&#39;, E=E, w=w)
+            self.stats.assess(k, kObs, &#39;f&#39;, E=E, w=w)
 
-            innovs = (yy[kObs] - Obs(E, t)) @ Rm12.T
+            innovs = (yy[kObs] - HMM.Obs(E, t)) @ Rm12.T
             w      = reweight(w, innovs=innovs)
 
-            if trigger_resampling(w, self.NER, [stats, E, k, kObs]):
+            if trigger_resampling(w, self.NER, [self.stats, E, k, kObs]):
                 C12     = self.reg*auto_bandw(N, Nx)*raw_C12(E, w)
                 # C12  *= np.sqrt(rroot) # Re-include?
                 idx, w  = resample(w, self.resampl, wroot=self.wroot)
@@ -1237,7 +1223,7 @@ See <code><a title="bib.chen2003bayesian" href="../../bib.html#bib.chen2003bayes
                 #     # Compensate for rroot
                 #     w *= np.exp(-0.5*chi2*(1 - 1/rroot))
                 #     w /= w.sum()
-        stats.assess(k, kObs, &#39;u&#39;, E=E, w=w)</code></pre>
+        self.stats.assess(k, kObs, &#39;u&#39;, E=E, w=w)</code></pre>
 </details>
 </dd>
 <dt id="dapper.da_methods.particle.PartFilt.stat"><code class="name flex">
@@ -1271,7 +1257,7 @@ the bootstrap filter :func:<code><a title="dapper.da_methods.particle.PartFilt" 
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/particle.py#L93-L153" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/particle.py#L91-L149" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class OptPF:
     &#34;&#34;&#34;&#39;Optimal proposal&#39; particle filter, also known as &#39;Implicit particle filter&#39;.
@@ -1290,25 +1276,23 @@ the bootstrap filter :func:<code><a title="dapper.da_methods.particle.PartFilt" 
     wroot: float = 1.0
 
     def assimilate(self, HMM, xx, yy):
-        Dyn, Obs, chrono, X0, stats = \
-            HMM.Dyn, HMM.Obs, HMM.t, HMM.X0, self.stats
-        N, Nx, R = self.N, Dyn.M, Obs.noise.C.full
+        N, Nx, R = self.N, HMM.Dyn.M, HMM.Obs.noise.C.full
 
-        E = X0.sample(N)
+        E = HMM.X0.sample(N)
         w = 1/N*np.ones(N)
 
-        stats.assess(0, E=E, w=w)
+        self.stats.assess(0, E=E, w=w)
 
-        for k, kObs, t, dt in progbar(chrono.ticker):
-            E = Dyn(E, t-dt, dt)
-            if Dyn.noise.C != 0:
-                E += np.sqrt(dt)*(rnd.randn(N, Nx)@Dyn.noise.C.Right)
+        for k, kObs, t, dt in progbar(HMM.tseq.ticker):
+            E = HMM.Dyn(E, t-dt, dt)
+            if HMM.Dyn.noise.C != 0:
+                E += np.sqrt(dt)*(rnd.randn(N, Nx)@HMM.Dyn.noise.C.Right)
 
             if kObs is not None:
-                stats.assess(k, kObs, &#39;f&#39;, E=E, w=w)
+                self.stats.assess(k, kObs, &#39;f&#39;, E=E, w=w)
                 y = yy[kObs]
 
-                Eo = Obs(E, t)
+                Eo = HMM.Obs(E, t)
                 innovs = y - Eo
 
                 # EnKF-ish update
@@ -1318,8 +1302,8 @@ the bootstrap filter :func:<code><a title="dapper.da_methods.particle.PartFilt" 
                 C   = Ys.T@Ys + R
                 KG  = As.T@mrdiv(Ys, C)
                 E  += sample_quickly_with(As)[0]
-                D   = Obs.noise.sample(N)
-                dE  = KG @ (y-Obs(E, t)-D).T
+                D   = HMM.Obs.noise.sample(N)
+                dE  = KG @ (y-HMM.Obs(E, t)-D).T
                 E   = E + dE.T
 
                 # Importance weighting
@@ -1328,12 +1312,12 @@ the bootstrap filter :func:<code><a title="dapper.da_methods.particle.PartFilt" 
                 w      = reweight(w, logL=logL)
 
                 # Resampling
-                if trigger_resampling(w, self.NER, [stats, E, k, kObs]):
+                if trigger_resampling(w, self.NER, [self.stats, E, k, kObs]):
                     C12     = self.reg*auto_bandw(N, Nx)*raw_C12(E, w)
                     idx, w  = resample(w, self.resampl, wroot=self.wroot)
                     E, _    = regularize(C12, E, idx, self.nuj)
 
-            stats.assess(k, kObs, &#39;u&#39;, E=E, w=w)</code></pre>
+            self.stats.assess(k, kObs, &#39;u&#39;, E=E, w=w)</code></pre>
 </details>
 <h3>Class variables</h3>
 <dl>
@@ -1380,28 +1364,26 @@ the bootstrap filter :func:<code><a title="dapper.da_methods.particle.PartFilt" 
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/particle.py#L109-L153" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/particle.py#L107-L149" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def assimilate(self, HMM, xx, yy):
-    Dyn, Obs, chrono, X0, stats = \
-        HMM.Dyn, HMM.Obs, HMM.t, HMM.X0, self.stats
-    N, Nx, R = self.N, Dyn.M, Obs.noise.C.full
+    N, Nx, R = self.N, HMM.Dyn.M, HMM.Obs.noise.C.full
 
-    E = X0.sample(N)
+    E = HMM.X0.sample(N)
     w = 1/N*np.ones(N)
 
-    stats.assess(0, E=E, w=w)
+    self.stats.assess(0, E=E, w=w)
 
-    for k, kObs, t, dt in progbar(chrono.ticker):
-        E = Dyn(E, t-dt, dt)
-        if Dyn.noise.C != 0:
-            E += np.sqrt(dt)*(rnd.randn(N, Nx)@Dyn.noise.C.Right)
+    for k, kObs, t, dt in progbar(HMM.tseq.ticker):
+        E = HMM.Dyn(E, t-dt, dt)
+        if HMM.Dyn.noise.C != 0:
+            E += np.sqrt(dt)*(rnd.randn(N, Nx)@HMM.Dyn.noise.C.Right)
 
         if kObs is not None:
-            stats.assess(k, kObs, &#39;f&#39;, E=E, w=w)
+            self.stats.assess(k, kObs, &#39;f&#39;, E=E, w=w)
             y = yy[kObs]
 
-            Eo = Obs(E, t)
+            Eo = HMM.Obs(E, t)
             innovs = y - Eo
 
             # EnKF-ish update
@@ -1411,8 +1393,8 @@ the bootstrap filter :func:<code><a title="dapper.da_methods.particle.PartFilt" 
             C   = Ys.T@Ys + R
             KG  = As.T@mrdiv(Ys, C)
             E  += sample_quickly_with(As)[0]
-            D   = Obs.noise.sample(N)
-            dE  = KG @ (y-Obs(E, t)-D).T
+            D   = HMM.Obs.noise.sample(N)
+            dE  = KG @ (y-HMM.Obs(E, t)-D).T
             E   = E + dE.T
 
             # Importance weighting
@@ -1421,12 +1403,12 @@ the bootstrap filter :func:<code><a title="dapper.da_methods.particle.PartFilt" 
             w      = reweight(w, logL=logL)
 
             # Resampling
-            if trigger_resampling(w, self.NER, [stats, E, k, kObs]):
+            if trigger_resampling(w, self.NER, [self.stats, E, k, kObs]):
                 C12     = self.reg*auto_bandw(N, Nx)*raw_C12(E, w)
                 idx, w  = resample(w, self.resampl, wroot=self.wroot)
                 E, _    = regularize(C12, E, idx, self.nuj)
 
-        stats.assess(k, kObs, &#39;u&#39;, E=E, w=w)</code></pre>
+        self.stats.assess(k, kObs, &#39;u&#39;, E=E, w=w)</code></pre>
 </details>
 </dd>
 <dt id="dapper.da_methods.particle.OptPF.stat"><code class="name flex">
@@ -1464,7 +1446,7 @@ Similarly, by adjusting the weights we play on the bias-variance spectrum.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/particle.py#L157-L230" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/particle.py#L153-L224" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class PFa:
     &#34;&#34;&#34;PF with weight adjustment withOUT compensating for the bias it introduces.
@@ -1492,20 +1474,18 @@ Similarly, by adjusting the weights we play on the bias-variance spectrum.</p>
     qroot: float = 1.0
 
     def assimilate(self, HMM, xx, yy):
-        Dyn, Obs, chrono, X0, stats = \
-            HMM.Dyn, HMM.Obs, HMM.t, HMM.X0, self.stats
-        N, Nx, Rm12 = self.N, Dyn.M, Obs.noise.C.sym_sqrt_inv
+        N, Nx, Rm12 = self.N, HMM.Dyn.M, HMM.Obs.noise.C.sym_sqrt_inv
 
-        E = X0.sample(N)
+        E = HMM.X0.sample(N)
         w = 1/N*np.ones(N)
 
-        stats.assess(0, E=E, w=w)
+        self.stats.assess(0, E=E, w=w)
 
-        for k, kObs, t, dt in progbar(chrono.ticker):
-            E = Dyn(E, t-dt, dt)
-            if Dyn.noise.C != 0:
+        for k, kObs, t, dt in progbar(HMM.tseq.ticker):
+            E = HMM.Dyn(E, t-dt, dt)
+            if HMM.Dyn.noise.C != 0:
                 D  = rnd.randn(N, Nx)
-                E += np.sqrt(dt*self.qroot)*(D@Dyn.noise.C.Right)
+                E += np.sqrt(dt*self.qroot)*(D@HMM.Dyn.noise.C.Right)
 
                 if self.qroot != 1.0:
                     # Evaluate p/q (for each col of D) when q:=p**(1/self.qroot).
@@ -1513,12 +1493,12 @@ Similarly, by adjusting the weights we play on the bias-variance spectrum.</p>
                     w /= w.sum()
 
             if kObs is not None:
-                stats.assess(k, kObs, &#39;f&#39;, E=E, w=w)
+                self.stats.assess(k, kObs, &#39;f&#39;, E=E, w=w)
 
-                innovs = (yy[kObs] - Obs(E, t)) @ Rm12.T
+                innovs = (yy[kObs] - HMM.Obs(E, t)) @ Rm12.T
                 w      = reweight(w, innovs=innovs)
 
-                if trigger_resampling(w, self.NER, [stats, E, k, kObs]):
+                if trigger_resampling(w, self.NER, [self.stats, E, k, kObs]):
                     C12    = self.reg*auto_bandw(N, Nx)*raw_C12(E, w)
                     # C12  *= np.sqrt(rroot) # Re-include?
 
@@ -1530,7 +1510,7 @@ Similarly, by adjusting the weights we play on the bias-variance spectrum.</p>
                         if 1/(sw@sw) &lt; N*self.alpha:
                             wroot += 0.2
                         else:
-                            stats.wroot[kObs] = wroot
+                            self.stats.wroot[kObs] = wroot
                             break
                     idx, w  = resample(sw, self.resampl, wroot=1)
 
@@ -1539,7 +1519,7 @@ Similarly, by adjusting the weights we play on the bias-variance spectrum.</p>
                     #     Compensate for rroot
                     #     w *= np.exp(-0.5*chi2*(1 - 1/rroot))
                     #     w /= w.sum()
-            stats.assess(k, kObs, &#39;u&#39;, E=E, w=w)</code></pre>
+            self.stats.assess(k, kObs, &#39;u&#39;, E=E, w=w)</code></pre>
 </details>
 <h3>Class variables</h3>
 <dl>
@@ -1586,23 +1566,21 @@ Similarly, by adjusting the weights we play on the bias-variance spectrum.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/particle.py#L182-L230" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/particle.py#L178-L224" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def assimilate(self, HMM, xx, yy):
-    Dyn, Obs, chrono, X0, stats = \
-        HMM.Dyn, HMM.Obs, HMM.t, HMM.X0, self.stats
-    N, Nx, Rm12 = self.N, Dyn.M, Obs.noise.C.sym_sqrt_inv
+    N, Nx, Rm12 = self.N, HMM.Dyn.M, HMM.Obs.noise.C.sym_sqrt_inv
 
-    E = X0.sample(N)
+    E = HMM.X0.sample(N)
     w = 1/N*np.ones(N)
 
-    stats.assess(0, E=E, w=w)
+    self.stats.assess(0, E=E, w=w)
 
-    for k, kObs, t, dt in progbar(chrono.ticker):
-        E = Dyn(E, t-dt, dt)
-        if Dyn.noise.C != 0:
+    for k, kObs, t, dt in progbar(HMM.tseq.ticker):
+        E = HMM.Dyn(E, t-dt, dt)
+        if HMM.Dyn.noise.C != 0:
             D  = rnd.randn(N, Nx)
-            E += np.sqrt(dt*self.qroot)*(D@Dyn.noise.C.Right)
+            E += np.sqrt(dt*self.qroot)*(D@HMM.Dyn.noise.C.Right)
 
             if self.qroot != 1.0:
                 # Evaluate p/q (for each col of D) when q:=p**(1/self.qroot).
@@ -1610,12 +1588,12 @@ Similarly, by adjusting the weights we play on the bias-variance spectrum.</p>
                 w /= w.sum()
 
         if kObs is not None:
-            stats.assess(k, kObs, &#39;f&#39;, E=E, w=w)
+            self.stats.assess(k, kObs, &#39;f&#39;, E=E, w=w)
 
-            innovs = (yy[kObs] - Obs(E, t)) @ Rm12.T
+            innovs = (yy[kObs] - HMM.Obs(E, t)) @ Rm12.T
             w      = reweight(w, innovs=innovs)
 
-            if trigger_resampling(w, self.NER, [stats, E, k, kObs]):
+            if trigger_resampling(w, self.NER, [self.stats, E, k, kObs]):
                 C12    = self.reg*auto_bandw(N, Nx)*raw_C12(E, w)
                 # C12  *= np.sqrt(rroot) # Re-include?
 
@@ -1627,7 +1605,7 @@ Similarly, by adjusting the weights we play on the bias-variance spectrum.</p>
                     if 1/(sw@sw) &lt; N*self.alpha:
                         wroot += 0.2
                     else:
-                        stats.wroot[kObs] = wroot
+                        self.stats.wroot[kObs] = wroot
                         break
                 idx, w  = resample(sw, self.resampl, wroot=1)
 
@@ -1636,7 +1614,7 @@ Similarly, by adjusting the weights we play on the bias-variance spectrum.</p>
                 #     Compensate for rroot
                 #     w *= np.exp(-0.5*chi2*(1 - 1/rroot))
                 #     w /= w.sum()
-        stats.assess(k, kObs, &#39;u&#39;, E=E, w=w)</code></pre>
+        self.stats.assess(k, kObs, &#39;u&#39;, E=E, w=w)</code></pre>
 </details>
 </dd>
 <dt id="dapper.da_methods.particle.PFa.stat"><code class="name flex">
@@ -1675,7 +1653,7 @@ Or maybe we should use x_a^n distributed according to a sqrt update?</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/particle.py#L234-L353" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/particle.py#L228-L345" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class PFxN_EnKF:
     &#34;&#34;&#34;Particle filter with EnKF-based proposal, q.
@@ -1699,27 +1677,25 @@ Or maybe we should use x_a^n distributed according to a sqrt update?</p></div>
     wroot_max: float = 5.0
 
     def assimilate(self, HMM, xx, yy):
-        Dyn, Obs, chrono, X0, stats = \
-            HMM.Dyn, HMM.Obs, HMM.t, HMM.X0, self.stats
-        N, xN, Nx, Rm12, Ri = \
-            self.N, self.xN, Dyn.M, Obs.noise.C.sym_sqrt_inv, Obs.noise.C.inv
+        N, xN, Nx  = self.N, self.xN, HMM.Dyn.M
+        Rm12, Ri = HMM.Obs.noise.C.sym_sqrt_inv, HMM.Obs.noise.C.inv
 
-        E = X0.sample(N)
+        E = HMM.X0.sample(N)
         w = 1/N*np.ones(N)
 
         DD = None
 
-        stats.assess(0, E=E, w=w)
+        self.stats.assess(0, E=E, w=w)
 
-        for k, kObs, t, dt in progbar(chrono.ticker):
-            E = Dyn(E, t-dt, dt)
-            if Dyn.noise.C != 0:
-                E += np.sqrt(dt)*(rnd.randn(N, Nx)@Dyn.noise.C.Right)
+        for k, kObs, t, dt in progbar(HMM.tseq.ticker):
+            E = HMM.Dyn(E, t-dt, dt)
+            if HMM.Dyn.noise.C != 0:
+                E += np.sqrt(dt)*(rnd.randn(N, Nx)@HMM.Dyn.noise.C.Right)
 
             if kObs is not None:
-                stats.assess(k, kObs, &#39;f&#39;, E=E, w=w)
+                self.stats.assess(k, kObs, &#39;f&#39;, E=E, w=w)
                 y  = yy[kObs]
-                Eo = Obs(E, t)
+                Eo = HMM.Obs(E, t)
                 wD = w.copy()
 
                 # Importance weighting
@@ -1727,14 +1703,14 @@ Or maybe we should use x_a^n distributed according to a sqrt update?</p></div>
                 w      = reweight(w, innovs=innovs)
 
                 # Resampling
-                if trigger_resampling(w, self.NER, [stats, E, k, kObs]):
+                if trigger_resampling(w, self.NER, [self.stats, E, k, kObs]):
                     # Weighted covariance factors
                     Aw = raw_C12(E, wD)
                     Yw = raw_C12(Eo, wD)
 
                     # EnKF-without-pertubations update
                     if N &gt; Nx:
-                        C       = Yw.T @ Yw + Obs.noise.C.full
+                        C       = Yw.T @ Yw + HMM.Obs.noise.C.full
                         KG      = mrdiv(Aw.T@Yw, C)
                         cntrs   = E + (y-Eo)@KG.T
                         Pa      = Aw.T@Aw - KG@Yw.T@Aw
@@ -1779,7 +1755,7 @@ Or maybe we should use x_a^n distributed according to a sqrt update?</p></div>
                     log_pf    = -0.5 * np.sum(innovs_pf**2, axis=1)
 
                     # log(likelihood(x))
-                    innovs = (y - Obs(ED, t)) @ Rm12.T
+                    innovs = (y - HMM.Obs(ED, t)) @ Rm12.T
                     log_L  = -0.5 * np.sum(innovs**2, axis=1)
 
                     # Update weights
@@ -1796,7 +1772,7 @@ Or maybe we should use x_a^n distributed according to a sqrt update?</p></div>
                             break
                         else:
                             wroot += 0.1
-            stats.assess(k, kObs, &#39;u&#39;, E=E, w=w)</code></pre>
+            self.stats.assess(k, kObs, &#39;u&#39;, E=E, w=w)</code></pre>
 </details>
 <h3>Class variables</h3>
 <dl>
@@ -1843,30 +1819,28 @@ Or maybe we should use x_a^n distributed according to a sqrt update?</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/particle.py#L255-L353" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/particle.py#L249-L345" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def assimilate(self, HMM, xx, yy):
-    Dyn, Obs, chrono, X0, stats = \
-        HMM.Dyn, HMM.Obs, HMM.t, HMM.X0, self.stats
-    N, xN, Nx, Rm12, Ri = \
-        self.N, self.xN, Dyn.M, Obs.noise.C.sym_sqrt_inv, Obs.noise.C.inv
+    N, xN, Nx  = self.N, self.xN, HMM.Dyn.M
+    Rm12, Ri = HMM.Obs.noise.C.sym_sqrt_inv, HMM.Obs.noise.C.inv
 
-    E = X0.sample(N)
+    E = HMM.X0.sample(N)
     w = 1/N*np.ones(N)
 
     DD = None
 
-    stats.assess(0, E=E, w=w)
+    self.stats.assess(0, E=E, w=w)
 
-    for k, kObs, t, dt in progbar(chrono.ticker):
-        E = Dyn(E, t-dt, dt)
-        if Dyn.noise.C != 0:
-            E += np.sqrt(dt)*(rnd.randn(N, Nx)@Dyn.noise.C.Right)
+    for k, kObs, t, dt in progbar(HMM.tseq.ticker):
+        E = HMM.Dyn(E, t-dt, dt)
+        if HMM.Dyn.noise.C != 0:
+            E += np.sqrt(dt)*(rnd.randn(N, Nx)@HMM.Dyn.noise.C.Right)
 
         if kObs is not None:
-            stats.assess(k, kObs, &#39;f&#39;, E=E, w=w)
+            self.stats.assess(k, kObs, &#39;f&#39;, E=E, w=w)
             y  = yy[kObs]
-            Eo = Obs(E, t)
+            Eo = HMM.Obs(E, t)
             wD = w.copy()
 
             # Importance weighting
@@ -1874,14 +1848,14 @@ Or maybe we should use x_a^n distributed according to a sqrt update?</p></div>
             w      = reweight(w, innovs=innovs)
 
             # Resampling
-            if trigger_resampling(w, self.NER, [stats, E, k, kObs]):
+            if trigger_resampling(w, self.NER, [self.stats, E, k, kObs]):
                 # Weighted covariance factors
                 Aw = raw_C12(E, wD)
                 Yw = raw_C12(Eo, wD)
 
                 # EnKF-without-pertubations update
                 if N &gt; Nx:
-                    C       = Yw.T @ Yw + Obs.noise.C.full
+                    C       = Yw.T @ Yw + HMM.Obs.noise.C.full
                     KG      = mrdiv(Aw.T@Yw, C)
                     cntrs   = E + (y-Eo)@KG.T
                     Pa      = Aw.T@Aw - KG@Yw.T@Aw
@@ -1926,7 +1900,7 @@ Or maybe we should use x_a^n distributed according to a sqrt update?</p></div>
                 log_pf    = -0.5 * np.sum(innovs_pf**2, axis=1)
 
                 # log(likelihood(x))
-                innovs = (y - Obs(ED, t)) @ Rm12.T
+                innovs = (y - HMM.Obs(ED, t)) @ Rm12.T
                 log_L  = -0.5 * np.sum(innovs**2, axis=1)
 
                 # Update weights
@@ -1943,7 +1917,7 @@ Or maybe we should use x_a^n distributed according to a sqrt update?</p></div>
                         break
                     else:
                         wroot += 0.1
-        stats.assess(k, kObs, &#39;u&#39;, E=E, w=w)</code></pre>
+        self.stats.assess(k, kObs, &#39;u&#39;, E=E, w=w)</code></pre>
 </details>
 </dd>
 <dt id="dapper.da_methods.particle.PFxN_EnKF.stat"><code class="name flex">
@@ -1975,7 +1949,7 @@ without jittering.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/particle.py#L357-L425" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/particle.py#L349-L415" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class PFxN:
     &#34;&#34;&#34;Particle filter with buckshot duplication during analysis.
@@ -1994,30 +1968,28 @@ without jittering.</p></div>
     wroot_max: float = 5.0
 
     def assimilate(self, HMM, xx, yy):
-        Dyn, Obs, chrono, X0, stats = \
-            HMM.Dyn, HMM.Obs, HMM.t, HMM.X0, self.stats
-        N, xN, Nx, Rm12 = self.N, self.xN, Dyn.M, Obs.noise.C.sym_sqrt_inv
+        N, xN, Nx, Rm12 = self.N, self.xN, HMM.Dyn.M, HMM.Obs.noise.C.sym_sqrt_inv
 
         DD = None
-        E  = X0.sample(N)
+        E  = HMM.X0.sample(N)
         w  = 1/N*np.ones(N)
 
-        stats.assess(0, E=E, w=w)
+        self.stats.assess(0, E=E, w=w)
 
-        for k, kObs, t, dt in progbar(chrono.ticker):
-            E = Dyn(E, t-dt, dt)
-            if Dyn.noise.C != 0:
-                E += np.sqrt(dt)*(rnd.randn(N, Nx)@Dyn.noise.C.Right)
+        for k, kObs, t, dt in progbar(HMM.tseq.ticker):
+            E = HMM.Dyn(E, t-dt, dt)
+            if HMM.Dyn.noise.C != 0:
+                E += np.sqrt(dt)*(rnd.randn(N, Nx)@HMM.Dyn.noise.C.Right)
 
             if kObs is not None:
-                stats.assess(k, kObs, &#39;f&#39;, E=E, w=w)
+                self.stats.assess(k, kObs, &#39;f&#39;, E=E, w=w)
                 y  = yy[kObs]
                 wD = w.copy()
 
-                innovs = (y - Obs(E, t)) @ Rm12.T
+                innovs = (y - HMM.Obs(E, t)) @ Rm12.T
                 w      = reweight(w, innovs=innovs)
 
-                if trigger_resampling(w, self.NER, [stats, E, k, kObs]):
+                if trigger_resampling(w, self.NER, [self.stats, E, k, kObs]):
                     # Compute kernel colouring matrix
                     cholR = self.Qs*auto_bandw(N, Nx)*raw_C12(E, wD)
                     cholR = chol_reduce(cholR)
@@ -2032,7 +2004,7 @@ without jittering.</p></div>
                     ED += DD[:, :len(cholR)]@cholR
 
                     # Update weights
-                    innovs = (y - Obs(ED, t)) @ Rm12.T
+                    innovs = (y - HMM.Obs(ED, t)) @ Rm12.T
                     wD     = reweight(wD, innovs=innovs)
 
                     # Resample and reduce
@@ -2045,7 +2017,7 @@ without jittering.</p></div>
                             break
                         else:
                             wroot += 0.1
-            stats.assess(k, kObs, &#39;u&#39;, E=E, w=w)</code></pre>
+            self.stats.assess(k, kObs, &#39;u&#39;, E=E, w=w)</code></pre>
 </details>
 <h3>Class variables</h3>
 <dl>
@@ -2092,33 +2064,31 @@ without jittering.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/particle.py#L373-L425" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/particle.py#L365-L415" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def assimilate(self, HMM, xx, yy):
-    Dyn, Obs, chrono, X0, stats = \
-        HMM.Dyn, HMM.Obs, HMM.t, HMM.X0, self.stats
-    N, xN, Nx, Rm12 = self.N, self.xN, Dyn.M, Obs.noise.C.sym_sqrt_inv
+    N, xN, Nx, Rm12 = self.N, self.xN, HMM.Dyn.M, HMM.Obs.noise.C.sym_sqrt_inv
 
     DD = None
-    E  = X0.sample(N)
+    E  = HMM.X0.sample(N)
     w  = 1/N*np.ones(N)
 
-    stats.assess(0, E=E, w=w)
+    self.stats.assess(0, E=E, w=w)
 
-    for k, kObs, t, dt in progbar(chrono.ticker):
-        E = Dyn(E, t-dt, dt)
-        if Dyn.noise.C != 0:
-            E += np.sqrt(dt)*(rnd.randn(N, Nx)@Dyn.noise.C.Right)
+    for k, kObs, t, dt in progbar(HMM.tseq.ticker):
+        E = HMM.Dyn(E, t-dt, dt)
+        if HMM.Dyn.noise.C != 0:
+            E += np.sqrt(dt)*(rnd.randn(N, Nx)@HMM.Dyn.noise.C.Right)
 
         if kObs is not None:
-            stats.assess(k, kObs, &#39;f&#39;, E=E, w=w)
+            self.stats.assess(k, kObs, &#39;f&#39;, E=E, w=w)
             y  = yy[kObs]
             wD = w.copy()
 
-            innovs = (y - Obs(E, t)) @ Rm12.T
+            innovs = (y - HMM.Obs(E, t)) @ Rm12.T
             w      = reweight(w, innovs=innovs)
 
-            if trigger_resampling(w, self.NER, [stats, E, k, kObs]):
+            if trigger_resampling(w, self.NER, [self.stats, E, k, kObs]):
                 # Compute kernel colouring matrix
                 cholR = self.Qs*auto_bandw(N, Nx)*raw_C12(E, wD)
                 cholR = chol_reduce(cholR)
@@ -2133,7 +2103,7 @@ without jittering.</p></div>
                 ED += DD[:, :len(cholR)]@cholR
 
                 # Update weights
-                innovs = (y - Obs(ED, t)) @ Rm12.T
+                innovs = (y - HMM.Obs(ED, t)) @ Rm12.T
                 wD     = reweight(wD, innovs=innovs)
 
                 # Resample and reduce
@@ -2146,7 +2116,7 @@ without jittering.</p></div>
                         break
                     else:
                         wroot += 0.1
-        stats.assess(k, kObs, &#39;u&#39;, E=E, w=w)</code></pre>
+        self.stats.assess(k, kObs, &#39;u&#39;, E=E, w=w)</code></pre>
 </details>
 </dd>
 <dt id="dapper.da_methods.particle.PFxN.stat"><code class="name flex">

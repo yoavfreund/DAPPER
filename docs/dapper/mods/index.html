@@ -214,7 +214,7 @@ class HiddenMarkovModel(struct_tools.NicePrint):
         Operator for the dynamics.
     Obs: `Operator` or dict
         Operator for the observations
-    t: `dapper.tools.chronos.Chronology`
+    tseq: `dapper.tools.chronos.Chronology`
         Time sequence of the HMM process.
     X0: `dapper.tools.randvars.RV`
         Random distribution of initial condition
@@ -239,7 +239,7 @@ class HiddenMarkovModel(struct_tools.NicePrint):
         # Note: it&#39;s still ok to write attributes to the HMM following the init.
         attrs = dict(Dyn=(Operator, None),
                      Obs=(Operator, None),
-                     t=(Chronology, None),
+                     tseq=(Chronology, None),
                      X0=(RV, None),
                      liveplotters=(list, []),
                      sectors=(dict, {}),
@@ -291,20 +291,20 @@ class HiddenMarkovModel(struct_tools.NicePrint):
     @property
     def Ny(self): return self.Obs.M
 
-    printopts = {&#39;ordering&#39;: [&#39;Dyn&#39;, &#39;Obs&#39;, &#39;t&#39;, &#39;X0&#39;], &#34;indent&#34;: 4}
+    printopts = {&#39;ordering&#39;: [&#39;Dyn&#39;, &#39;Obs&#39;, &#39;tseq&#39;, &#39;X0&#39;], &#34;indent&#34;: 4}
 
     def simulate(self, desc=&#39;Truth &amp; Obs&#39;):
         &#34;&#34;&#34;Generate synthetic truth and observations.&#34;&#34;&#34;
-        Dyn, Obs, chrono, X0 = self.Dyn, self.Obs, self.t, self.X0
+        Dyn, Obs, tseq, X0 = self.Dyn, self.Obs, self.tseq, self.X0
 
         # Init
-        xx    = np.zeros((chrono.K   + 1, Dyn.M))
-        yy    = np.zeros((chrono.KObs+1, Obs.M))
+        xx    = np.zeros((tseq.K   + 1, Dyn.M))
+        yy    = np.zeros((tseq.KObs+1, Obs.M))
 
         xx[0] = X0.sample(1)
 
         # Loop
-        for k, kObs, t, dt in pb.progbar(chrono.ticker, desc):
+        for k, kObs, t, dt in pb.progbar(tseq.ticker, desc):
             xx[k] = Dyn(xx[k-1], t-dt, dt) + np.sqrt(dt)*Dyn.noise.sample(1)
             if kObs is not None:
                 yy[kObs] = Obs(xx[k], t) + Obs.noise.sample(1)
@@ -495,7 +495,7 @@ The synthetic truth and observations may then be obtained by running
 <dd>Operator for the dynamics.</dd>
 <dt><strong><code>Obs</code></strong> :&ensp;<code><a title="dapper.mods.Operator" href="#dapper.mods.Operator">Operator</a></code> or <code>dict</code></dt>
 <dd>Operator for the observations</dd>
-<dt><strong><code>t</code></strong> :&ensp;<code><a title="dapper.tools.chronos.Chronology" href="../tools/chronos.html#dapper.tools.chronos.Chronology">Chronology</a></code></dt>
+<dt><strong><code>tseq</code></strong> :&ensp;<code><a title="dapper.tools.chronos.Chronology" href="../tools/chronos.html#dapper.tools.chronos.Chronology">Chronology</a></code></dt>
 <dd>Time sequence of the HMM process.</dd>
 <dt><strong><code>X0</code></strong> :&ensp;<code><a title="dapper.tools.randvars.RV" href="../tools/randvars.html#dapper.tools.randvars.RV">RV</a></code></dt>
 <dd>Random distribution of initial condition</dd>
@@ -536,7 +536,7 @@ and <code>dapper/mods/Lorenz96/miyoshi2011.py</code></dd>
         Operator for the dynamics.
     Obs: `Operator` or dict
         Operator for the observations
-    t: `dapper.tools.chronos.Chronology`
+    tseq: `dapper.tools.chronos.Chronology`
         Time sequence of the HMM process.
     X0: `dapper.tools.randvars.RV`
         Random distribution of initial condition
@@ -561,7 +561,7 @@ and <code>dapper/mods/Lorenz96/miyoshi2011.py</code></dd>
         # Note: it&#39;s still ok to write attributes to the HMM following the init.
         attrs = dict(Dyn=(Operator, None),
                      Obs=(Operator, None),
-                     t=(Chronology, None),
+                     tseq=(Chronology, None),
                      X0=(RV, None),
                      liveplotters=(list, []),
                      sectors=(dict, {}),
@@ -613,20 +613,20 @@ and <code>dapper/mods/Lorenz96/miyoshi2011.py</code></dd>
     @property
     def Ny(self): return self.Obs.M
 
-    printopts = {&#39;ordering&#39;: [&#39;Dyn&#39;, &#39;Obs&#39;, &#39;t&#39;, &#39;X0&#39;], &#34;indent&#34;: 4}
+    printopts = {&#39;ordering&#39;: [&#39;Dyn&#39;, &#39;Obs&#39;, &#39;tseq&#39;, &#39;X0&#39;], &#34;indent&#34;: 4}
 
     def simulate(self, desc=&#39;Truth &amp; Obs&#39;):
         &#34;&#34;&#34;Generate synthetic truth and observations.&#34;&#34;&#34;
-        Dyn, Obs, chrono, X0 = self.Dyn, self.Obs, self.t, self.X0
+        Dyn, Obs, tseq, X0 = self.Dyn, self.Obs, self.tseq, self.X0
 
         # Init
-        xx    = np.zeros((chrono.K   + 1, Dyn.M))
-        yy    = np.zeros((chrono.KObs+1, Obs.M))
+        xx    = np.zeros((tseq.K   + 1, Dyn.M))
+        yy    = np.zeros((tseq.KObs+1, Obs.M))
 
         xx[0] = X0.sample(1)
 
         # Loop
-        for k, kObs, t, dt in pb.progbar(chrono.ticker, desc):
+        for k, kObs, t, dt in pb.progbar(tseq.ticker, desc):
             xx[k] = Dyn(xx[k-1], t-dt, dt) + np.sqrt(dt)*Dyn.noise.sample(1)
             if kObs is not None:
                 yy[kObs] = Obs(xx[k], t) + Obs.noise.sample(1)
@@ -697,16 +697,16 @@ def Ny(self): return self.Obs.M</code></pre>
 </summary>
 <pre><code class="python">def simulate(self, desc=&#39;Truth &amp; Obs&#39;):
     &#34;&#34;&#34;Generate synthetic truth and observations.&#34;&#34;&#34;
-    Dyn, Obs, chrono, X0 = self.Dyn, self.Obs, self.t, self.X0
+    Dyn, Obs, tseq, X0 = self.Dyn, self.Obs, self.tseq, self.X0
 
     # Init
-    xx    = np.zeros((chrono.K   + 1, Dyn.M))
-    yy    = np.zeros((chrono.KObs+1, Obs.M))
+    xx    = np.zeros((tseq.K   + 1, Dyn.M))
+    yy    = np.zeros((tseq.KObs+1, Obs.M))
 
     xx[0] = X0.sample(1)
 
     # Loop
-    for k, kObs, t, dt in pb.progbar(chrono.ticker, desc):
+    for k, kObs, t, dt in pb.progbar(tseq.ticker, desc):
         xx[k] = Dyn(xx[k-1], t-dt, dt) + np.sqrt(dt)*Dyn.noise.sample(1)
         if kObs is not None:
             yy[kObs] = Obs(xx[k], t) + Obs.noise.sample(1)
