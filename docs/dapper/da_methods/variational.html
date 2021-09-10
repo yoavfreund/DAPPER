@@ -138,7 +138,7 @@ class iEnKS:
     #   * Trouble playing nice with &#39;-N&#39; inflation estimation.
 
     def assimilate(self, HMM, xx, yy):
-        R, KO  = HMM.Obs.noise.C, HMM.tseq.KO
+        R, Ko  = HMM.Obs.noise.C, HMM.tseq.Ko
         Rm12 = R.sym_sqrt_inv
 
         assert HMM.Dyn.noise.C == 0, (
@@ -162,12 +162,12 @@ class iEnKS:
                 E = HMM.Dyn(E, t-dt, dt)
 
         # Loop over DA windows (DAW).
-        for ko in progbar(range(0, KO+self.Lag+1)):
+        for ko in progbar(range(0, Ko+self.Lag+1)):
             kLag = ko-self.Lag
-            DAW  = range(max(0, kLag+1), min(ko, KO) + 1)
+            DAW  = range(max(0, kLag+1), min(ko, Ko) + 1)
 
             # Assimilation (if ∃ &#34;not-fully-assimlated&#34; Obs).
-            if ko &lt;= KO:
+            if ko &lt;= Ko:
                 E = iEnKS_update(self.upd_a, E, DAW, HMM, self.stats,
                                  EPS, yy[ko], (k, ko, t), Rm12,
                                  self.xN, self.MDA, (self.nIter, self.wtol))
@@ -176,14 +176,14 @@ class iEnKS:
             # Slide/shift DAW by propagating smoothed (&#39;s&#39;) ensemble from [kLag].
             if kLag &gt;= 0:
                 self.stats.assess(HMM.tseq.kko[kLag], kLag, &#39;s&#39;, E=E)
-            cycle_window = range(max(kLag+1, 0), min(max(kLag+1+1, 0), KO+1))
+            cycle_window = range(max(kLag+1, 0), min(max(kLag+1+1, 0), Ko+1))
 
             for kCycle in cycle_window:
                 for k, t, dt in HMM.tseq.cycle(kCycle):
                     self.stats.assess(k-1, None, &#39;u&#39;, E=E)
                     E = HMM.Dyn(E, t-dt, dt)
 
-        self.stats.assess(k, KO, &#39;us&#39;, E=E)
+        self.stats.assess(k, Ko, &#39;us&#39;, E=E)
 
 
 def iEnKS_update(upd_a, E, DAW, HMM, stats, EPS, y, time, Rm12, xN, MDA, threshold):
@@ -327,7 +327,7 @@ class Var4D:
     xB: float               = 1.0
 
     def assimilate(self, HMM, xx, yy):
-        R, KO = HMM.Obs.noise.C, HMM.tseq.KO
+        R, Ko = HMM.Obs.noise.C, HMM.tseq.Ko
         Rm12 = R.sym_sqrt_inv
         Nx = HMM.Dyn.M
 
@@ -350,12 +350,12 @@ class Var4D:
         self.stats.assess(0, mu=x, Cov=B)
 
         # Loop over DA windows (DAW).
-        for ko in progbar(np.arange(-1, KO+self.Lag+1)):
+        for ko in progbar(np.arange(-1, Ko+self.Lag+1)):
             kLag = ko-self.Lag
-            DAW = range(max(0, kLag+1), min(ko, KO) + 1)
+            DAW = range(max(0, kLag+1), min(ko, Ko) + 1)
 
             # Assimilation (if ∃ &#34;not-fully-assimlated&#34; Obs).
-            if 0 &lt;= ko &lt;= KO:
+            if 0 &lt;= ko &lt;= Ko:
 
                 # Init iterations.
                 w   = np.zeros(Nx)  # Control vector for the mean state.
@@ -407,7 +407,7 @@ class Var4D:
                 X = B12
 
             # Slide/shift DAW by propagating smoothed (&#39;s&#39;) state from [kLag].
-            if -1 &lt;= kLag &lt; KO:
+            if -1 &lt;= kLag &lt; Ko:
                 if kLag &gt;= 0:
                     self.stats.assess(HMM.tseq.kko[kLag], kLag, &#39;s&#39;,
                                       mu=x, Cov=X@Cow1@X.T)
@@ -416,7 +416,7 @@ class Var4D:
                     X = HMM.Dyn.linear(x, t-dt, dt) @ X
                     x = HMM.Dyn(x, t-dt, dt)
 
-        self.stats.assess(k, KO, &#39;us&#39;, mu=x, Cov=X@Cow1@X.T)</code></pre>
+        self.stats.assess(k, Ko, &#39;us&#39;, mu=x, Cov=X@Cow1@X.T)</code></pre>
 </details>
 </section>
 <section>
@@ -688,7 +688,7 @@ Total number of model simulations (of duration dto): N * (nIter*Lag + 1).
     #   * Trouble playing nice with &#39;-N&#39; inflation estimation.
 
     def assimilate(self, HMM, xx, yy):
-        R, KO  = HMM.Obs.noise.C, HMM.tseq.KO
+        R, Ko  = HMM.Obs.noise.C, HMM.tseq.Ko
         Rm12 = R.sym_sqrt_inv
 
         assert HMM.Dyn.noise.C == 0, (
@@ -712,12 +712,12 @@ Total number of model simulations (of duration dto): N * (nIter*Lag + 1).
                 E = HMM.Dyn(E, t-dt, dt)
 
         # Loop over DA windows (DAW).
-        for ko in progbar(range(0, KO+self.Lag+1)):
+        for ko in progbar(range(0, Ko+self.Lag+1)):
             kLag = ko-self.Lag
-            DAW  = range(max(0, kLag+1), min(ko, KO) + 1)
+            DAW  = range(max(0, kLag+1), min(ko, Ko) + 1)
 
             # Assimilation (if ∃ &#34;not-fully-assimlated&#34; Obs).
-            if ko &lt;= KO:
+            if ko &lt;= Ko:
                 E = iEnKS_update(self.upd_a, E, DAW, HMM, self.stats,
                                  EPS, yy[ko], (k, ko, t), Rm12,
                                  self.xN, self.MDA, (self.nIter, self.wtol))
@@ -726,14 +726,14 @@ Total number of model simulations (of duration dto): N * (nIter*Lag + 1).
             # Slide/shift DAW by propagating smoothed (&#39;s&#39;) ensemble from [kLag].
             if kLag &gt;= 0:
                 self.stats.assess(HMM.tseq.kko[kLag], kLag, &#39;s&#39;, E=E)
-            cycle_window = range(max(kLag+1, 0), min(max(kLag+1+1, 0), KO+1))
+            cycle_window = range(max(kLag+1, 0), min(max(kLag+1+1, 0), Ko+1))
 
             for kCycle in cycle_window:
                 for k, t, dt in HMM.tseq.cycle(kCycle):
                     self.stats.assess(k-1, None, &#39;u&#39;, E=E)
                     E = HMM.Dyn(E, t-dt, dt)
 
-        self.stats.assess(k, KO, &#39;us&#39;, E=E)</code></pre>
+        self.stats.assess(k, Ko, &#39;us&#39;, E=E)</code></pre>
 </details>
 <h3>Class variables</h3>
 <dl>
@@ -799,7 +799,7 @@ Total number of model simulations (of duration dto): N * (nIter*Lag + 1).
 <a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/variational.py#L96-L142" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def assimilate(self, HMM, xx, yy):
-    R, KO  = HMM.Obs.noise.C, HMM.tseq.KO
+    R, Ko  = HMM.Obs.noise.C, HMM.tseq.Ko
     Rm12 = R.sym_sqrt_inv
 
     assert HMM.Dyn.noise.C == 0, (
@@ -823,12 +823,12 @@ Total number of model simulations (of duration dto): N * (nIter*Lag + 1).
             E = HMM.Dyn(E, t-dt, dt)
 
     # Loop over DA windows (DAW).
-    for ko in progbar(range(0, KO+self.Lag+1)):
+    for ko in progbar(range(0, Ko+self.Lag+1)):
         kLag = ko-self.Lag
-        DAW  = range(max(0, kLag+1), min(ko, KO) + 1)
+        DAW  = range(max(0, kLag+1), min(ko, Ko) + 1)
 
         # Assimilation (if ∃ &#34;not-fully-assimlated&#34; Obs).
-        if ko &lt;= KO:
+        if ko &lt;= Ko:
             E = iEnKS_update(self.upd_a, E, DAW, HMM, self.stats,
                              EPS, yy[ko], (k, ko, t), Rm12,
                              self.xN, self.MDA, (self.nIter, self.wtol))
@@ -837,14 +837,14 @@ Total number of model simulations (of duration dto): N * (nIter*Lag + 1).
         # Slide/shift DAW by propagating smoothed (&#39;s&#39;) ensemble from [kLag].
         if kLag &gt;= 0:
             self.stats.assess(HMM.tseq.kko[kLag], kLag, &#39;s&#39;, E=E)
-        cycle_window = range(max(kLag+1, 0), min(max(kLag+1+1, 0), KO+1))
+        cycle_window = range(max(kLag+1, 0), min(max(kLag+1+1, 0), Ko+1))
 
         for kCycle in cycle_window:
             for k, t, dt in HMM.tseq.cycle(kCycle):
                 self.stats.assess(k-1, None, &#39;u&#39;, E=E)
                 E = HMM.Dyn(E, t-dt, dt)
 
-    self.stats.assess(k, KO, &#39;us&#39;, E=E)</code></pre>
+    self.stats.assess(k, Ko, &#39;us&#39;, E=E)</code></pre>
 </details>
 </dd>
 <dt id="dapper.da_methods.variational.iEnKS.stat"><code class="name flex">
@@ -903,7 +903,7 @@ there is no benefit to the adjoint trick (back-propagation).
     xB: float               = 1.0
 
     def assimilate(self, HMM, xx, yy):
-        R, KO = HMM.Obs.noise.C, HMM.tseq.KO
+        R, Ko = HMM.Obs.noise.C, HMM.tseq.Ko
         Rm12 = R.sym_sqrt_inv
         Nx = HMM.Dyn.M
 
@@ -926,12 +926,12 @@ there is no benefit to the adjoint trick (back-propagation).
         self.stats.assess(0, mu=x, Cov=B)
 
         # Loop over DA windows (DAW).
-        for ko in progbar(np.arange(-1, KO+self.Lag+1)):
+        for ko in progbar(np.arange(-1, Ko+self.Lag+1)):
             kLag = ko-self.Lag
-            DAW = range(max(0, kLag+1), min(ko, KO) + 1)
+            DAW = range(max(0, kLag+1), min(ko, Ko) + 1)
 
             # Assimilation (if ∃ &#34;not-fully-assimlated&#34; Obs).
-            if 0 &lt;= ko &lt;= KO:
+            if 0 &lt;= ko &lt;= Ko:
 
                 # Init iterations.
                 w   = np.zeros(Nx)  # Control vector for the mean state.
@@ -983,7 +983,7 @@ there is no benefit to the adjoint trick (back-propagation).
                 X = B12
 
             # Slide/shift DAW by propagating smoothed (&#39;s&#39;) state from [kLag].
-            if -1 &lt;= kLag &lt; KO:
+            if -1 &lt;= kLag &lt; Ko:
                 if kLag &gt;= 0:
                     self.stats.assess(HMM.tseq.kko[kLag], kLag, &#39;s&#39;,
                                       mu=x, Cov=X@Cow1@X.T)
@@ -992,7 +992,7 @@ there is no benefit to the adjoint trick (back-propagation).
                     X = HMM.Dyn.linear(x, t-dt, dt) @ X
                     x = HMM.Dyn(x, t-dt, dt)
 
-        self.stats.assess(k, KO, &#39;us&#39;, mu=x, Cov=X@Cow1@X.T)</code></pre>
+        self.stats.assess(k, Ko, &#39;us&#39;, mu=x, Cov=X@Cow1@X.T)</code></pre>
 </details>
 <h3>Class variables</h3>
 <dl>
@@ -1034,7 +1034,7 @@ there is no benefit to the adjoint trick (back-propagation).
 <a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/variational.py#L285-L375" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def assimilate(self, HMM, xx, yy):
-    R, KO = HMM.Obs.noise.C, HMM.tseq.KO
+    R, Ko = HMM.Obs.noise.C, HMM.tseq.Ko
     Rm12 = R.sym_sqrt_inv
     Nx = HMM.Dyn.M
 
@@ -1057,12 +1057,12 @@ there is no benefit to the adjoint trick (back-propagation).
     self.stats.assess(0, mu=x, Cov=B)
 
     # Loop over DA windows (DAW).
-    for ko in progbar(np.arange(-1, KO+self.Lag+1)):
+    for ko in progbar(np.arange(-1, Ko+self.Lag+1)):
         kLag = ko-self.Lag
-        DAW = range(max(0, kLag+1), min(ko, KO) + 1)
+        DAW = range(max(0, kLag+1), min(ko, Ko) + 1)
 
         # Assimilation (if ∃ &#34;not-fully-assimlated&#34; Obs).
-        if 0 &lt;= ko &lt;= KO:
+        if 0 &lt;= ko &lt;= Ko:
 
             # Init iterations.
             w   = np.zeros(Nx)  # Control vector for the mean state.
@@ -1114,7 +1114,7 @@ there is no benefit to the adjoint trick (back-propagation).
             X = B12
 
         # Slide/shift DAW by propagating smoothed (&#39;s&#39;) state from [kLag].
-        if -1 &lt;= kLag &lt; KO:
+        if -1 &lt;= kLag &lt; Ko:
             if kLag &gt;= 0:
                 self.stats.assess(HMM.tseq.kko[kLag], kLag, &#39;s&#39;,
                                   mu=x, Cov=X@Cow1@X.T)
@@ -1123,7 +1123,7 @@ there is no benefit to the adjoint trick (back-propagation).
                 X = HMM.Dyn.linear(x, t-dt, dt) @ X
                 x = HMM.Dyn(x, t-dt, dt)
 
-    self.stats.assess(k, KO, &#39;us&#39;, mu=x, Cov=X@Cow1@X.T)</code></pre>
+    self.stats.assess(k, Ko, &#39;us&#39;, mu=x, Cov=X@Cow1@X.T)</code></pre>
 </details>
 </dd>
 <dt id="dapper.da_methods.variational.Var4D.stat"><code class="name flex">

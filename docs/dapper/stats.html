@@ -81,8 +81,8 @@ This also goes for any other (than <code>rms</code>) type of field summary metho
 <p>Only the time series created with <code><a title="dapper.stats.Stats.new_series" href="#dapper.stats.Stats.new_series">Stats.new_series()</a></code> will be in the format
 operated on by <code><a title="dapper.stats.Stats.average_in_time" href="#dapper.stats.Stats.average_in_time">Stats.average_in_time()</a></code>.
 For example, create <code>ndarray</code> of
-length <code>KO+1</code> to hold the time series of estimated inflation values:</p>
-<pre><code class="language-python-repl">&gt;&gt;&gt; self.stats.new_series('infl', 1, KO+1)
+length <code>Ko+1</code> to hold the time series of estimated inflation values:</p>
+<pre><code class="language-python-repl">&gt;&gt;&gt; self.stats.new_series('infl', 1, Ko+1)
 </code></pre>
 <p>Alternatively you can overwrite a default statistic; for example:</p>
 <pre><code class="language-python-repl">&gt;&gt;&gt; error_time_series_a = xx - ensemble_time_series_a.mean(axis=1)
@@ -157,10 +157,10 @@ class Stats(series.StatPrint):
         # Shapes
         K    = xx.shape[0]-1
         Nx   = xx.shape[1]
-        KO = yy.shape[0]-1
+        Ko = yy.shape[0]-1
         Ny   = yy.shape[1]
         self.K   , self.Nx = K, Nx
-        self.KO, self.Ny = KO, Ny
+        self.Ko, self.Ny = Ko, Ny
 
         # Methods for summarizing multivariate stats (&#34;fields&#34;) as scalars
         # Don&#39;t use nanmean here; nan&#39;s should get propagated!
@@ -220,14 +220,14 @@ class Stats(series.StatPrint):
         ######################################
         # Allocate a few series for outside use
         ######################################
-        self.new_series(&#39;trHK&#39; , 1, KO+1)
-        self.new_series(&#39;infl&#39; , 1, KO+1)
-        self.new_series(&#39;iters&#39;, 1, KO+1)
+        self.new_series(&#39;trHK&#39; , 1, Ko+1)
+        self.new_series(&#39;infl&#39; , 1, Ko+1)
+        self.new_series(&#39;iters&#39;, 1, Ko+1)
 
         # Weight-related
-        self.new_series(&#39;N_eff&#39; , 1, KO+1)
-        self.new_series(&#39;wroot&#39; , 1, KO+1)
-        self.new_series(&#39;resmpl&#39;, 1, KO+1)
+        self.new_series(&#39;N_eff&#39; , 1, Ko+1)
+        self.new_series(&#39;wroot&#39; , 1, Ko+1)
+        self.new_series(&#39;resmpl&#39;, 1, Ko+1)
 
     def new_series(self, name, shape, length=&#39;FAUSt&#39;, field_mean=False, **kws):
         &#34;&#34;&#34;Create (and register) a statistics time series, initialized with `nan`s.
@@ -248,7 +248,7 @@ class Stats(series.StatPrint):
 
         def make_series(parent, name, shape):
             if length == &#39;FAUSt&#39;:
-                total_shape = self.K, self.KO, shape
+                total_shape = self.K, self.Ko, shape
                 store_opts = self.store_u, self.store_s
                 tseries = series.FAUSt(*total_shape, *store_opts, **kws)
             else:
@@ -475,7 +475,7 @@ class Stats(series.StatPrint):
             elif isinstance(tseries, series.DataSeries):
                 if tseries.array.shape[1:] != ():
                     return average_multivariate()
-                elif len(tseries.array) == self.KO+1:
+                elif len(tseries.array) == self.Ko+1:
                     avrgs = series.mean_with_conf(tseries[kko])
                 elif len(tseries.array) == self.K+1:
                     avrgs = series.mean_with_conf(tseries[kk])
@@ -1314,10 +1314,10 @@ The unbiasing factor is <span><span class="MathJax_Preview"> N_{eff} / (N_{eff} 
         # Shapes
         K    = xx.shape[0]-1
         Nx   = xx.shape[1]
-        KO = yy.shape[0]-1
+        Ko = yy.shape[0]-1
         Ny   = yy.shape[1]
         self.K   , self.Nx = K, Nx
-        self.KO, self.Ny = KO, Ny
+        self.Ko, self.Ny = Ko, Ny
 
         # Methods for summarizing multivariate stats (&#34;fields&#34;) as scalars
         # Don&#39;t use nanmean here; nan&#39;s should get propagated!
@@ -1377,14 +1377,14 @@ The unbiasing factor is <span><span class="MathJax_Preview"> N_{eff} / (N_{eff} 
         ######################################
         # Allocate a few series for outside use
         ######################################
-        self.new_series(&#39;trHK&#39; , 1, KO+1)
-        self.new_series(&#39;infl&#39; , 1, KO+1)
-        self.new_series(&#39;iters&#39;, 1, KO+1)
+        self.new_series(&#39;trHK&#39; , 1, Ko+1)
+        self.new_series(&#39;infl&#39; , 1, Ko+1)
+        self.new_series(&#39;iters&#39;, 1, Ko+1)
 
         # Weight-related
-        self.new_series(&#39;N_eff&#39; , 1, KO+1)
-        self.new_series(&#39;wroot&#39; , 1, KO+1)
-        self.new_series(&#39;resmpl&#39;, 1, KO+1)
+        self.new_series(&#39;N_eff&#39; , 1, Ko+1)
+        self.new_series(&#39;wroot&#39; , 1, Ko+1)
+        self.new_series(&#39;resmpl&#39;, 1, Ko+1)
 
     def new_series(self, name, shape, length=&#39;FAUSt&#39;, field_mean=False, **kws):
         &#34;&#34;&#34;Create (and register) a statistics time series, initialized with `nan`s.
@@ -1405,7 +1405,7 @@ The unbiasing factor is <span><span class="MathJax_Preview"> N_{eff} / (N_{eff} 
 
         def make_series(parent, name, shape):
             if length == &#39;FAUSt&#39;:
-                total_shape = self.K, self.KO, shape
+                total_shape = self.K, self.Ko, shape
                 store_opts = self.store_u, self.store_s
                 tseries = series.FAUSt(*total_shape, *store_opts, **kws)
             else:
@@ -1632,7 +1632,7 @@ The unbiasing factor is <span><span class="MathJax_Preview"> N_{eff} / (N_{eff} 
             elif isinstance(tseries, series.DataSeries):
                 if tseries.array.shape[1:] != ():
                     return average_multivariate()
-                elif len(tseries.array) == self.KO+1:
+                elif len(tseries.array) == self.Ko+1:
                     avrgs = series.mean_with_conf(tseries[kko])
                 elif len(tseries.array) == self.K+1:
                     avrgs = series.mean_with_conf(tseries[kk])
@@ -1771,7 +1771,7 @@ Thus, you cannot use <code>dtype=bool</code> or <code>int</code> for stats that 
 
     def make_series(parent, name, shape):
         if length == &#39;FAUSt&#39;:
-            total_shape = self.K, self.KO, shape
+            total_shape = self.K, self.Ko, shape
             store_opts = self.store_u, self.store_s
             tseries = series.FAUSt(*total_shape, *store_opts, **kws)
         else:
@@ -2070,7 +2070,7 @@ time inds for averaging</li>
         elif isinstance(tseries, series.DataSeries):
             if tseries.array.shape[1:] != ():
                 return average_multivariate()
-            elif len(tseries.array) == self.KO+1:
+            elif len(tseries.array) == self.Ko+1:
                 avrgs = series.mean_with_conf(tseries[kko])
             elif len(tseries.array) == self.K+1:
                 avrgs = series.mean_with_conf(tseries[kk])

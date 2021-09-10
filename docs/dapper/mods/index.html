@@ -299,7 +299,7 @@ class HiddenMarkovModel(struct_tools.NicePrint):
 
         # Init
         xx    = np.zeros((tseq.K   + 1, Dyn.M))
-        yy    = np.zeros((tseq.KO+1, Obs.M))
+        yy    = np.zeros((tseq.Ko+1, Obs.M))
 
         xx[0] = X0.sample(1)
 
@@ -621,7 +621,7 @@ and <code>dapper/mods/Lorenz96/miyoshi2011.py</code></dd>
 
         # Init
         xx    = np.zeros((tseq.K   + 1, Dyn.M))
-        yy    = np.zeros((tseq.KO+1, Obs.M))
+        yy    = np.zeros((tseq.Ko+1, Obs.M))
 
         xx[0] = X0.sample(1)
 
@@ -701,7 +701,7 @@ def Ny(self): return self.Obs.M</code></pre>
 
     # Init
     xx    = np.zeros((tseq.K   + 1, Dyn.M))
-    yy    = np.zeros((tseq.KO+1, Obs.M))
+    yy    = np.zeros((tseq.Ko+1, Obs.M))
 
     xx[0] = X0.sample(1)
 

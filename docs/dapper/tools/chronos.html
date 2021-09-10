@@ -64,7 +64,7 @@ class Chronology():
         tt:    0.0    0.2    0.4    0.6    0.8    1.0    T
         kk:    0      1      2      3      4      5      K
                |------|------|------|------|------|------|
-        ko:    None   None   0      None   1      None   KO
+        ko:    None   None   0      None   1      None   Ko
         kko:                 2             4             6
                              [----dko------]
 
@@ -75,11 +75,11 @@ class Chronology():
     Identities (subject to precision):
 
         len(kk)  == len(tt)  == K   +1
-        len(kko) == len(tto) == KO+1
+        len(kko) == len(tto) == Ko+1
 
-        kko[0]   == dko      == dto/dt == K/(KO+1)
+        kko[0]   == dko      == dto/dt == K/(Ko+1)
         kko[-1]  == K        == T/dt
-        KO       == T/dto-1
+        Ko       == T/dto-1
 
     These attributes may be set (altered) after init: `dt, dko, K, T`.
     Setting other attributes (alone) is ambiguous
@@ -88,9 +88,9 @@ class Chronology():
     &#34;&#34;&#34;
 
     def __init__(self, dt=None, dto=None, T=None, BurnIn=-1,
-                 dko=None, KO=None, K=None, Tplot=None):
+                 dko=None, Ko=None, K=None, Tplot=None):
 
-        assert 3 == [dt, dto, T, dko, KO, K].count(None), \
+        assert 3 == [dt, dto, T, dko, Ko, K].count(None), \
             &#39;Chronology is specified using exactly 3 parameters.&#39;
 
         # Reduce all to &#34;state vars&#34; dt,dko,K
@@ -99,8 +99,8 @@ class Chronology():
                 dt = T/K
             elif dko and dto:
                 dt = dto/dko
-            elif T and dko and KO:
-                dt = T/(KO+1)/dko
+            elif T and dko and Ko:
+                dt = T/(Ko+1)/dko
             else:
                 raise TypeError(&#39;Unable to interpret time setup&#39;)
         if not dko:
@@ -114,8 +114,8 @@ class Chronology():
             if T:
                 K = round(T/dt)
                 assert abs(T - K*dt) &lt; dt*1e-9
-            elif KO:
-                K = dko*(KO+1)
+            elif Ko:
+                K = dko*(Ko+1)
             else:
                 raise TypeError(&#39;Unable to interpret time setup&#39;)
         K = int(np.ceil(K/dko)*dko)
@@ -136,7 +136,7 @@ class Chronology():
             Tplot = BurnIn
         self.Tplot = Tplot  # don&#39;t enforce &lt;T here
 
-        assert len(self.kko) == self.KO+1
+        assert len(self.kko) == self.Ko+1
 
     ######################################
     # &#34;State vars&#34;. Can be set (changed).
@@ -187,12 +187,12 @@ class Chronology():
                       BurnIn=self.BurnIn, Tplot=self.Tplot)
 
     @property
-    def KO(self):
+    def Ko(self):
         return int(self.K/self.dko)-1
 
-    @KO.setter
-    def KO(self, value):
-        self.__init__(dt=self.dt, dko=self.dko, KO=value,
+    @Ko.setter
+    def Ko(self, value):
+        self.__init__(dt=self.dt, dko=self.dko, Ko=value,
                       BurnIn=self.BurnIn, Tplot=self.Tplot)
 
     ######################################
@@ -253,7 +253,7 @@ class Chronology():
             yield k, t, dt
 
     def __str__(self):
-        printable = [&#39;K&#39;, &#39;KO&#39;, &#39;T&#39;, &#39;BurnIn&#39;, &#39;dto&#39;, &#39;dt&#39;]
+        printable = [&#39;K&#39;, &#39;Ko&#39;, &#39;T&#39;, &#39;BurnIn&#39;, &#39;dto&#39;, &#39;dt&#39;]
         return str(AlignedDict([(k, getattr(self, k)) for k in printable]))
 
     def __repr__(self):
@@ -364,7 +364,7 @@ def format_time(k, ko, t):
 <dl>
 <dt id="dapper.tools.chronos.Chronology"><code class="flex name class">
 <span>class <span class="ident">Chronology</span></span>
-<span>(</span><span>dt=None, dto=None, T=None, BurnIn=-1, dko=None, KO=None, K=None, Tplot=None)</span>
+<span>(</span><span>dt=None, dto=None, T=None, BurnIn=-1, dko=None, Ko=None, K=None, Tplot=None)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Time schedules with consistency checks.</p>
@@ -378,7 +378,7 @@ def format_time(k, ko, t):
 tt:    0.0    0.2    0.4    0.6    0.8    1.0    T
 kk:    0      1      2      3      4      5      K
        |------|------|------|------|------|------|
-ko:    None   None   0      None   1      None   KO
+ko:    None   None   0      None   1      None   Ko
 kko:                 2             4             6
                      [----dko------]
 </code></pre>
@@ -389,11 +389,11 @@ whose cycling starts by the forecast.</p>
 </div>
 <p>Identities (subject to precision):</p>
 <pre><code>len(kk)  == len(tt)  == K   +1
-len(kko) == len(tto) == KO+1
+len(kko) == len(tto) == Ko+1
 
-kko[0]   == dko      == dto/dt == K/(KO+1)
+kko[0]   == dko      == dto/dt == K/(Ko+1)
 kko[-1]  == K        == T/dt
-KO       == T/dto-1
+Ko       == T/dto-1
 </code></pre>
 <p>These attributes may be set (altered) after init: <code>dt, dko, K, T</code>.
 Setting other attributes (alone) is ambiguous
@@ -417,7 +417,7 @@ and so should/will raise an exception.</p></div>
         tt:    0.0    0.2    0.4    0.6    0.8    1.0    T
         kk:    0      1      2      3      4      5      K
                |------|------|------|------|------|------|
-        ko:    None   None   0      None   1      None   KO
+        ko:    None   None   0      None   1      None   Ko
         kko:                 2             4             6
                              [----dko------]
 
@@ -428,11 +428,11 @@ and so should/will raise an exception.</p></div>
     Identities (subject to precision):
 
         len(kk)  == len(tt)  == K   +1
-        len(kko) == len(tto) == KO+1
+        len(kko) == len(tto) == Ko+1
 
-        kko[0]   == dko      == dto/dt == K/(KO+1)
+        kko[0]   == dko      == dto/dt == K/(Ko+1)
         kko[-1]  == K        == T/dt
-        KO       == T/dto-1
+        Ko       == T/dto-1
 
     These attributes may be set (altered) after init: `dt, dko, K, T`.
     Setting other attributes (alone) is ambiguous
@@ -441,9 +441,9 @@ and so should/will raise an exception.</p></div>
     &#34;&#34;&#34;
 
     def __init__(self, dt=None, dto=None, T=None, BurnIn=-1,
-                 dko=None, KO=None, K=None, Tplot=None):
+                 dko=None, Ko=None, K=None, Tplot=None):
 
-        assert 3 == [dt, dto, T, dko, KO, K].count(None), \
+        assert 3 == [dt, dto, T, dko, Ko, K].count(None), \
             &#39;Chronology is specified using exactly 3 parameters.&#39;
 
         # Reduce all to &#34;state vars&#34; dt,dko,K
@@ -452,8 +452,8 @@ and so should/will raise an exception.</p></div>
                 dt = T/K
             elif dko and dto:
                 dt = dto/dko
-            elif T and dko and KO:
-                dt = T/(KO+1)/dko
+            elif T and dko and Ko:
+                dt = T/(Ko+1)/dko
             else:
                 raise TypeError(&#39;Unable to interpret time setup&#39;)
         if not dko:
@@ -467,8 +467,8 @@ and so should/will raise an exception.</p></div>
             if T:
                 K = round(T/dt)
                 assert abs(T - K*dt) &lt; dt*1e-9
-            elif KO:
-                K = dko*(KO+1)
+            elif Ko:
+                K = dko*(Ko+1)
             else:
                 raise TypeError(&#39;Unable to interpret time setup&#39;)
         K = int(np.ceil(K/dko)*dko)
@@ -489,7 +489,7 @@ and so should/will raise an exception.</p></div>
             Tplot = BurnIn
         self.Tplot = Tplot  # don&#39;t enforce &lt;T here
 
-        assert len(self.kko) == self.KO+1
+        assert len(self.kko) == self.Ko+1
 
     ######################################
     # &#34;State vars&#34;. Can be set (changed).
@@ -540,12 +540,12 @@ and so should/will raise an exception.</p></div>
                       BurnIn=self.BurnIn, Tplot=self.Tplot)
 
     @property
-    def KO(self):
+    def Ko(self):
         return int(self.K/self.dko)-1
 
-    @KO.setter
-    def KO(self, value):
-        self.__init__(dt=self.dt, dko=self.dko, KO=value,
+    @Ko.setter
+    def Ko(self, value):
+        self.__init__(dt=self.dt, dko=self.dko, Ko=value,
                       BurnIn=self.BurnIn, Tplot=self.Tplot)
 
     ######################################
@@ -606,7 +606,7 @@ and so should/will raise an exception.</p></div>
             yield k, t, dt
 
     def __str__(self):
-        printable = [&#39;K&#39;, &#39;KO&#39;, &#39;T&#39;, &#39;BurnIn&#39;, &#39;dto&#39;, &#39;dt&#39;]
+        printable = [&#39;K&#39;, &#39;Ko&#39;, &#39;T&#39;, &#39;BurnIn&#39;, &#39;dto&#39;, &#39;dt&#39;]
         return str(AlignedDict([(k, getattr(self, k)) for k in printable]))
 
     def __repr__(self):
@@ -681,7 +681,7 @@ def T(self):
     return self.dt*self.K</code></pre>
 </details>
 </dd>
-<dt id="dapper.tools.chronos.Chronology.KO"><code class="name">var <span class="ident">KO</span></code></dt>
+<dt id="dapper.tools.chronos.Chronology.Ko"><code class="name">var <span class="ident">Ko</span></code></dt>
 <dd>
 <div class="desc"></div>
 <details class="source">
@@ -690,7 +690,7 @@ def T(self):
 <a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/chronos.py#L145-L147" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">@property
-def KO(self):
+def Ko(self):
     return int(self.K/self.dko)-1</code></pre>
 </details>
 </dd>
@@ -961,7 +961,7 @@ data-gaCategoryParameter="dapper.tools.chronos">
 <li><code><a title="dapper.tools.chronos.Chronology.dko" href="#dapper.tools.chronos.Chronology.dko">dko</a></code></li>
 <li><code><a title="dapper.tools.chronos.Chronology.K" href="#dapper.tools.chronos.Chronology.K">K</a></code></li>
 <li><code><a title="dapper.tools.chronos.Chronology.T" href="#dapper.tools.chronos.Chronology.T">T</a></code></li>
-<li><code><a title="dapper.tools.chronos.Chronology.KO" href="#dapper.tools.chronos.Chronology.KO">KO</a></code></li>
+<li><code><a title="dapper.tools.chronos.Chronology.Ko" href="#dapper.tools.chronos.Chronology.Ko">Ko</a></code></li>
 <li><code><a title="dapper.tools.chronos.Chronology.dto" href="#dapper.tools.chronos.Chronology.dto">dto</a></code></li>
 <li><code><a title="dapper.tools.chronos.Chronology.kk" href="#dapper.tools.chronos.Chronology.kk">kk</a></code></li>
 <li><code><a title="dapper.tools.chronos.Chronology.kko" href="#dapper.tools.chronos.Chronology.kko">kko</a></code></li>
