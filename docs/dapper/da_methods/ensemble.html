@@ -83,21 +83,21 @@ class EnKF:
         self.stats.assess(0, E=E)
 
         # Cycle
-        for k, kObs, t, dt in progbar(HMM.tseq.ticker):
+        for k, ko, t, dt in progbar(HMM.tseq.ticker):
             E = HMM.Dyn(E, t-dt, dt)
             E = add_noise(E, dt, HMM.Dyn.noise, self.fnoise_treatm)
 
             # Analysis update
-            if kObs is not None:
-                self.stats.assess(k, kObs, &#39;f&#39;, E=E)
-                E = EnKF_analysis(E, HMM.Obs(E, t), HMM.Obs.noise, yy[kObs],
-                                  self.upd_a, self.stats, kObs)
+            if ko is not None:
+                self.stats.assess(k, ko, &#39;f&#39;, E=E)
+                E = EnKF_analysis(E, HMM.Obs(E, t), HMM.Obs.noise, yy[ko],
+                                  self.upd_a, self.stats, ko)
                 E = post_process(E, self.infl, self.rot)
 
-            self.stats.assess(k, kObs, E=E)
+            self.stats.assess(k, ko, E=E)
 
 
-def EnKF_analysis(E, Eo, hnoise, y, upd_a, stats=None, kObs=None):
+def EnKF_analysis(E, Eo, hnoise, y, upd_a, stats=None, ko=None):
     &#34;&#34;&#34;Perform the EnKF analysis update.
 
     This implementation includes several flavours and forms,
@@ -260,9 +260,9 @@ def EnKF_analysis(E, Eo, hnoise, y, upd_a, stats=None, kObs=None):
     # Diagnostic: relative influence of observations
     if stats is not None:
         if &#39;trHK&#39; in locals():
-            stats.trHK[kObs] = trHK      / hnoise.M
+            stats.trHK[ko] = trHK      / hnoise.M
         elif &#39;HK&#39; in locals():
-            stats.trHK[kObs] = HK.trace()/hnoise.M
+            stats.trHK[ko] = HK.trace()/hnoise.M
 
     return E
 
@@ -418,32 +418,32 @@ class EnKS:
         E    = zeros((HMM.tseq.K+1, self.N, HMM.Dyn.M))
         E[0] = HMM.X0.sample(self.N)
 
-        for k, kObs, t, dt in progbar(HMM.tseq.ticker):
+        for k, ko, t, dt in progbar(HMM.tseq.ticker):
             E[k] = HMM.Dyn(E[k-1], t-dt, dt)
             E[k] = add_noise(E[k], dt, HMM.Dyn.noise, self.fnoise_treatm)
 
-            if kObs is not None:
-                self.stats.assess(k, kObs, &#39;f&#39;, E=E[k])
+            if ko is not None:
+                self.stats.assess(k, ko, &#39;f&#39;, E=E[k])
 
                 Eo    = HMM.Obs(E[k], t)
-                y     = yy[kObs]
+                y     = yy[ko]
 
                 # Inds within Lag
-                kk    = range(max(0, k-self.Lag*HMM.tseq.dkObs), k+1)
+                kk    = range(max(0, k-self.Lag*HMM.tseq.dko), k+1)
 
                 EE    = E[kk]
 
                 EE    = self.reshape_to(EE)
                 EE    = EnKF_analysis(EE, Eo, HMM.Obs.noise, y,
-                                      self.upd_a, self.stats, kObs)
+                                      self.upd_a, self.stats, ko)
                 E[kk] = self.reshape_fr(EE, HMM.Dyn.M)
                 E[k]  = post_process(E[k], self.infl, self.rot)
-                self.stats.assess(k, kObs, &#39;a&#39;, E=E[k])
+                self.stats.assess(k, ko, &#39;a&#39;, E=E[k])
 
-        for k, kObs, _, _ in progbar(HMM.tseq.ticker, desc=&#39;Assessing&#39;):
-            self.stats.assess(k, kObs, &#39;u&#39;, E=E[k])
-            if kObs is not None:
-                self.stats.assess(k, kObs, &#39;s&#39;, E=E[k])
+        for k, ko, _, _ in progbar(HMM.tseq.ticker, desc=&#39;Assessing&#39;):
+            self.stats.assess(k, ko, &#39;u&#39;, E=E[k])
+            if ko is not None:
+                self.stats.assess(k, ko, &#39;s&#39;, E=E[k])
 
 
 @ens_method
@@ -455,7 +455,7 @@ class EnRTS:
 
     upd_a: str
     N: int
-    cntr: float
+    DeCorr: float
 
     def assimilate(self, HMM, xx, yy):
         E    = zeros((HMM.tseq.K+1, self.N, HMM.Dyn.M))
@@ -463,19 +463,19 @@ class EnRTS:
         E[0] = HMM.X0.sample(self.N)
 
         # Forward pass
-        for k, kObs, t, dt in progbar(HMM.tseq.ticker):
+        for k, ko, t, dt in progbar(HMM.tseq.ticker):
             E[k]  = HMM.Dyn(E[k-1], t-dt, dt)
             E[k]  = add_noise(E[k], dt, HMM.Dyn.noise, self.fnoise_treatm)
             Ef[k] = E[k]
 
-            if kObs is not None:
-                self.stats.assess(k, kObs, &#39;f&#39;, E=E[k])
+            if ko is not None:
+                self.stats.assess(k, ko, &#39;f&#39;, E=E[k])
                 Eo   = HMM.Obs(E[k], t)
-                y    = yy[kObs]
+                y    = yy[ko]
                 E[k] = EnKF_analysis(E[k], Eo, HMM.Obs.noise, y,
-                                     self.upd_a, self.stats, kObs)
+                                     self.upd_a, self.stats, ko)
                 E[k] = post_process(E[k], self.infl, self.rot)
-                self.stats.assess(k, kObs, &#39;a&#39;, E=E[k])
+                self.stats.assess(k, ko, &#39;a&#39;, E=E[k])
 
         # Backward pass
         for k in progbar(range(HMM.tseq.K)[::-1]):
@@ -483,14 +483,14 @@ class EnRTS:
             Af = center(Ef[k+1])[0]
 
             J = tinv(Af) @ A
-            J *= self.cntr
+            J *= self.DeCorr
 
             E[k] += (E[k+1] - Ef[k+1]) @ J
 
-        for k, kObs, _, _ in progbar(HMM.tseq.ticker, desc=&#39;Assessing&#39;):
-            self.stats.assess(k, kObs, &#39;u&#39;, E=E[k])
-            if kObs is not None:
-                self.stats.assess(k, kObs, &#39;s&#39;, E=E[k])
+        for k, ko, _, _ in progbar(HMM.tseq.ticker, desc=&#39;Assessing&#39;):
+            self.stats.assess(k, ko, &#39;u&#39;, E=E[k])
+            if ko is not None:
+                self.stats.assess(k, ko, &#39;s&#39;, E=E[k])
 
 
 def serial_inds(upd_a, y, cvR, A):
@@ -538,13 +538,13 @@ class SL_EAKF:
         E = HMM.X0.sample(self.N)
         self.stats.assess(0, E=E)
 
-        for k, kObs, t, dt in progbar(HMM.tseq.ticker):
+        for k, ko, t, dt in progbar(HMM.tseq.ticker):
             E = HMM.Dyn(E, t-dt, dt)
             E = add_noise(E, dt, HMM.Dyn.noise, self.fnoise_treatm)
 
-            if kObs is not None:
-                self.stats.assess(k, kObs, &#39;f&#39;, E=E)
-                y    = yy[kObs]
+            if ko is not None:
+                self.stats.assess(k, ko, &#39;f&#39;, E=E)
+                y    = yy[ko]
                 inds = serial_inds(self.ordr, y, R, center(E)[0])
 
                 state_taperer = HMM.Obs.localizer(self.loc_rad, &#39;y2x&#39;, t, self.taper)
@@ -583,7 +583,7 @@ class SL_EAKF:
 
                 E = post_process(E, self.infl, self.rot)
 
-            self.stats.assess(k, kObs, E=E)
+            self.stats.assess(k, ko, E=E)
 
 
 @ens_method
@@ -615,19 +615,19 @@ class LETKF:
         E = HMM.X0.sample(N)
         self.stats.assess(0, E=E)
 
-        for k, kObs, t, dt in progbar(HMM.tseq.ticker):
+        for k, ko, t, dt in progbar(HMM.tseq.ticker):
             # Forecast
             E = HMM.Dyn(E, t-dt, dt)
             E = add_noise(E, dt, HMM.Dyn.noise, self.fnoise_treatm)
 
-            if kObs is not None:
-                self.stats.assess(k, kObs, &#39;f&#39;, E=E)
+            if ko is not None:
+                self.stats.assess(k, ko, &#39;f&#39;, E=E)
 
                 # Decompose ensmeble
                 mu = np.mean(E, 0)
                 A  = E - mu
                 # Obs space variables
-                y     = yy[kObs]
+                y     = yy[ko]
                 Y, xo = center(HMM.Obs(E, t))
                 # Transform obs space
                 Y  = Y        @ R.sym_sqrt_inv.T
@@ -687,9 +687,9 @@ class LETKF:
                 # Global post-processing
                 E = post_process(E, self.infl, self.rot)
 
-                self.stats.infl[kObs] = sqrt(N1/np.mean(za))
+                self.stats.infl[ko] = sqrt(N1/np.mean(za))
 
-            self.stats.assess(k, kObs, E=E)
+            self.stats.assess(k, ko, E=E)
 
 
 def effective_N(YR, dyR, xN, g):
@@ -904,16 +904,16 @@ class EnKF_N:
         self.stats.assess(0, E=E)
 
         # Cycle
-        for k, kObs, t, dt in progbar(HMM.tseq.ticker):
+        for k, ko, t, dt in progbar(HMM.tseq.ticker):
             # Forecast
             E = HMM.Dyn(E, t-dt, dt)
             E = add_noise(E, dt, HMM.Dyn.noise, self.fnoise_treatm)
 
             # Analysis
-            if kObs is not None:
-                self.stats.assess(k, kObs, &#39;f&#39;, E=E)
+            if ko is not None:
+                self.stats.assess(k, ko, &#39;f&#39;, E=E)
                 Eo = HMM.Obs(E, t)
-                y  = yy[kObs]
+                y  = yy[ko]
 
                 mu = np.mean(E, 0)
                 A  = E - mu
@@ -927,7 +927,7 @@ class EnKF_N:
                 def dgn_N(l1): return pad0((l1*s)**2, N) + N1
 
                 # Adjust hyper-prior
-                # xN_ = noise_level(self.xN, self.stats, HMM.tseq, N1, kObs, A,
+                # xN_ = noise_level(self.xN, self.stats, HMM.tseq, N1, ko, A,
                 #                   locals().get(&#39;A_old&#39;, None))
                 eN, cL = hyperprior_coeffs(s, N, self.xN, self.g)
 
@@ -1007,10 +1007,10 @@ class EnKF_N:
                 E = mu + w@A + T@A
                 E = post_process(E, self.infl, self.rot)
 
-                self.stats.infl[kObs] = l1
-                self.stats.trHK[kObs] = (((l1*s)**2 + N1)**(-1.0)*s**2).sum()/HMM.Ny
+                self.stats.infl[ko] = l1
+                self.stats.trHK[ko] = (((l1*s)**2 + N1)**(-1.0)*s**2).sum()/HMM.Ny
 
-            self.stats.assess(k, kObs, E=E)</code></pre>
+            self.stats.assess(k, ko, E=E)</code></pre>
 </details>
 </section>
 <section>
@@ -1021,7 +1021,7 @@ class EnKF_N:
 <h2 class="section-title" id="header-functions">Functions</h2>
 <dl>
 <dt id="dapper.da_methods.ensemble.EnKF_analysis"><code class="name flex">
-<span>def <span class="ident">EnKF_analysis</span></span>(<span>E, Eo, hnoise, y, upd_a, stats=None, kObs=None)</span>
+<span>def <span class="ident">EnKF_analysis</span></span>(<span>E, Eo, hnoise, y, upd_a, stats=None, ko=None)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Perform the EnKF analysis update.</p>
@@ -1034,7 +1034,7 @@ specified by <code>upd_a</code>.</p>
 <span>Expand source code</span>
 <a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/ensemble.py#L56-L223" class="git-link">Browse git</a>
 </summary>
-<pre><code class="python">def EnKF_analysis(E, Eo, hnoise, y, upd_a, stats=None, kObs=None):
+<pre><code class="python">def EnKF_analysis(E, Eo, hnoise, y, upd_a, stats=None, ko=None):
     &#34;&#34;&#34;Perform the EnKF analysis update.
 
     This implementation includes several flavours and forms,
@@ -1197,9 +1197,9 @@ specified by <code>upd_a</code>.</p>
     # Diagnostic: relative influence of observations
     if stats is not None:
         if &#39;trHK&#39; in locals():
-            stats.trHK[kObs] = trHK      / hnoise.M
+            stats.trHK[ko] = trHK      / hnoise.M
         elif &#39;HK&#39; in locals():
-            stats.trHK[kObs] = HK.trace()/hnoise.M
+            stats.trHK[ko] = HK.trace()/hnoise.M
 
     return E</code></pre>
 </details>
@@ -1652,18 +1652,18 @@ the distinction between the primal and dual EnKF-N.</p></div>
         self.stats.assess(0, E=E)
 
         # Cycle
-        for k, kObs, t, dt in progbar(HMM.tseq.ticker):
+        for k, ko, t, dt in progbar(HMM.tseq.ticker):
             E = HMM.Dyn(E, t-dt, dt)
             E = add_noise(E, dt, HMM.Dyn.noise, self.fnoise_treatm)
 
             # Analysis update
-            if kObs is not None:
-                self.stats.assess(k, kObs, &#39;f&#39;, E=E)
-                E = EnKF_analysis(E, HMM.Obs(E, t), HMM.Obs.noise, yy[kObs],
-                                  self.upd_a, self.stats, kObs)
+            if ko is not None:
+                self.stats.assess(k, ko, &#39;f&#39;, E=E)
+                E = EnKF_analysis(E, HMM.Obs(E, t), HMM.Obs.noise, yy[ko],
+                                  self.upd_a, self.stats, ko)
                 E = post_process(E, self.infl, self.rot)
 
-            self.stats.assess(k, kObs, E=E)</code></pre>
+            self.stats.assess(k, ko, E=E)</code></pre>
 </details>
 <h3>Class variables</h3>
 <dl>
@@ -1710,18 +1710,18 @@ the distinction between the primal and dual EnKF-N.</p></div>
     self.stats.assess(0, E=E)
 
     # Cycle
-    for k, kObs, t, dt in progbar(HMM.tseq.ticker):
+    for k, ko, t, dt in progbar(HMM.tseq.ticker):
         E = HMM.Dyn(E, t-dt, dt)
         E = add_noise(E, dt, HMM.Dyn.noise, self.fnoise_treatm)
 
         # Analysis update
-        if kObs is not None:
-            self.stats.assess(k, kObs, &#39;f&#39;, E=E)
-            E = EnKF_analysis(E, HMM.Obs(E, t), HMM.Obs.noise, yy[kObs],
-                              self.upd_a, self.stats, kObs)
+        if ko is not None:
+            self.stats.assess(k, ko, &#39;f&#39;, E=E)
+            E = EnKF_analysis(E, HMM.Obs(E, t), HMM.Obs.noise, yy[ko],
+                              self.upd_a, self.stats, ko)
             E = post_process(E, self.infl, self.rot)
 
-        self.stats.assess(k, kObs, E=E)</code></pre>
+        self.stats.assess(k, ko, E=E)</code></pre>
 </details>
 </dd>
 <dt id="dapper.da_methods.ensemble.EnKF.stat"><code class="name flex">
@@ -1784,32 +1784,32 @@ is the management of the lag and the reshapings.</p></div>
         E    = zeros((HMM.tseq.K+1, self.N, HMM.Dyn.M))
         E[0] = HMM.X0.sample(self.N)
 
-        for k, kObs, t, dt in progbar(HMM.tseq.ticker):
+        for k, ko, t, dt in progbar(HMM.tseq.ticker):
             E[k] = HMM.Dyn(E[k-1], t-dt, dt)
             E[k] = add_noise(E[k], dt, HMM.Dyn.noise, self.fnoise_treatm)
 
-            if kObs is not None:
-                self.stats.assess(k, kObs, &#39;f&#39;, E=E[k])
+            if ko is not None:
+                self.stats.assess(k, ko, &#39;f&#39;, E=E[k])
 
                 Eo    = HMM.Obs(E[k], t)
-                y     = yy[kObs]
+                y     = yy[ko]
 
                 # Inds within Lag
-                kk    = range(max(0, k-self.Lag*HMM.tseq.dkObs), k+1)
+                kk    = range(max(0, k-self.Lag*HMM.tseq.dko), k+1)
 
                 EE    = E[kk]
 
                 EE    = self.reshape_to(EE)
                 EE    = EnKF_analysis(EE, Eo, HMM.Obs.noise, y,
-                                      self.upd_a, self.stats, kObs)
+                                      self.upd_a, self.stats, ko)
                 E[kk] = self.reshape_fr(EE, HMM.Dyn.M)
                 E[k]  = post_process(E[k], self.infl, self.rot)
-                self.stats.assess(k, kObs, &#39;a&#39;, E=E[k])
+                self.stats.assess(k, ko, &#39;a&#39;, E=E[k])
 
-        for k, kObs, _, _ in progbar(HMM.tseq.ticker, desc=&#39;Assessing&#39;):
-            self.stats.assess(k, kObs, &#39;u&#39;, E=E[k])
-            if kObs is not None:
-                self.stats.assess(k, kObs, &#39;s&#39;, E=E[k])</code></pre>
+        for k, ko, _, _ in progbar(HMM.tseq.ticker, desc=&#39;Assessing&#39;):
+            self.stats.assess(k, ko, &#39;u&#39;, E=E[k])
+            if ko is not None:
+                self.stats.assess(k, ko, &#39;s&#39;, E=E[k])</code></pre>
 </details>
 <h3>Class variables</h3>
 <dl>
@@ -1891,32 +1891,32 @@ is the management of the lag and the reshapings.</p></div>
     E    = zeros((HMM.tseq.K+1, self.N, HMM.Dyn.M))
     E[0] = HMM.X0.sample(self.N)
 
-    for k, kObs, t, dt in progbar(HMM.tseq.ticker):
+    for k, ko, t, dt in progbar(HMM.tseq.ticker):
         E[k] = HMM.Dyn(E[k-1], t-dt, dt)
         E[k] = add_noise(E[k], dt, HMM.Dyn.noise, self.fnoise_treatm)
 
-        if kObs is not None:
-            self.stats.assess(k, kObs, &#39;f&#39;, E=E[k])
+        if ko is not None:
+            self.stats.assess(k, ko, &#39;f&#39;, E=E[k])
 
             Eo    = HMM.Obs(E[k], t)
-            y     = yy[kObs]
+            y     = yy[ko]
 
             # Inds within Lag
-            kk    = range(max(0, k-self.Lag*HMM.tseq.dkObs), k+1)
+            kk    = range(max(0, k-self.Lag*HMM.tseq.dko), k+1)
 
             EE    = E[kk]
 
             EE    = self.reshape_to(EE)
             EE    = EnKF_analysis(EE, Eo, HMM.Obs.noise, y,
-                                  self.upd_a, self.stats, kObs)
+                                  self.upd_a, self.stats, ko)
             E[kk] = self.reshape_fr(EE, HMM.Dyn.M)
             E[k]  = post_process(E[k], self.infl, self.rot)
-            self.stats.assess(k, kObs, &#39;a&#39;, E=E[k])
+            self.stats.assess(k, ko, &#39;a&#39;, E=E[k])
 
-    for k, kObs, _, _ in progbar(HMM.tseq.ticker, desc=&#39;Assessing&#39;):
-        self.stats.assess(k, kObs, &#39;u&#39;, E=E[k])
-        if kObs is not None:
-            self.stats.assess(k, kObs, &#39;s&#39;, E=E[k])</code></pre>
+    for k, ko, _, _ in progbar(HMM.tseq.ticker, desc=&#39;Assessing&#39;):
+        self.stats.assess(k, ko, &#39;u&#39;, E=E[k])
+        if ko is not None:
+            self.stats.assess(k, ko, &#39;s&#39;, E=E[k])</code></pre>
 </details>
 </dd>
 <dt id="dapper.da_methods.ensemble.EnKS.stat"><code class="name flex">
@@ -1937,7 +1937,7 @@ is the management of the lag and the reshapings.</p></div>
 </dd>
 <dt id="dapper.da_methods.ensemble.EnRTS"><code class="flex name class">
 <span>class <span class="ident">EnRTS</span></span>
-<span>(</span><span>upd_a: str, N: int, cntr: float, infl: float = 1.0, rot: bool = False, fnoise_treatm: str = 'Stoch')</span>
+<span>(</span><span>upd_a: str, N: int, DeCorr: float, infl: float = 1.0, rot: bool = False, fnoise_treatm: str = 'Stoch')</span>
 </code></dt>
 <dd>
 <div class="desc"><p>EnRTS (Rauch-Tung-Striebel) smoother.</p>
@@ -1955,7 +1955,7 @@ is the management of the lag and the reshapings.</p></div>
 
     upd_a: str
     N: int
-    cntr: float
+    DeCorr: float
 
     def assimilate(self, HMM, xx, yy):
         E    = zeros((HMM.tseq.K+1, self.N, HMM.Dyn.M))
@@ -1963,19 +1963,19 @@ is the management of the lag and the reshapings.</p></div>
         E[0] = HMM.X0.sample(self.N)
 
         # Forward pass
-        for k, kObs, t, dt in progbar(HMM.tseq.ticker):
+        for k, ko, t, dt in progbar(HMM.tseq.ticker):
             E[k]  = HMM.Dyn(E[k-1], t-dt, dt)
             E[k]  = add_noise(E[k], dt, HMM.Dyn.noise, self.fnoise_treatm)
             Ef[k] = E[k]
 
-            if kObs is not None:
-                self.stats.assess(k, kObs, &#39;f&#39;, E=E[k])
+            if ko is not None:
+                self.stats.assess(k, ko, &#39;f&#39;, E=E[k])
                 Eo   = HMM.Obs(E[k], t)
-                y    = yy[kObs]
+                y    = yy[ko]
                 E[k] = EnKF_analysis(E[k], Eo, HMM.Obs.noise, y,
-                                     self.upd_a, self.stats, kObs)
+                                     self.upd_a, self.stats, ko)
                 E[k] = post_process(E[k], self.infl, self.rot)
-                self.stats.assess(k, kObs, &#39;a&#39;, E=E[k])
+                self.stats.assess(k, ko, &#39;a&#39;, E=E[k])
 
         # Backward pass
         for k in progbar(range(HMM.tseq.K)[::-1]):
@@ -1983,14 +1983,14 @@ is the management of the lag and the reshapings.</p></div>
             Af = center(Ef[k+1])[0]
 
             J = tinv(Af) @ A
-            J *= self.cntr
+            J *= self.DeCorr
 
             E[k] += (E[k+1] - Ef[k+1]) @ J
 
-        for k, kObs, _, _ in progbar(HMM.tseq.ticker, desc=&#39;Assessing&#39;):
-            self.stats.assess(k, kObs, &#39;u&#39;, E=E[k])
-            if kObs is not None:
-                self.stats.assess(k, kObs, &#39;s&#39;, E=E[k])</code></pre>
+        for k, ko, _, _ in progbar(HMM.tseq.ticker, desc=&#39;Assessing&#39;):
+            self.stats.assess(k, ko, &#39;u&#39;, E=E[k])
+            if ko is not None:
+                self.stats.assess(k, ko, &#39;s&#39;, E=E[k])</code></pre>
 </details>
 <h3>Class variables</h3>
 <dl>
@@ -2002,7 +2002,7 @@ is the management of the lag and the reshapings.</p></div>
 <dd>
 <div class="desc"></div>
 </dd>
-<dt id="dapper.da_methods.ensemble.EnRTS.cntr"><code class="name">var <span class="ident">cntr</span> : float</code></dt>
+<dt id="dapper.da_methods.ensemble.EnRTS.DeCorr"><code class="name">var <span class="ident">DeCorr</span> : float</code></dt>
 <dd>
 <div class="desc"></div>
 </dd>
@@ -2041,19 +2041,19 @@ is the management of the lag and the reshapings.</p></div>
     E[0] = HMM.X0.sample(self.N)
 
     # Forward pass
-    for k, kObs, t, dt in progbar(HMM.tseq.ticker):
+    for k, ko, t, dt in progbar(HMM.tseq.ticker):
         E[k]  = HMM.Dyn(E[k-1], t-dt, dt)
         E[k]  = add_noise(E[k], dt, HMM.Dyn.noise, self.fnoise_treatm)
         Ef[k] = E[k]
 
-        if kObs is not None:
-            self.stats.assess(k, kObs, &#39;f&#39;, E=E[k])
+        if ko is not None:
+            self.stats.assess(k, ko, &#39;f&#39;, E=E[k])
             Eo   = HMM.Obs(E[k], t)
-            y    = yy[kObs]
+            y    = yy[ko]
             E[k] = EnKF_analysis(E[k], Eo, HMM.Obs.noise, y,
-                                 self.upd_a, self.stats, kObs)
+                                 self.upd_a, self.stats, ko)
             E[k] = post_process(E[k], self.infl, self.rot)
-            self.stats.assess(k, kObs, &#39;a&#39;, E=E[k])
+            self.stats.assess(k, ko, &#39;a&#39;, E=E[k])
 
     # Backward pass
     for k in progbar(range(HMM.tseq.K)[::-1]):
@@ -2061,14 +2061,14 @@ is the management of the lag and the reshapings.</p></div>
         Af = center(Ef[k+1])[0]
 
         J = tinv(Af) @ A
-        J *= self.cntr
+        J *= self.DeCorr
 
         E[k] += (E[k+1] - Ef[k+1]) @ J
 
-    for k, kObs, _, _ in progbar(HMM.tseq.ticker, desc=&#39;Assessing&#39;):
-        self.stats.assess(k, kObs, &#39;u&#39;, E=E[k])
-        if kObs is not None:
-            self.stats.assess(k, kObs, &#39;s&#39;, E=E[k])</code></pre>
+    for k, ko, _, _ in progbar(HMM.tseq.ticker, desc=&#39;Assessing&#39;):
+        self.stats.assess(k, ko, &#39;u&#39;, E=E[k])
+        if ko is not None:
+            self.stats.assess(k, ko, &#39;s&#39;, E=E[k])</code></pre>
 </details>
 </dd>
 <dt id="dapper.da_methods.ensemble.EnRTS.stat"><code class="name flex">
@@ -2123,13 +2123,13 @@ to the <code><a title="dapper.da_methods.ensemble.EnKF" href="#dapper.da_methods
         E = HMM.X0.sample(self.N)
         self.stats.assess(0, E=E)
 
-        for k, kObs, t, dt in progbar(HMM.tseq.ticker):
+        for k, ko, t, dt in progbar(HMM.tseq.ticker):
             E = HMM.Dyn(E, t-dt, dt)
             E = add_noise(E, dt, HMM.Dyn.noise, self.fnoise_treatm)
 
-            if kObs is not None:
-                self.stats.assess(k, kObs, &#39;f&#39;, E=E)
-                y    = yy[kObs]
+            if ko is not None:
+                self.stats.assess(k, ko, &#39;f&#39;, E=E)
+                y    = yy[ko]
                 inds = serial_inds(self.ordr, y, R, center(E)[0])
 
                 state_taperer = HMM.Obs.localizer(self.loc_rad, &#39;y2x&#39;, t, self.taper)
@@ -2168,7 +2168,7 @@ to the <code><a title="dapper.da_methods.ensemble.EnKF" href="#dapper.da_methods
 
                 E = post_process(E, self.infl, self.rot)
 
-            self.stats.assess(k, kObs, E=E)</code></pre>
+            self.stats.assess(k, ko, E=E)</code></pre>
 </details>
 <h3>Class variables</h3>
 <dl>
@@ -2225,13 +2225,13 @@ to the <code><a title="dapper.da_methods.ensemble.EnKF" href="#dapper.da_methods
     E = HMM.X0.sample(self.N)
     self.stats.assess(0, E=E)
 
-    for k, kObs, t, dt in progbar(HMM.tseq.ticker):
+    for k, ko, t, dt in progbar(HMM.tseq.ticker):
         E = HMM.Dyn(E, t-dt, dt)
         E = add_noise(E, dt, HMM.Dyn.noise, self.fnoise_treatm)
 
-        if kObs is not None:
-            self.stats.assess(k, kObs, &#39;f&#39;, E=E)
-            y    = yy[kObs]
+        if ko is not None:
+            self.stats.assess(k, ko, &#39;f&#39;, E=E)
+            y    = yy[ko]
             inds = serial_inds(self.ordr, y, R, center(E)[0])
 
             state_taperer = HMM.Obs.localizer(self.loc_rad, &#39;y2x&#39;, t, self.taper)
@@ -2270,7 +2270,7 @@ to the <code><a title="dapper.da_methods.ensemble.EnKF" href="#dapper.da_methods
 
             E = post_process(E, self.infl, self.rot)
 
-        self.stats.assess(k, kObs, E=E)</code></pre>
+        self.stats.assess(k, ko, E=E)</code></pre>
 </details>
 </dd>
 <dt id="dapper.da_methods.ensemble.SL_EAKF.stat"><code class="name flex">
@@ -2333,19 +2333,19 @@ even with <code>batch_size=(1,)</code>. But for <code><a title="dapper.mods.QG" 
         E = HMM.X0.sample(N)
         self.stats.assess(0, E=E)
 
-        for k, kObs, t, dt in progbar(HMM.tseq.ticker):
+        for k, ko, t, dt in progbar(HMM.tseq.ticker):
             # Forecast
             E = HMM.Dyn(E, t-dt, dt)
             E = add_noise(E, dt, HMM.Dyn.noise, self.fnoise_treatm)
 
-            if kObs is not None:
-                self.stats.assess(k, kObs, &#39;f&#39;, E=E)
+            if ko is not None:
+                self.stats.assess(k, ko, &#39;f&#39;, E=E)
 
                 # Decompose ensmeble
                 mu = np.mean(E, 0)
                 A  = E - mu
                 # Obs space variables
-                y     = yy[kObs]
+                y     = yy[ko]
                 Y, xo = center(HMM.Obs(E, t))
                 # Transform obs space
                 Y  = Y        @ R.sym_sqrt_inv.T
@@ -2405,9 +2405,9 @@ even with <code>batch_size=(1,)</code>. But for <code><a title="dapper.mods.QG" 
                 # Global post-processing
                 E = post_process(E, self.infl, self.rot)
 
-                self.stats.infl[kObs] = sqrt(N1/np.mean(za))
+                self.stats.infl[ko] = sqrt(N1/np.mean(za))
 
-            self.stats.assess(k, kObs, E=E)</code></pre>
+            self.stats.assess(k, ko, E=E)</code></pre>
 </details>
 <h3>Class variables</h3>
 <dl>
@@ -2473,19 +2473,19 @@ even with <code>batch_size=(1,)</code>. But for <code><a title="dapper.mods.QG" 
     E = HMM.X0.sample(N)
     self.stats.assess(0, E=E)
 
-    for k, kObs, t, dt in progbar(HMM.tseq.ticker):
+    for k, ko, t, dt in progbar(HMM.tseq.ticker):
         # Forecast
         E = HMM.Dyn(E, t-dt, dt)
         E = add_noise(E, dt, HMM.Dyn.noise, self.fnoise_treatm)
 
-        if kObs is not None:
-            self.stats.assess(k, kObs, &#39;f&#39;, E=E)
+        if ko is not None:
+            self.stats.assess(k, ko, &#39;f&#39;, E=E)
 
             # Decompose ensmeble
             mu = np.mean(E, 0)
             A  = E - mu
             # Obs space variables
-            y     = yy[kObs]
+            y     = yy[ko]
             Y, xo = center(HMM.Obs(E, t))
             # Transform obs space
             Y  = Y        @ R.sym_sqrt_inv.T
@@ -2545,9 +2545,9 @@ even with <code>batch_size=(1,)</code>. But for <code><a title="dapper.mods.QG" 
             # Global post-processing
             E = post_process(E, self.infl, self.rot)
 
-            self.stats.infl[kObs] = sqrt(N1/np.mean(za))
+            self.stats.infl[ko] = sqrt(N1/np.mean(za))
 
-        self.stats.assess(k, kObs, E=E)</code></pre>
+        self.stats.assess(k, ko, E=E)</code></pre>
 </details>
 </dd>
 <dt id="dapper.da_methods.ensemble.LETKF.stat"><code class="name flex">
@@ -2635,16 +2635,16 @@ Further description in hyperprior_coeffs().</p></div>
         self.stats.assess(0, E=E)
 
         # Cycle
-        for k, kObs, t, dt in progbar(HMM.tseq.ticker):
+        for k, ko, t, dt in progbar(HMM.tseq.ticker):
             # Forecast
             E = HMM.Dyn(E, t-dt, dt)
             E = add_noise(E, dt, HMM.Dyn.noise, self.fnoise_treatm)
 
             # Analysis
-            if kObs is not None:
-                self.stats.assess(k, kObs, &#39;f&#39;, E=E)
+            if ko is not None:
+                self.stats.assess(k, ko, &#39;f&#39;, E=E)
                 Eo = HMM.Obs(E, t)
-                y  = yy[kObs]
+                y  = yy[ko]
 
                 mu = np.mean(E, 0)
                 A  = E - mu
@@ -2658,7 +2658,7 @@ Further description in hyperprior_coeffs().</p></div>
                 def dgn_N(l1): return pad0((l1*s)**2, N) + N1
 
                 # Adjust hyper-prior
-                # xN_ = noise_level(self.xN, self.stats, HMM.tseq, N1, kObs, A,
+                # xN_ = noise_level(self.xN, self.stats, HMM.tseq, N1, ko, A,
                 #                   locals().get(&#39;A_old&#39;, None))
                 eN, cL = hyperprior_coeffs(s, N, self.xN, self.g)
 
@@ -2738,10 +2738,10 @@ Further description in hyperprior_coeffs().</p></div>
                 E = mu + w@A + T@A
                 E = post_process(E, self.infl, self.rot)
 
-                self.stats.infl[kObs] = l1
-                self.stats.trHK[kObs] = (((l1*s)**2 + N1)**(-1.0)*s**2).sum()/HMM.Ny
+                self.stats.infl[ko] = l1
+                self.stats.trHK[ko] = (((l1*s)**2 + N1)**(-1.0)*s**2).sum()/HMM.Ny
 
-            self.stats.assess(k, kObs, E=E)</code></pre>
+            self.stats.assess(k, ko, E=E)</code></pre>
 </details>
 <h3>Class variables</h3>
 <dl>
@@ -2802,16 +2802,16 @@ Further description in hyperprior_coeffs().</p></div>
     self.stats.assess(0, E=E)
 
     # Cycle
-    for k, kObs, t, dt in progbar(HMM.tseq.ticker):
+    for k, ko, t, dt in progbar(HMM.tseq.ticker):
         # Forecast
         E = HMM.Dyn(E, t-dt, dt)
         E = add_noise(E, dt, HMM.Dyn.noise, self.fnoise_treatm)
 
         # Analysis
-        if kObs is not None:
-            self.stats.assess(k, kObs, &#39;f&#39;, E=E)
+        if ko is not None:
+            self.stats.assess(k, ko, &#39;f&#39;, E=E)
             Eo = HMM.Obs(E, t)
-            y  = yy[kObs]
+            y  = yy[ko]
 
             mu = np.mean(E, 0)
             A  = E - mu
@@ -2825,7 +2825,7 @@ Further description in hyperprior_coeffs().</p></div>
             def dgn_N(l1): return pad0((l1*s)**2, N) + N1
 
             # Adjust hyper-prior
-            # xN_ = noise_level(self.xN, self.stats, HMM.tseq, N1, kObs, A,
+            # xN_ = noise_level(self.xN, self.stats, HMM.tseq, N1, ko, A,
             #                   locals().get(&#39;A_old&#39;, None))
             eN, cL = hyperprior_coeffs(s, N, self.xN, self.g)
 
@@ -2905,10 +2905,10 @@ Further description in hyperprior_coeffs().</p></div>
             E = mu + w@A + T@A
             E = post_process(E, self.infl, self.rot)
 
-            self.stats.infl[kObs] = l1
-            self.stats.trHK[kObs] = (((l1*s)**2 + N1)**(-1.0)*s**2).sum()/HMM.Ny
+            self.stats.infl[ko] = l1
+            self.stats.trHK[ko] = (((l1*s)**2 + N1)**(-1.0)*s**2).sum()/HMM.Ny
 
-        self.stats.assess(k, kObs, E=E)</code></pre>
+        self.stats.assess(k, ko, E=E)</code></pre>
 </details>
 </dd>
 <dt id="dapper.da_methods.ensemble.EnKF_N.stat"><code class="name flex">
@@ -3001,7 +3001,7 @@ data-gaCategoryParameter="dapper.da_methods.ensemble">
 <li><code><a title="dapper.da_methods.ensemble.EnRTS.stat" href="#dapper.da_methods.ensemble.EnRTS.stat">stat</a></code></li>
 <li><code><a title="dapper.da_methods.ensemble.EnRTS.upd_a" href="#dapper.da_methods.ensemble.EnRTS.upd_a">upd_a</a></code></li>
 <li><code><a title="dapper.da_methods.ensemble.EnRTS.N" href="#dapper.da_methods.ensemble.EnRTS.N">N</a></code></li>
-<li><code><a title="dapper.da_methods.ensemble.EnRTS.cntr" href="#dapper.da_methods.ensemble.EnRTS.cntr">cntr</a></code></li>
+<li><code><a title="dapper.da_methods.ensemble.EnRTS.DeCorr" href="#dapper.da_methods.ensemble.EnRTS.DeCorr">DeCorr</a></code></li>
 <li><code><a title="dapper.da_methods.ensemble.EnRTS.infl" href="#dapper.da_methods.ensemble.EnRTS.infl">infl</a></code></li>
 <li><code><a title="dapper.da_methods.ensemble.EnRTS.rot" href="#dapper.da_methods.ensemble.EnRTS.rot">rot</a></code></li>
 <li><code><a title="dapper.da_methods.ensemble.EnRTS.fnoise_treatm" href="#dapper.da_methods.ensemble.EnRTS.fnoise_treatm">fnoise_treatm</a></code></li>

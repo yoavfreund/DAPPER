@@ -81,8 +81,8 @@ This also goes for any other (than <code>rms</code>) type of field summary metho
 <p>Only the time series created with <code><a title="dapper.stats.Stats.new_series" href="#dapper.stats.Stats.new_series">Stats.new_series()</a></code> will be in the format
 operated on by <code><a title="dapper.stats.Stats.average_in_time" href="#dapper.stats.Stats.average_in_time">Stats.average_in_time()</a></code>.
 For example, create <code>ndarray</code> of
-length <code>KObs+1</code> to hold the time series of estimated inflation values:</p>
-<pre><code class="language-python-repl">&gt;&gt;&gt; self.stats.new_series('infl', 1, KObs+1)
+length <code>KO+1</code> to hold the time series of estimated inflation values:</p>
+<pre><code class="language-python-repl">&gt;&gt;&gt; self.stats.new_series('infl', 1, KO+1)
 </code></pre>
 <p>Alternatively you can overwrite a default statistic; for example:</p>
 <pre><code class="language-python-repl">&gt;&gt;&gt; error_time_series_a = xx - ensemble_time_series_a.mean(axis=1)
@@ -103,7 +103,7 @@ must be "registered":</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L1-L796" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L1-L786" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">&#34;&#34;&#34;Statistics for the assessment of DA methods.
 
@@ -151,15 +151,16 @@ class Stats(series.StatPrint):
         self.yy        = yy
         self.liveplots = liveplots
         self.store_u   = store_u
-        self.store_s   = hasattr(xp, &#39;Lag&#39;)
+        self.store_s   = any(key in xp.__dict__ for key in
+                             [&#34;Lag&#34;, &#34;DeCorr&#34;])  # prms used by smoothers
 
         # Shapes
         K    = xx.shape[0]-1
         Nx   = xx.shape[1]
-        KObs = yy.shape[0]-1
+        KO = yy.shape[0]-1
         Ny   = yy.shape[1]
         self.K   , self.Nx = K, Nx
-        self.KObs, self.Ny = KObs, Ny
+        self.KO, self.Ny = KO, Ny
 
         # Methods for summarizing multivariate stats (&#34;fields&#34;) as scalars
         # Don&#39;t use nanmean here; nan&#39;s should get propagated!
@@ -219,14 +220,14 @@ class Stats(series.StatPrint):
         ######################################
         # Allocate a few series for outside use
         ######################################
-        self.new_series(&#39;trHK&#39; , 1, KObs+1)
-        self.new_series(&#39;infl&#39; , 1, KObs+1)
-        self.new_series(&#39;iters&#39;, 1, KObs+1)
+        self.new_series(&#39;trHK&#39; , 1, KO+1)
+        self.new_series(&#39;infl&#39; , 1, KO+1)
+        self.new_series(&#39;iters&#39;, 1, KO+1)
 
         # Weight-related
-        self.new_series(&#39;N_eff&#39; , 1, KObs+1)
-        self.new_series(&#39;wroot&#39; , 1, KObs+1)
-        self.new_series(&#39;resmpl&#39;, 1, KObs+1)
+        self.new_series(&#39;N_eff&#39; , 1, KO+1)
+        self.new_series(&#39;wroot&#39; , 1, KO+1)
+        self.new_series(&#39;resmpl&#39;, 1, KO+1)
 
     def new_series(self, name, shape, length=&#39;FAUSt&#39;, field_mean=False, **kws):
         &#34;&#34;&#34;Create (and register) a statistics time series, initialized with `nan`s.
@@ -247,7 +248,7 @@ class Stats(series.StatPrint):
 
         def make_series(parent, name, shape):
             if length == &#39;FAUSt&#39;:
-                total_shape = self.K, self.KObs, shape
+                total_shape = self.K, self.KO, shape
                 store_opts = self.store_u, self.store_s
                 tseries = series.FAUSt(*total_shape, *store_opts, **kws)
             else:
@@ -275,7 +276,7 @@ class Stats(series.StatPrint):
         return [k for k in vars(self)
                 if isinstance(getattr(self, k), series.DataSeries)]
 
-    def assess(self, k, kObs=None, faus=None,
+    def assess(self, k, ko=None, faus=None,
                E=None, w=None, mu=None, Cov=None):
         &#34;&#34;&#34;Common interface for both `Stats.assess_ens` and `Stats.assess_ext`.
 
@@ -285,46 +286,32 @@ class Stats(series.StatPrint):
         faus: One or more of `[&#39;f&#39;,&#39; a&#39;, &#39;u&#39;, &#39;s&#39;]`, indicating
               that the result should be stored in (respectively)
               the forecast/analysis/universal attribute.
-              Default: `&#39;u&#39; if kObs is None else &#39;au&#39; (&#39;a&#39; and &#39;u&#39;)`.
+              Default: `&#39;u&#39; if ko is None else &#39;au&#39; (&#39;a&#39; and &#39;u&#39;)`.
         &#34;&#34;&#34;
         # Initial consistency checks.
         if k == 0:
-            if kObs is not None:
-                raise KeyError(&#34;DAPPER convention: no obs at t=0.&#34;
-                               &#34; Helps avoid bugs.&#34;)
-            if faus is None:
-                faus = &#39;u&#39;
+            if ko is not None:
+                raise KeyError(&#34;DAPPER convention: no obs at t=0. Helps avoid bugs.&#34;)
             if self._is_ens == True:
                 if E is None:
-                    raise TypeError(
-                        &#34;Expected ensemble input but E is None&#34;)
+                    raise TypeError(&#34;Expected ensemble input but E is None&#34;)
                 if mu is not None:
-                    raise TypeError(
-                        &#34;Expected ensemble input but mu/Cov is not None&#34;)
+                    raise TypeError(&#34;Expected ensemble input but mu/Cov is not None&#34;)
             else:
                 if E is not None:
-                    raise TypeError(
-                        &#34;Expected mu/Cov input but E is not None&#34;)
+                    raise TypeError(&#34;Expected mu/Cov input but E is not None&#34;)
                 if mu is None:
-                    raise TypeError(
-                        &#34;Expected mu/Cov input but mu is None&#34;)
+                    raise TypeError(&#34;Expected mu/Cov input but mu is None&#34;)
 
         # Default. Don&#39;t add more defaults. It just gets confusing.
         if faus is None:
-            faus = &#39;u&#39; if kObs is None else &#39;au&#39;
+            faus = &#39;u&#39; if ko is None else &#39;au&#39;
 
-        # Select assessment call and arguments
-        if self._is_ens:
-            _assess = self.assess_ens
-            _prms   = {&#39;E&#39;: E, &#39;w&#39;: w}
-        else:
-            _assess = self.assess_ext
-            _prms   = {&#39;mu&#39;: mu, &#39;P&#39;: Cov}
-
+        # TODO 4: don&#39;t need to re-compute stats?
         for sub in faus:
 
             # Skip assessment if (&#39;u&#39; and stats not stored or plotted)
-            if k != 0 and kObs == None:
+            if k != 0 and ko == None:
                 if not (self.store_u or self.LP_instance.any_figs):
                     continue
 
@@ -334,7 +321,10 @@ class Stats(series.StatPrint):
 
                 # Assess
                 stats_now = Avrgs()
-                _assess(stats_now, self.xx[k], **_prms)
+                if self._is_ens:
+                    self.assess_ens(stats_now, self.xx[k], E, w)
+                else:
+                    self.assess_ext(stats_now, self.xx[k], mu, Cov)
                 self.derivative_stats(stats_now)
                 self.summarize_marginals(stats_now)
 
@@ -342,14 +332,14 @@ class Stats(series.StatPrint):
             for name, val in stats_now.items():
                 stat = struct_tools.deep_getattr(self, name)
                 isFaust = isinstance(stat, series.FAUSt)
-                stat[(k, kObs, sub) if isFaust else kObs] = val
+                stat[(k, ko, sub) if isFaust else ko] = val
 
             # LivePlot -- Both init and update must come after the assessment.
             try:
-                self.LP_instance.update((k, kObs, sub), E, Cov)
+                self.LP_instance.update((k, ko, sub), E, Cov)
             except AttributeError:
                 self.LP_instance = liveplotting.LivePlot(
-                    self, self.liveplots, (k, kObs, sub), E, Cov)
+                    self, self.liveplots, (k, ko, sub), E, Cov)
 
     def summarize_marginals(self, now):
         &#34;&#34;&#34;Compute Mean-field and RMS values&#34;&#34;&#34;
@@ -364,7 +354,7 @@ class Stats(series.StatPrint):
                         now[statpath] = formula(field)
 
     def derivative_stats(self, now):
-        &#34;&#34;&#34;Stats that derive from others (=&gt; not specific for _ens or _ext).&#34;&#34;&#34;
+        &#34;&#34;&#34;Stats that derive from others, and are not specific for `_ens` or `_ext`).&#34;&#34;&#34;
         now.gscore = 2*np.log(now.spread) + (now.err/now.spread)**2
 
     def assess_ens(self, now, x, E, w):
@@ -454,17 +444,17 @@ class Stats(series.StatPrint):
             now.svals = np.sqrt(np.maximum(s2, 0.0))[::-1]
             now.umisf = (U.T @ now.err)[::-1]
 
-    def average_in_time(self, kk=None, kkObs=None, free=False):
+    def average_in_time(self, kk=None, kko=None, free=False):
         &#34;&#34;&#34;Avarage all univariate (scalar) time series.
 
         - `kk`    time inds for averaging
-        - `kkObs` time inds for averaging obs
+        - `kko` time inds for averaging obs
         &#34;&#34;&#34;
         tseq = self.HMM.tseq
         if kk is None:
-            kk     = tseq.mask_BI
-        if kkObs is None:
-            kkObs  = tseq.maskObs_BI
+            kk     = tseq.mask
+        if kko is None:
+            kko  = tseq.masko
 
         def average1(tseries):
             avrgs = Avrgs()
@@ -478,15 +468,15 @@ class Stats(series.StatPrint):
                 if tseries.item_shape != ():
                     return average_multivariate()
                 for sub in [ch for ch in &#39;fas&#39; if hasattr(tseries, ch)]:
-                    avrgs[sub] = series.mean_with_conf(tseries[kkObs, sub])
+                    avrgs[sub] = series.mean_with_conf(tseries[kko, sub])
                 if tseries.store_u:
                     avrgs[&#39;u&#39;] = series.mean_with_conf(tseries[kk, &#39;u&#39;])
 
             elif isinstance(tseries, series.DataSeries):
                 if tseries.array.shape[1:] != ():
                     return average_multivariate()
-                elif len(tseries.array) == self.KObs+1:
-                    avrgs = series.mean_with_conf(tseries[kkObs])
+                elif len(tseries.array) == self.KO+1:
+                    avrgs = series.mean_with_conf(tseries[kko])
                 elif len(tseries.array) == self.K+1:
                     avrgs = series.mean_with_conf(tseries[kk])
                 else:
@@ -551,12 +541,12 @@ class Stats(series.StatPrint):
         desc = self.xp.da_method + &#34; (replay)&#34;
 
         # Play through assimilation cycles
-        for k, kObs, t, _dt in progbar(tseq.ticker, desc):
+        for k, ko, t, _dt in progbar(tseq.ticker, desc):
             if t1 &lt;= t &lt;= t2:
-                if kObs is not None:
-                    LP.update((k, kObs, &#39;f&#39;), None, None)
-                    LP.update((k, kObs, &#39;a&#39;), None, None)
-                LP.update((k, kObs, &#39;u&#39;), None, None)
+                if ko is not None:
+                    LP.update((k, ko, &#39;f&#39;), None, None)
+                    LP.update((k, ko, &#39;a&#39;), None, None)
+                LP.update((k, ko, &#39;u&#39;), None, None)
 
         # Pause required when speed=inf.
         # On Mac, it was also necessary to do it for each fig.
@@ -919,7 +909,7 @@ def unbias_var(w=None, N_eff=None, avoid_pathological=False):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L463-L471" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L453-L461" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def register_stat(self, name, value):
     &#34;&#34;&#34;Do `self.name = value` and register `name` as in self&#39;s `stat_register`.
@@ -953,7 +943,7 @@ Default: <code>None</code>. In this case, the formatting is left to the <code>uq
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L593-L647" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L583-L637" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def unpack_uqs(uq_list, decimals=None):
     &#34;&#34;&#34;Convert list of `uq`s into dict of lists (of equal-length) of attributes.
@@ -1020,7 +1010,7 @@ Default: <code>None</code>. In this case, the formatting is left to the <code>uq
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L650-L668" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L640-L658" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def tabulate_avrgs(avrgs_list, statkeys=(), decimals=None):
     &#34;&#34;&#34;Tabulate avrgs (val±prec).&#34;&#34;&#34;
@@ -1070,7 +1060,7 @@ where N is the ensemble size. Default: False</dd>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L671-L706" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L661-L696" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def center(E, axis=0, rescale=False):
     r&#34;&#34;&#34;Center ensemble.
@@ -1120,7 +1110,7 @@ when used to center observation perturbations.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L709-L715" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L699-L705" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def mean0(E, axis=0, rescale=True):
     &#34;&#34;&#34;Like `center`, but only return the anomalies (not the mean).
@@ -1151,7 +1141,7 @@ when used to center observation perturbations.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L718-L738" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L708-L728" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def inflate_ens(E, factor):
     &#34;&#34;&#34;Inflate the ensemble (center, inflate, re-combine).
@@ -1198,7 +1188,7 @@ should be nearly one since sum(w) = 1</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L741-L760" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L731-L750" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def weight_degeneracy(w, prec=1e-10):
     &#34;&#34;&#34;Check if the weights are degenerate.
@@ -1249,7 +1239,7 @@ The unbiasing factor is <span><span class="MathJax_Preview"> N_{eff} / (N_{eff} 
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L763-L796" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L753-L786" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def unbias_var(w=None, N_eff=None, avoid_pathological=False):
     &#34;&#34;&#34;Compute unbias-ing factor for variance estimation.
@@ -1302,7 +1292,7 @@ The unbiasing factor is <span><span class="MathJax_Preview"> N_{eff} / (N_{eff} 
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L33-L460" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L33-L450" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Stats(series.StatPrint):
     &#34;&#34;&#34;Contains and computes statistics of the DA methods.&#34;&#34;&#34;
@@ -1318,15 +1308,16 @@ The unbiasing factor is <span><span class="MathJax_Preview"> N_{eff} / (N_{eff} 
         self.yy        = yy
         self.liveplots = liveplots
         self.store_u   = store_u
-        self.store_s   = hasattr(xp, &#39;Lag&#39;)
+        self.store_s   = any(key in xp.__dict__ for key in
+                             [&#34;Lag&#34;, &#34;DeCorr&#34;])  # prms used by smoothers
 
         # Shapes
         K    = xx.shape[0]-1
         Nx   = xx.shape[1]
-        KObs = yy.shape[0]-1
+        KO = yy.shape[0]-1
         Ny   = yy.shape[1]
         self.K   , self.Nx = K, Nx
-        self.KObs, self.Ny = KObs, Ny
+        self.KO, self.Ny = KO, Ny
 
         # Methods for summarizing multivariate stats (&#34;fields&#34;) as scalars
         # Don&#39;t use nanmean here; nan&#39;s should get propagated!
@@ -1386,14 +1377,14 @@ The unbiasing factor is <span><span class="MathJax_Preview"> N_{eff} / (N_{eff} 
         ######################################
         # Allocate a few series for outside use
         ######################################
-        self.new_series(&#39;trHK&#39; , 1, KObs+1)
-        self.new_series(&#39;infl&#39; , 1, KObs+1)
-        self.new_series(&#39;iters&#39;, 1, KObs+1)
+        self.new_series(&#39;trHK&#39; , 1, KO+1)
+        self.new_series(&#39;infl&#39; , 1, KO+1)
+        self.new_series(&#39;iters&#39;, 1, KO+1)
 
         # Weight-related
-        self.new_series(&#39;N_eff&#39; , 1, KObs+1)
-        self.new_series(&#39;wroot&#39; , 1, KObs+1)
-        self.new_series(&#39;resmpl&#39;, 1, KObs+1)
+        self.new_series(&#39;N_eff&#39; , 1, KO+1)
+        self.new_series(&#39;wroot&#39; , 1, KO+1)
+        self.new_series(&#39;resmpl&#39;, 1, KO+1)
 
     def new_series(self, name, shape, length=&#39;FAUSt&#39;, field_mean=False, **kws):
         &#34;&#34;&#34;Create (and register) a statistics time series, initialized with `nan`s.
@@ -1414,7 +1405,7 @@ The unbiasing factor is <span><span class="MathJax_Preview"> N_{eff} / (N_{eff} 
 
         def make_series(parent, name, shape):
             if length == &#39;FAUSt&#39;:
-                total_shape = self.K, self.KObs, shape
+                total_shape = self.K, self.KO, shape
                 store_opts = self.store_u, self.store_s
                 tseries = series.FAUSt(*total_shape, *store_opts, **kws)
             else:
@@ -1442,7 +1433,7 @@ The unbiasing factor is <span><span class="MathJax_Preview"> N_{eff} / (N_{eff} 
         return [k for k in vars(self)
                 if isinstance(getattr(self, k), series.DataSeries)]
 
-    def assess(self, k, kObs=None, faus=None,
+    def assess(self, k, ko=None, faus=None,
                E=None, w=None, mu=None, Cov=None):
         &#34;&#34;&#34;Common interface for both `Stats.assess_ens` and `Stats.assess_ext`.
 
@@ -1452,46 +1443,32 @@ The unbiasing factor is <span><span class="MathJax_Preview"> N_{eff} / (N_{eff} 
         faus: One or more of `[&#39;f&#39;,&#39; a&#39;, &#39;u&#39;, &#39;s&#39;]`, indicating
               that the result should be stored in (respectively)
               the forecast/analysis/universal attribute.
-              Default: `&#39;u&#39; if kObs is None else &#39;au&#39; (&#39;a&#39; and &#39;u&#39;)`.
+              Default: `&#39;u&#39; if ko is None else &#39;au&#39; (&#39;a&#39; and &#39;u&#39;)`.
         &#34;&#34;&#34;
         # Initial consistency checks.
         if k == 0:
-            if kObs is not None:
-                raise KeyError(&#34;DAPPER convention: no obs at t=0.&#34;
-                               &#34; Helps avoid bugs.&#34;)
-            if faus is None:
-                faus = &#39;u&#39;
+            if ko is not None:
+                raise KeyError(&#34;DAPPER convention: no obs at t=0. Helps avoid bugs.&#34;)
             if self._is_ens == True:
                 if E is None:
-                    raise TypeError(
-                        &#34;Expected ensemble input but E is None&#34;)
+                    raise TypeError(&#34;Expected ensemble input but E is None&#34;)
                 if mu is not None:
-                    raise TypeError(
-                        &#34;Expected ensemble input but mu/Cov is not None&#34;)
+                    raise TypeError(&#34;Expected ensemble input but mu/Cov is not None&#34;)
             else:
                 if E is not None:
-                    raise TypeError(
-                        &#34;Expected mu/Cov input but E is not None&#34;)
+                    raise TypeError(&#34;Expected mu/Cov input but E is not None&#34;)
                 if mu is None:
-                    raise TypeError(
-                        &#34;Expected mu/Cov input but mu is None&#34;)
+                    raise TypeError(&#34;Expected mu/Cov input but mu is None&#34;)
 
         # Default. Don&#39;t add more defaults. It just gets confusing.
         if faus is None:
-            faus = &#39;u&#39; if kObs is None else &#39;au&#39;
+            faus = &#39;u&#39; if ko is None else &#39;au&#39;
 
-        # Select assessment call and arguments
-        if self._is_ens:
-            _assess = self.assess_ens
-            _prms   = {&#39;E&#39;: E, &#39;w&#39;: w}
-        else:
-            _assess = self.assess_ext
-            _prms   = {&#39;mu&#39;: mu, &#39;P&#39;: Cov}
-
+        # TODO 4: don&#39;t need to re-compute stats?
         for sub in faus:
 
             # Skip assessment if (&#39;u&#39; and stats not stored or plotted)
-            if k != 0 and kObs == None:
+            if k != 0 and ko == None:
                 if not (self.store_u or self.LP_instance.any_figs):
                     continue
 
@@ -1501,7 +1478,10 @@ The unbiasing factor is <span><span class="MathJax_Preview"> N_{eff} / (N_{eff} 
 
                 # Assess
                 stats_now = Avrgs()
-                _assess(stats_now, self.xx[k], **_prms)
+                if self._is_ens:
+                    self.assess_ens(stats_now, self.xx[k], E, w)
+                else:
+                    self.assess_ext(stats_now, self.xx[k], mu, Cov)
                 self.derivative_stats(stats_now)
                 self.summarize_marginals(stats_now)
 
@@ -1509,14 +1489,14 @@ The unbiasing factor is <span><span class="MathJax_Preview"> N_{eff} / (N_{eff} 
             for name, val in stats_now.items():
                 stat = struct_tools.deep_getattr(self, name)
                 isFaust = isinstance(stat, series.FAUSt)
-                stat[(k, kObs, sub) if isFaust else kObs] = val
+                stat[(k, ko, sub) if isFaust else ko] = val
 
             # LivePlot -- Both init and update must come after the assessment.
             try:
-                self.LP_instance.update((k, kObs, sub), E, Cov)
+                self.LP_instance.update((k, ko, sub), E, Cov)
             except AttributeError:
                 self.LP_instance = liveplotting.LivePlot(
-                    self, self.liveplots, (k, kObs, sub), E, Cov)
+                    self, self.liveplots, (k, ko, sub), E, Cov)
 
     def summarize_marginals(self, now):
         &#34;&#34;&#34;Compute Mean-field and RMS values&#34;&#34;&#34;
@@ -1531,7 +1511,7 @@ The unbiasing factor is <span><span class="MathJax_Preview"> N_{eff} / (N_{eff} 
                         now[statpath] = formula(field)
 
     def derivative_stats(self, now):
-        &#34;&#34;&#34;Stats that derive from others (=&gt; not specific for _ens or _ext).&#34;&#34;&#34;
+        &#34;&#34;&#34;Stats that derive from others, and are not specific for `_ens` or `_ext`).&#34;&#34;&#34;
         now.gscore = 2*np.log(now.spread) + (now.err/now.spread)**2
 
     def assess_ens(self, now, x, E, w):
@@ -1621,17 +1601,17 @@ The unbiasing factor is <span><span class="MathJax_Preview"> N_{eff} / (N_{eff} 
             now.svals = np.sqrt(np.maximum(s2, 0.0))[::-1]
             now.umisf = (U.T @ now.err)[::-1]
 
-    def average_in_time(self, kk=None, kkObs=None, free=False):
+    def average_in_time(self, kk=None, kko=None, free=False):
         &#34;&#34;&#34;Avarage all univariate (scalar) time series.
 
         - `kk`    time inds for averaging
-        - `kkObs` time inds for averaging obs
+        - `kko` time inds for averaging obs
         &#34;&#34;&#34;
         tseq = self.HMM.tseq
         if kk is None:
-            kk     = tseq.mask_BI
-        if kkObs is None:
-            kkObs  = tseq.maskObs_BI
+            kk     = tseq.mask
+        if kko is None:
+            kko  = tseq.masko
 
         def average1(tseries):
             avrgs = Avrgs()
@@ -1645,15 +1625,15 @@ The unbiasing factor is <span><span class="MathJax_Preview"> N_{eff} / (N_{eff} 
                 if tseries.item_shape != ():
                     return average_multivariate()
                 for sub in [ch for ch in &#39;fas&#39; if hasattr(tseries, ch)]:
-                    avrgs[sub] = series.mean_with_conf(tseries[kkObs, sub])
+                    avrgs[sub] = series.mean_with_conf(tseries[kko, sub])
                 if tseries.store_u:
                     avrgs[&#39;u&#39;] = series.mean_with_conf(tseries[kk, &#39;u&#39;])
 
             elif isinstance(tseries, series.DataSeries):
                 if tseries.array.shape[1:] != ():
                     return average_multivariate()
-                elif len(tseries.array) == self.KObs+1:
-                    avrgs = series.mean_with_conf(tseries[kkObs])
+                elif len(tseries.array) == self.KO+1:
+                    avrgs = series.mean_with_conf(tseries[kko])
                 elif len(tseries.array) == self.K+1:
                     avrgs = series.mean_with_conf(tseries[kk])
                 else:
@@ -1718,12 +1698,12 @@ The unbiasing factor is <span><span class="MathJax_Preview"> N_{eff} / (N_{eff} 
         desc = self.xp.da_method + &#34; (replay)&#34;
 
         # Play through assimilation cycles
-        for k, kObs, t, _dt in progbar(tseq.ticker, desc):
+        for k, ko, t, _dt in progbar(tseq.ticker, desc):
             if t1 &lt;= t &lt;= t2:
-                if kObs is not None:
-                    LP.update((k, kObs, &#39;f&#39;), None, None)
-                    LP.update((k, kObs, &#39;a&#39;), None, None)
-                LP.update((k, kObs, &#39;u&#39;), None, None)
+                if ko is not None:
+                    LP.update((k, ko, &#39;f&#39;), None, None)
+                    LP.update((k, ko, &#39;a&#39;), None, None)
+                LP.update((k, ko, &#39;u&#39;), None, None)
 
         # Pause required when speed=inf.
         # On Mac, it was also necessary to do it for each fig.
@@ -1746,7 +1726,7 @@ The unbiasing factor is <span><span class="MathJax_Preview"> N_{eff} / (N_{eff} 
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L166-L169" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L167-L170" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">@property
 def data_series(self):
@@ -1770,7 +1750,7 @@ Thus, you cannot use <code>dtype=bool</code> or <code>int</code> for stats that 
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L124-L164" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L125-L165" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def new_series(self, name, shape, length=&#39;FAUSt&#39;, field_mean=False, **kws):
     &#34;&#34;&#34;Create (and register) a statistics time series, initialized with `nan`s.
@@ -1791,7 +1771,7 @@ Thus, you cannot use <code>dtype=bool</code> or <code>int</code> for stats that 
 
     def make_series(parent, name, shape):
         if length == &#39;FAUSt&#39;:
-            total_shape = self.K, self.KObs, shape
+            total_shape = self.K, self.KO, shape
             store_opts = self.store_u, self.store_s
             tseries = series.FAUSt(*total_shape, *store_opts, **kws)
         else:
@@ -1816,7 +1796,7 @@ Thus, you cannot use <code>dtype=bool</code> or <code>int</code> for stats that 
 </details>
 </dd>
 <dt id="dapper.stats.Stats.assess"><code class="name flex">
-<span>def <span class="ident">assess</span></span>(<span>self, k, kObs=None, faus=None, E=None, w=None, mu=None, Cov=None)</span>
+<span>def <span class="ident">assess</span></span>(<span>self, k, ko=None, faus=None, E=None, w=None, mu=None, Cov=None)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Common interface for both <code><a title="dapper.stats.Stats.assess_ens" href="#dapper.stats.Stats.assess_ens">Stats.assess_ens()</a></code> and <code><a title="dapper.stats.Stats.assess_ext" href="#dapper.stats.Stats.assess_ext">Stats.assess_ext()</a></code>.</p>
@@ -1825,13 +1805,13 @@ and <code>_ext</code> if <code>mu is not None</code>.</p>
 <p>faus: One or more of <code>['f',' a', 'u', 's']</code>, indicating
 that the result should be stored in (respectively)
 the forecast/analysis/universal attribute.
-Default: <code>'u' if kObs is None else 'au' ('a' and 'u')</code>.</p></div>
+Default: <code>'u' if ko is None else 'au' ('a' and 'u')</code>.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L171-L245" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L172-L235" class="git-link">Browse git</a>
 </summary>
-<pre><code class="python">def assess(self, k, kObs=None, faus=None,
+<pre><code class="python">def assess(self, k, ko=None, faus=None,
            E=None, w=None, mu=None, Cov=None):
     &#34;&#34;&#34;Common interface for both `Stats.assess_ens` and `Stats.assess_ext`.
 
@@ -1841,46 +1821,32 @@ Default: <code>'u' if kObs is None else 'au' ('a' and 'u')</code>.</p></div>
     faus: One or more of `[&#39;f&#39;,&#39; a&#39;, &#39;u&#39;, &#39;s&#39;]`, indicating
           that the result should be stored in (respectively)
           the forecast/analysis/universal attribute.
-          Default: `&#39;u&#39; if kObs is None else &#39;au&#39; (&#39;a&#39; and &#39;u&#39;)`.
+          Default: `&#39;u&#39; if ko is None else &#39;au&#39; (&#39;a&#39; and &#39;u&#39;)`.
     &#34;&#34;&#34;
     # Initial consistency checks.
     if k == 0:
-        if kObs is not None:
-            raise KeyError(&#34;DAPPER convention: no obs at t=0.&#34;
-                           &#34; Helps avoid bugs.&#34;)
-        if faus is None:
-            faus = &#39;u&#39;
+        if ko is not None:
+            raise KeyError(&#34;DAPPER convention: no obs at t=0. Helps avoid bugs.&#34;)
         if self._is_ens == True:
             if E is None:
-                raise TypeError(
-                    &#34;Expected ensemble input but E is None&#34;)
+                raise TypeError(&#34;Expected ensemble input but E is None&#34;)
             if mu is not None:
-                raise TypeError(
-                    &#34;Expected ensemble input but mu/Cov is not None&#34;)
+                raise TypeError(&#34;Expected ensemble input but mu/Cov is not None&#34;)
         else:
             if E is not None:
-                raise TypeError(
-                    &#34;Expected mu/Cov input but E is not None&#34;)
+                raise TypeError(&#34;Expected mu/Cov input but E is not None&#34;)
             if mu is None:
-                raise TypeError(
-                    &#34;Expected mu/Cov input but mu is None&#34;)
+                raise TypeError(&#34;Expected mu/Cov input but mu is None&#34;)
 
     # Default. Don&#39;t add more defaults. It just gets confusing.
     if faus is None:
-        faus = &#39;u&#39; if kObs is None else &#39;au&#39;
+        faus = &#39;u&#39; if ko is None else &#39;au&#39;
 
-    # Select assessment call and arguments
-    if self._is_ens:
-        _assess = self.assess_ens
-        _prms   = {&#39;E&#39;: E, &#39;w&#39;: w}
-    else:
-        _assess = self.assess_ext
-        _prms   = {&#39;mu&#39;: mu, &#39;P&#39;: Cov}
-
+    # TODO 4: don&#39;t need to re-compute stats?
     for sub in faus:
 
         # Skip assessment if (&#39;u&#39; and stats not stored or plotted)
-        if k != 0 and kObs == None:
+        if k != 0 and ko == None:
             if not (self.store_u or self.LP_instance.any_figs):
                 continue
 
@@ -1890,7 +1856,10 @@ Default: <code>'u' if kObs is None else 'au' ('a' and 'u')</code>.</p></div>
 
             # Assess
             stats_now = Avrgs()
-            _assess(stats_now, self.xx[k], **_prms)
+            if self._is_ens:
+                self.assess_ens(stats_now, self.xx[k], E, w)
+            else:
+                self.assess_ext(stats_now, self.xx[k], mu, Cov)
             self.derivative_stats(stats_now)
             self.summarize_marginals(stats_now)
 
@@ -1898,14 +1867,14 @@ Default: <code>'u' if kObs is None else 'au' ('a' and 'u')</code>.</p></div>
         for name, val in stats_now.items():
             stat = struct_tools.deep_getattr(self, name)
             isFaust = isinstance(stat, series.FAUSt)
-            stat[(k, kObs, sub) if isFaust else kObs] = val
+            stat[(k, ko, sub) if isFaust else ko] = val
 
         # LivePlot -- Both init and update must come after the assessment.
         try:
-            self.LP_instance.update((k, kObs, sub), E, Cov)
+            self.LP_instance.update((k, ko, sub), E, Cov)
         except AttributeError:
             self.LP_instance = liveplotting.LivePlot(
-                self, self.liveplots, (k, kObs, sub), E, Cov)</code></pre>
+                self, self.liveplots, (k, ko, sub), E, Cov)</code></pre>
 </details>
 </dd>
 <dt id="dapper.stats.Stats.summarize_marginals"><code class="name flex">
@@ -1916,7 +1885,7 @@ Default: <code>'u' if kObs is None else 'au' ('a' and 'u')</code>.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L247-L257" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L237-L247" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def summarize_marginals(self, now):
     &#34;&#34;&#34;Compute Mean-field and RMS values&#34;&#34;&#34;
@@ -1935,14 +1904,14 @@ Default: <code>'u' if kObs is None else 'au' ('a' and 'u')</code>.</p></div>
 <span>def <span class="ident">derivative_stats</span></span>(<span>self, now)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Stats that derive from others (=&gt; not specific for _ens or _ext).</p></div>
+<div class="desc"><p>Stats that derive from others, and are not specific for <code>_ens</code> or <code>_ext</code>).</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L259-L261" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L249-L251" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def derivative_stats(self, now):
-    &#34;&#34;&#34;Stats that derive from others (=&gt; not specific for _ens or _ext).&#34;&#34;&#34;
+    &#34;&#34;&#34;Stats that derive from others, and are not specific for `_ens` or `_ext`).&#34;&#34;&#34;
     now.gscore = 2*np.log(now.spread) + (now.err/now.spread)**2</code></pre>
 </details>
 </dd>
@@ -1954,7 +1923,7 @@ Default: <code>'u' if kObs is None else 'au' ('a' and 'u')</code>.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L263-L325" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L253-L315" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def assess_ens(self, now, x, E, w):
     &#34;&#34;&#34;Ensemble and Particle filter (weighted/importance) assessment.&#34;&#34;&#34;
@@ -2029,7 +1998,7 @@ Default: <code>'u' if kObs is None else 'au' ('a' and 'u')</code>.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L327-L348" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L317-L338" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def assess_ext(self, now, x, mu, P):
     &#34;&#34;&#34;Kalman filter (Gaussian) assessment.&#34;&#34;&#34;
@@ -2056,31 +2025,31 @@ Default: <code>'u' if kObs is None else 'au' ('a' and 'u')</code>.</p></div>
 </details>
 </dd>
 <dt id="dapper.stats.Stats.average_in_time"><code class="name flex">
-<span>def <span class="ident">average_in_time</span></span>(<span>self, kk=None, kkObs=None, free=False)</span>
+<span>def <span class="ident">average_in_time</span></span>(<span>self, kk=None, kko=None, free=False)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Avarage all univariate (scalar) time series.</p>
 <ul>
 <li><code>kk</code>
 time inds for averaging</li>
-<li><code>kkObs</code> time inds for averaging obs</li>
+<li><code>kko</code> time inds for averaging obs</li>
 </ul></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L350-L410" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L340-L400" class="git-link">Browse git</a>
 </summary>
-<pre><code class="python">def average_in_time(self, kk=None, kkObs=None, free=False):
+<pre><code class="python">def average_in_time(self, kk=None, kko=None, free=False):
     &#34;&#34;&#34;Avarage all univariate (scalar) time series.
 
     - `kk`    time inds for averaging
-    - `kkObs` time inds for averaging obs
+    - `kko` time inds for averaging obs
     &#34;&#34;&#34;
     tseq = self.HMM.tseq
     if kk is None:
-        kk     = tseq.mask_BI
-    if kkObs is None:
-        kkObs  = tseq.maskObs_BI
+        kk     = tseq.mask
+    if kko is None:
+        kko  = tseq.masko
 
     def average1(tseries):
         avrgs = Avrgs()
@@ -2094,15 +2063,15 @@ time inds for averaging</li>
             if tseries.item_shape != ():
                 return average_multivariate()
             for sub in [ch for ch in &#39;fas&#39; if hasattr(tseries, ch)]:
-                avrgs[sub] = series.mean_with_conf(tseries[kkObs, sub])
+                avrgs[sub] = series.mean_with_conf(tseries[kko, sub])
             if tseries.store_u:
                 avrgs[&#39;u&#39;] = series.mean_with_conf(tseries[kk, &#39;u&#39;])
 
         elif isinstance(tseries, series.DataSeries):
             if tseries.array.shape[1:] != ():
                 return average_multivariate()
-            elif len(tseries.array) == self.KObs+1:
-                avrgs = series.mean_with_conf(tseries[kkObs])
+            elif len(tseries.array) == self.KO+1:
+                avrgs = series.mean_with_conf(tseries[kko])
             elif len(tseries.array) == self.K+1:
                 avrgs = series.mean_with_conf(tseries[kk])
             else:
@@ -2153,7 +2122,7 @@ time inds for averaging</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L412-L460" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L402-L450" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def replay(self, figlist=&#34;default&#34;, speed=np.inf, t1=0, t2=None, **kwargs):
     &#34;&#34;&#34;Replay LivePlot with what&#39;s been stored in &#39;self&#39;.
@@ -2190,12 +2159,12 @@ time inds for averaging</li>
     desc = self.xp.da_method + &#34; (replay)&#34;
 
     # Play through assimilation cycles
-    for k, kObs, t, _dt in progbar(tseq.ticker, desc):
+    for k, ko, t, _dt in progbar(tseq.ticker, desc):
         if t1 &lt;= t &lt;= t2:
-            if kObs is not None:
-                LP.update((k, kObs, &#39;f&#39;), None, None)
-                LP.update((k, kObs, &#39;a&#39;), None, None)
-            LP.update((k, kObs, &#39;u&#39;), None, None)
+            if ko is not None:
+                LP.update((k, ko, &#39;f&#39;), None, None)
+                LP.update((k, ko, &#39;a&#39;), None, None)
+            LP.update((k, ko, &#39;u&#39;), None, None)
 
     # Pause required when speed=inf.
     # On Mac, it was also necessary to do it for each fig.
@@ -2224,7 +2193,7 @@ time inds for averaging</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L474-L499" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L464-L489" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Avrgs(series.StatPrint, struct_tools.DotDict):
     &#34;&#34;&#34;A `dict` specialized for the averages of statistics.
@@ -2278,7 +2247,7 @@ time inds for averaging</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L484-L486" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L474-L476" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def tabulate(self, statkeys=(), decimals=None):
     columns = tabulate_avrgs([self], statkeys, decimals=decimals)

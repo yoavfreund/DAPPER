@@ -39,7 +39,7 @@ body.gsc-overflow-hidden #sidebar {overflow: visible;}
 <p>Harder settings than in <code><a title="dapper.mods.Lorenz84.pajonk2012" href="pajonk2012.html">dapper.mods.Lorenz84.pajonk2012</a></code>.</p>
 <p>This was adjudged by noting that with their settings,
 the average val. of <code>trHK</code> is 0.013.</p>
-<p>Here we increase <code>dkObs</code> to make the DA problem more difficult.</p>
+<p>Here we increase <code>dko</code> to make the DA problem more difficult.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
@@ -50,14 +50,14 @@ the average val. of <code>trHK</code> is 0.013.</p>
 This was adjudged by noting that with their settings,
 the average val. of `trHK` is 0.013.
 
-Here we increase `dkObs` to make the DA problem more difficult.
+Here we increase `dko` to make the DA problem more difficult.
 &#34;&#34;&#34;
 
 import dapper.mods as modelling
 from dapper.mods.Lorenz84.pajonk2012 import HMM as _HMM
 
 HMM = _HMM.copy()
-HMM.tseq = modelling.Chronology(0.05, dkObs=10, T=4**5, BurnIn=20)
+HMM.tseq = modelling.Chronology(0.05, dko=10, T=4**5, BurnIn=20)
 
 
 ####################

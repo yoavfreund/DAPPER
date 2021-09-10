@@ -253,7 +253,7 @@ def estimate_good_plot_length(xx, tseq=None, mult=100):
     xx: ndarray
         Plotted array
     tseq: `dapper.tools.chronos.Chronology`, optional
-        object with property dkObS. Defaults: None
+        object with property dko. Defaults: None
     mult: int, optional
         Number of waves for plotting. Defaults: 100
 
@@ -280,7 +280,7 @@ def estimate_good_plot_length(xx, tseq=None, mult=100):
 
     if tseq is not None:
         tseq = tseq
-        K = int(min(max(K, tseq.dkObs), tseq.K))
+        K = int(min(max(K, tseq.dko), tseq.K))
         T = round2sigfig(tseq.tt[K], 2)  # Could return T; T&gt;tt[-1]
         K = find_1st_ind(tseq.tt &gt;= T)
         if K:
@@ -361,7 +361,7 @@ def plot_hovmoller(xx, tseq=None, **kwargs):
     xx: ndarray
         Plotted array
     tseq: `dapper.tools.chronos.Chronology`, optional
-        object with property dkObS. Defaults: None
+        object with property dko. Defaults: None
     &#34;&#34;&#34;
     fig, ax = place.freshfig(&#34;Hovmoller&#34;, figsize=(4, 3.5))
 
@@ -484,7 +484,7 @@ def plot_err_components(stats):
     else:
         not_available_text(ax1)
 
-    rmse = stats.err.rms.a[tseq.maskObs_BI]
+    rmse = stats.err.rms.a[tseq.masko]
     ax2.hist(rmse, bins=30, density=False)
     ax2.set_ylabel(&#39;Num. of occurence (_a)&#39;)
     ax2.set_xlabel(&#39;RMSE&#39;)
@@ -514,7 +514,7 @@ def plot_rank_histogram(stats):
     ax.set_xlabel(&#39;ensemble member index (n)&#39;)
 
     if has_been_computed:
-        ranks = stats.rh.a[tseq.maskObs_BI]
+        ranks = stats.rh.a[tseq.masko]
         Nx    = ranks.shape[1]
         N     = stats.xp.N
         if not hasattr(stats, &#39;w&#39;):
@@ -525,7 +525,7 @@ def plot_rank_histogram(stats):
             # Weight ranks by inverse of particle weight. Why? Coz, with correct
             # importance weights, the &#34;expected value&#34; histogram is then flat.
             # Potential improvement: interpolate weights between particles.
-            w  = stats.w.a[tseq.maskObs_BI]
+            w  = stats.w.a[tseq.masko]
             K  = len(w)
             w  = np.hstack([w, np.ones((K, 1))/N])  # define weights for rank N+1
             w  = array([w[arange(K), ranks[arange(K), i]] for i in range(Nx)])
@@ -911,7 +911,7 @@ Provide sensible fall-backs (better if tseq is supplied).</p>
 <dt><strong><code>xx</code></strong> :&ensp;<code>ndarray</code></dt>
 <dd>Plotted array</dd>
 <dt><strong><code>tseq</code></strong> :&ensp;<code><a title="dapper.tools.chronos.Chronology" href="chronos.html#dapper.tools.chronos.Chronology">Chronology</a></code>, optional</dt>
-<dd>object with property dkObS. Defaults: None</dd>
+<dd>object with property dko. Defaults: None</dd>
 <dt><strong><code>mult</code></strong> :&ensp;<code>int</code>, optional</dt>
 <dd>Number of waves for plotting. Defaults: 100</dd>
 </dl>
@@ -940,7 +940,7 @@ Provide sensible fall-backs (better if tseq is supplied).</p>
     xx: ndarray
         Plotted array
     tseq: `dapper.tools.chronos.Chronology`, optional
-        object with property dkObS. Defaults: None
+        object with property dko. Defaults: None
     mult: int, optional
         Number of waves for plotting. Defaults: 100
 
@@ -967,7 +967,7 @@ Provide sensible fall-backs (better if tseq is supplied).</p>
 
     if tseq is not None:
         tseq = tseq
-        K = int(min(max(K, tseq.dkObs), tseq.K))
+        K = int(min(max(K, tseq.dko), tseq.K))
         T = round2sigfig(tseq.tt[K], 2)  # Could return T; T&gt;tt[-1]
         K = find_1st_ind(tseq.tt &gt;= T)
         if K:
@@ -1064,7 +1064,7 @@ For that, use <code>plt.pause</code> or <code>plt.show</code> instead.</p></div>
 <dt><strong><code>xx</code></strong> :&ensp;<code>ndarray</code></dt>
 <dd>Plotted array</dd>
 <dt><strong><code>tseq</code></strong> :&ensp;<code><a title="dapper.tools.chronos.Chronology" href="chronos.html#dapper.tools.chronos.Chronology">Chronology</a></code>, optional</dt>
-<dd>object with property dkObS. Defaults: None</dd>
+<dd>object with property dko. Defaults: None</dd>
 </dl></div>
 <details class="source">
 <summary>
@@ -1079,7 +1079,7 @@ For that, use <code>plt.pause</code> or <code>plt.show</code> instead.</p></div>
     xx: ndarray
         Plotted array
     tseq: `dapper.tools.chronos.Chronology`, optional
-        object with property dkObS. Defaults: None
+        object with property dko. Defaults: None
     &#34;&#34;&#34;
     fig, ax = place.freshfig(&#34;Hovmoller&#34;, figsize=(4, 3.5))
 
@@ -1269,7 +1269,7 @@ and because <code>rms(umisf)</code> seems too convoluted for interpretation.</p>
     else:
         not_available_text(ax1)
 
-    rmse = stats.err.rms.a[tseq.maskObs_BI]
+    rmse = stats.err.rms.a[tseq.masko]
     ax2.hist(rmse, bins=30, density=False)
     ax2.set_ylabel(&#39;Num. of occurence (_a)&#39;)
     ax2.set_xlabel(&#39;RMSE&#39;)
@@ -1314,7 +1314,7 @@ and because <code>rms(umisf)</code> seems too convoluted for interpretation.</p>
     ax.set_xlabel(&#39;ensemble member index (n)&#39;)
 
     if has_been_computed:
-        ranks = stats.rh.a[tseq.maskObs_BI]
+        ranks = stats.rh.a[tseq.masko]
         Nx    = ranks.shape[1]
         N     = stats.xp.N
         if not hasattr(stats, &#39;w&#39;):
@@ -1325,7 +1325,7 @@ and because <code>rms(umisf)</code> seems too convoluted for interpretation.</p>
             # Weight ranks by inverse of particle weight. Why? Coz, with correct
             # importance weights, the &#34;expected value&#34; histogram is then flat.
             # Potential improvement: interpolate weights between particles.
-            w  = stats.w.a[tseq.maskObs_BI]
+            w  = stats.w.a[tseq.masko]
             K  = len(w)
             w  = np.hstack([w, np.ones((K, 1))/N])  # define weights for rank N+1
             w  = array([w[arange(K), ranks[arange(K), i]] for i in range(Nx)])

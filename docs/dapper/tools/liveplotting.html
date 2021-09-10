@@ -374,7 +374,7 @@ class sliding_diagnostics:
             for name in style_table:
 
                 # SKIP -- if stats[name] is not in existence
-                # Note: The nan check/deletion comes after the first kObs.
+                # Note: The nan check/deletion comes after the first ko.
                 try:
                     stat = deep_getattr(stats, name)
                 except AttributeError:
@@ -424,7 +424,7 @@ class sliding_diagnostics:
 
     # Update plot
     def __call__(self, key, E, P):
-        k, kObs, faus = key
+        k, ko, faus = key
 
         stats  = self.stats
         tseq = stats.HMM.tseq
@@ -433,7 +433,7 @@ class sliding_diagnostics:
         def update_arrays(lines):
             for name, ln in lines.items():
                 stat = deep_getattr(stats, name)
-                t    = tseq.tt[k]  # == tseq.ttObs[kObs]
+                t    = tseq.tt[k]  # == tseq.tto[ko]
                 if isinstance(stat, FAUSt):
                     # ln[&#39;data&#39;] will contain duplicates for f/a times.
                     if ln[&#39;plot_u&#39;]:
@@ -442,14 +442,14 @@ class sliding_diagnostics:
                         ln[&#39;data&#39;].insert(k, ln[&#39;transf&#39;](val))
                     elif &#39;u&#39; not in faus:
                         val = stat[key]
-                        ln[&#39;tt&#39;]  .insert(kObs, t)
-                        ln[&#39;data&#39;].insert(kObs, ln[&#39;transf&#39;](val))
+                        ln[&#39;tt&#39;]  .insert(ko, t)
+                        ln[&#39;data&#39;].insert(ko, ln[&#39;transf&#39;](val))
                 else:
                     # ln[&#39;data&#39;] will not contain duplicates, coz only &#39;a&#39; is input.
                     if &#39;a&#39; in faus:
-                        val = stat[kObs]
-                        ln[&#39;tt&#39;]  .insert(kObs, t)
-                        ln[&#39;data&#39;].insert(kObs, ln[&#39;transf&#39;](val))
+                        val = stat[ko]
+                        ln[&#39;tt&#39;]  .insert(ko, t)
+                        ln[&#39;data&#39;].insert(ko, ln[&#39;transf&#39;](val))
                     elif &#39;f&#39; in faus:
                         pass
 
@@ -558,7 +558,7 @@ class weight_histogram:
         self.bins  = np.exp(np.linspace(np.log(1e-10), np.log(1), 31))
 
     def __call__(self, key, E, P):
-        k, kObs, faus = key
+        k, ko, faus = key
         if &#39;a&#39; == faus:
             w  = self.stats.w[key]
             N  = len(w)
@@ -599,7 +599,7 @@ class spectral_errors:
 
     # Update plot
     def __call__(self, key, E, P):
-        k, kObs, faus = key
+        k, ko, faus = key
         ax = self.ax
         if self.init_incomplete:
             if self.plot_u or &#39;f&#39; == faus:
@@ -844,12 +844,12 @@ def sliding_marginals(
                 h.s  += [ax.plot(d.t, d.s[:, :, ix], &#39;b--&#39;, lw=1)]
 
         def update(key, E, P):
-            k, kObs, faus = key
+            k, ko, faus = key
 
             EE = duplicate_with_blanks_for_resampled(E, DimsX, key, has_w)
 
             # Roll data array
-            ind = k if plot_u else kObs
+            ind = k if plot_u else ko
             for Ens in EE:  # If E is duplicated, so must the others be.
                 if &#39;E&#39; in d:
                     d.E .insert(ind, Ens)
@@ -860,8 +860,8 @@ def sliding_marginals(
                 if True:
                     d.t .insert(ind, tseq.tt[k])
                 if True:
-                    d.y .insert(ind, yy[kObs, iiY]
-                                if kObs is not None else nan*ones(Ny))
+                    d.y .insert(ind, yy[ko, iiY]
+                                if ko is not None else nan*ones(Ny))
                 if True:
                     d.x .insert(ind, xx[k, DimsX])
 
@@ -988,8 +988,8 @@ def phase_particles(
                               c=[h.x.get_color()], marker=(5, 1), zorder=99)
 
         def update(key, E, P):
-            k, kObs, faus = key
-            show_y = &#39;y&#39; in d and kObs is not None
+            k, ko, faus = key
+            show_y = &#39;y&#39; in d and ko is not None
 
             def update_tail(handle, newdata):
                 handle.set_data(newdata[:, 0], newdata[:, 1])
@@ -1005,14 +1005,14 @@ def phase_particles(
             EE = duplicate_with_blanks_for_resampled(E, p.dims, key, has_w)
 
             # Roll data array
-            ind = k if plot_u else kObs
+            ind = k if plot_u else ko
             for Ens in EE:  # If E is duplicated, so must the others be.
                 if &#39;E&#39; in d:
                     d.E .insert(ind, Ens)
                 if True:
                     d.x .insert(ind, xx[k, p.dims])
                 if &#39;y&#39; in d:
-                    d.y .insert(ind, yy[kObs, :] if show_y else nan*ones(M))
+                    d.y .insert(ind, yy[ko, :] if show_y else nan*ones(M))
                 if &#39;mu&#39; in d:
                     d.mu.insert(ind, mu[key][p.dims])
 
@@ -1058,7 +1058,7 @@ def validate_lag(Tplot, tseq):
     T_lag = t2-t1
 
     K_lag = int(T_lag / tseq.dt) + 1  # Lag in indices
-    a_lag = K_lag//tseq.dkObs + 1     # Lag in obs indices
+    a_lag = K_lag//tseq.dko + 1     # Lag in obs indices
 
     return T_lag, K_lag, a_lag
 
@@ -1072,8 +1072,8 @@ def comp_K_plot(K_lag, a_lag, plot_u):
 
 def update_alpha(key, stats, lines, scatters=None):
     &#34;&#34;&#34;Adjust color alpha (for particle filters).&#34;&#34;&#34;
-    k, kObs, faus = key
-    if kObs is None:
+    k, ko, faus = key
+    if ko is None:
         return
     if faus == &#39;f&#39;:
         return
@@ -1103,12 +1103,12 @@ def duplicate_with_blanks_for_resampled(E, dims, key, has_w):
     EE = []
     E  = E[:, dims]
     if has_w:
-        k, kObs, faus = key
+        k, ko, faus = key
         if faus == &#39;f&#39;:
             pass
         elif faus == &#39;a&#39;:
             _Ea[0] = E[:, 0]  # Store (1st dim of) ens.
-        elif faus == &#39;u&#39; and kObs is not None:
+        elif faus == &#39;u&#39; and ko is not None:
             # Find resampled particles. Insert duplicate ensemble. Write nans (breaks).
             resampled = _Ea[0] != E[:, 0]  # Mark as resampled if ens changed.
             # Insert current ensemble (copy to avoid overwriting).
@@ -1264,7 +1264,7 @@ def spatial1d(
             line_y.set_visible(False)
 
         def update(key, E, P):
-            k, kObs, faus = key
+            k, ko, faus = key
 
             if p.conf_mult:
                 sigma = mu[key] + p.conf_mult * stats.spread[key] * [[1], [-1]]
@@ -1278,11 +1278,11 @@ def spatial1d(
 
             line_x.set_ydata(wrap(xx[k, p.dims]))
 
-            text_t.set_text(format_time(k, kObs, stats.HMM.tseq.tt[k]))
+            text_t.set_text(format_time(k, ko, stats.HMM.tseq.tt[k]))
 
             if &#39;f&#39; in faus:
                 if p.obs_inds is not None:
-                    line_y.set_ydata(yy[kObs])
+                    line_y.set_ydata(yy[ko])
                     line_y.set_zorder(5)
                     line_y.set_visible(True)
 
@@ -1380,7 +1380,7 @@ def spatial2d(
                             transform=ax_12.transAxes, family=&#39;monospace&#39;, ha=&#39;left&#39;)
 
         def update(key, E, P):
-            k, kObs, faus = key
+            k, ko, faus = key
             t = tt[k]
 
             im_11.set_data(square(mu[key]))
@@ -1396,10 +1396,10 @@ def spatial2d(
             # Plot current obs.
             #  - plot() automatically adjusts to direction of y-axis in use.
             #  - ind2sub returns (iy,ix), while plot takes (ix,iy) =&gt; reverse.
-            if kObs is not None and obs_inds is not None:
+            if ko is not None and obs_inds is not None:
                 lh[0] = ax_12.plot(*ind2sub(obs_inds(t))[::-1], &#39;k.&#39;, ms=1, zorder=5)[0]
 
-            text_t.set_text(format_time(k, kObs, t))
+            text_t.set_text(format_time(k, ko, t))
 
             return
         return update
@@ -1593,12 +1593,12 @@ default_liveplotters = [
                 h.s  += [ax.plot(d.t, d.s[:, :, ix], &#39;b--&#39;, lw=1)]
 
         def update(key, E, P):
-            k, kObs, faus = key
+            k, ko, faus = key
 
             EE = duplicate_with_blanks_for_resampled(E, DimsX, key, has_w)
 
             # Roll data array
-            ind = k if plot_u else kObs
+            ind = k if plot_u else ko
             for Ens in EE:  # If E is duplicated, so must the others be.
                 if &#39;E&#39; in d:
                     d.E .insert(ind, Ens)
@@ -1609,8 +1609,8 @@ default_liveplotters = [
                 if True:
                     d.t .insert(ind, tseq.tt[k])
                 if True:
-                    d.y .insert(ind, yy[kObs, iiY]
-                                if kObs is not None else nan*ones(Ny))
+                    d.y .insert(ind, yy[ko, iiY]
+                                if ko is not None else nan*ones(Ny))
                 if True:
                     d.x .insert(ind, xx[k, DimsX])
 
@@ -1747,8 +1747,8 @@ default_liveplotters = [
                               c=[h.x.get_color()], marker=(5, 1), zorder=99)
 
         def update(key, E, P):
-            k, kObs, faus = key
-            show_y = &#39;y&#39; in d and kObs is not None
+            k, ko, faus = key
+            show_y = &#39;y&#39; in d and ko is not None
 
             def update_tail(handle, newdata):
                 handle.set_data(newdata[:, 0], newdata[:, 1])
@@ -1764,14 +1764,14 @@ default_liveplotters = [
             EE = duplicate_with_blanks_for_resampled(E, p.dims, key, has_w)
 
             # Roll data array
-            ind = k if plot_u else kObs
+            ind = k if plot_u else ko
             for Ens in EE:  # If E is duplicated, so must the others be.
                 if &#39;E&#39; in d:
                     d.E .insert(ind, Ens)
                 if True:
                     d.x .insert(ind, xx[k, p.dims])
                 if &#39;y&#39; in d:
-                    d.y .insert(ind, yy[kObs, :] if show_y else nan*ones(M))
+                    d.y .insert(ind, yy[ko, :] if show_y else nan*ones(M))
                 if &#39;mu&#39; in d:
                     d.mu.insert(ind, mu[key][p.dims])
 
@@ -1832,7 +1832,7 @@ default_liveplotters = [
     T_lag = t2-t1
 
     K_lag = int(T_lag / tseq.dt) + 1  # Lag in indices
-    a_lag = K_lag//tseq.dkObs + 1     # Lag in obs indices
+    a_lag = K_lag//tseq.dko + 1     # Lag in obs indices
 
     return T_lag, K_lag, a_lag</code></pre>
 </details>
@@ -1866,8 +1866,8 @@ default_liveplotters = [
 </summary>
 <pre><code class="python">def update_alpha(key, stats, lines, scatters=None):
     &#34;&#34;&#34;Adjust color alpha (for particle filters).&#34;&#34;&#34;
-    k, kObs, faus = key
-    if kObs is None:
+    k, ko, faus = key
+    if ko is None:
         return
     if faus == &#39;f&#39;:
         return
@@ -1907,12 +1907,12 @@ default_liveplotters = [
     EE = []
     E  = E[:, dims]
     if has_w:
-        k, kObs, faus = key
+        k, ko, faus = key
         if faus == &#39;f&#39;:
             pass
         elif faus == &#39;a&#39;:
             _Ea[0] = E[:, 0]  # Store (1st dim of) ens.
-        elif faus == &#39;u&#39; and kObs is not None:
+        elif faus == &#39;u&#39; and ko is not None:
             # Find resampled particles. Insert duplicate ensemble. Write nans (breaks).
             resampled = _Ea[0] != E[:, 0]  # Mark as resampled if ens changed.
             # Insert current ensemble (copy to avoid overwriting).
@@ -2108,7 +2108,7 @@ because there's usually not that much data to sort through.</p></div>
             line_y.set_visible(False)
 
         def update(key, E, P):
-            k, kObs, faus = key
+            k, ko, faus = key
 
             if p.conf_mult:
                 sigma = mu[key] + p.conf_mult * stats.spread[key] * [[1], [-1]]
@@ -2122,11 +2122,11 @@ because there's usually not that much data to sort through.</p></div>
 
             line_x.set_ydata(wrap(xx[k, p.dims]))
 
-            text_t.set_text(format_time(k, kObs, stats.HMM.tseq.tt[k]))
+            text_t.set_text(format_time(k, ko, stats.HMM.tseq.tt[k]))
 
             if &#39;f&#39; in faus:
                 if p.obs_inds is not None:
-                    line_y.set_ydata(yy[kObs])
+                    line_y.set_ydata(yy[ko])
                     line_y.set_zorder(5)
                     line_y.set_visible(True)
 
@@ -2234,7 +2234,7 @@ because there's usually not that much data to sort through.</p></div>
                             transform=ax_12.transAxes, family=&#39;monospace&#39;, ha=&#39;left&#39;)
 
         def update(key, E, P):
-            k, kObs, faus = key
+            k, ko, faus = key
             t = tt[k]
 
             im_11.set_data(square(mu[key]))
@@ -2250,10 +2250,10 @@ because there's usually not that much data to sort through.</p></div>
             # Plot current obs.
             #  - plot() automatically adjusts to direction of y-axis in use.
             #  - ind2sub returns (iy,ix), while plot takes (ix,iy) =&gt; reverse.
-            if kObs is not None and obs_inds is not None:
+            if ko is not None and obs_inds is not None:
                 lh[0] = ax_12.plot(*ind2sub(obs_inds(t))[::-1], &#39;k.&#39;, ms=1, zorder=5)[0]
 
-            text_t.set_text(format_time(k, kObs, t))
+            text_t.set_text(format_time(k, ko, t))
 
             return
         return update
@@ -2668,7 +2668,7 @@ plt.draw() to work on a moderately fast computer.</li>
             for name in style_table:
 
                 # SKIP -- if stats[name] is not in existence
-                # Note: The nan check/deletion comes after the first kObs.
+                # Note: The nan check/deletion comes after the first ko.
                 try:
                     stat = deep_getattr(stats, name)
                 except AttributeError:
@@ -2718,7 +2718,7 @@ plt.draw() to work on a moderately fast computer.</li>
 
     # Update plot
     def __call__(self, key, E, P):
-        k, kObs, faus = key
+        k, ko, faus = key
 
         stats  = self.stats
         tseq = stats.HMM.tseq
@@ -2727,7 +2727,7 @@ plt.draw() to work on a moderately fast computer.</li>
         def update_arrays(lines):
             for name, ln in lines.items():
                 stat = deep_getattr(stats, name)
-                t    = tseq.tt[k]  # == tseq.ttObs[kObs]
+                t    = tseq.tt[k]  # == tseq.tto[ko]
                 if isinstance(stat, FAUSt):
                     # ln[&#39;data&#39;] will contain duplicates for f/a times.
                     if ln[&#39;plot_u&#39;]:
@@ -2736,14 +2736,14 @@ plt.draw() to work on a moderately fast computer.</li>
                         ln[&#39;data&#39;].insert(k, ln[&#39;transf&#39;](val))
                     elif &#39;u&#39; not in faus:
                         val = stat[key]
-                        ln[&#39;tt&#39;]  .insert(kObs, t)
-                        ln[&#39;data&#39;].insert(kObs, ln[&#39;transf&#39;](val))
+                        ln[&#39;tt&#39;]  .insert(ko, t)
+                        ln[&#39;data&#39;].insert(ko, ln[&#39;transf&#39;](val))
                 else:
                     # ln[&#39;data&#39;] will not contain duplicates, coz only &#39;a&#39; is input.
                     if &#39;a&#39; in faus:
-                        val = stat[kObs]
-                        ln[&#39;tt&#39;]  .insert(kObs, t)
-                        ln[&#39;data&#39;].insert(kObs, ln[&#39;transf&#39;](val))
+                        val = stat[ko]
+                        ln[&#39;tt&#39;]  .insert(ko, t)
+                        ln[&#39;data&#39;].insert(ko, ln[&#39;transf&#39;](val))
                     elif &#39;f&#39; in faus:
                         pass
 
@@ -2841,7 +2841,7 @@ plt.draw() to work on a moderately fast computer.</li>
         self.bins  = np.exp(np.linspace(np.log(1e-10), np.log(1), 31))
 
     def __call__(self, key, E, P):
-        k, kObs, faus = key
+        k, ko, faus = key
         if &#39;a&#39; == faus:
             w  = self.stats.w[key]
             N  = len(w)
@@ -2893,7 +2893,7 @@ plt.draw() to work on a moderately fast computer.</li>
 
     # Update plot
     def __call__(self, key, E, P):
-        k, kObs, faus = key
+        k, ko, faus = key
         ax = self.ax
         if self.init_incomplete:
             if self.plot_u or &#39;f&#39; == faus:

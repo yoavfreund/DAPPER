@@ -50,7 +50,7 @@ from dapper.mods.utils import linspace_int
 from dapper.tools.localization import nd_Id_localization
 
 model.Force = 8.17
-tseq = modelling.Chronology(0.01, dkObs=10, K=4000, Tplot=10, BurnIn=10)
+tseq = modelling.Chronology(0.01, dko=10, K=4000, Tplot=10, BurnIn=10)
 
 Nx = 1000
 
@@ -58,9 +58,9 @@ Dyn = {
     &#39;M&#39;: Nx,
     &#39;model&#39;: step,
     # It&#39;s not clear from the paper whether Q=0.5 or 0.25.
-    # But I&#39;m pretty sure it&#39;s applied each dtObs (not dt).
-    &#39;noise&#39;: 0.25 / tseq.dtObs,
-    # &#39;noise&#39;: 0.5 / t.dtObs,
+    # But I&#39;m pretty sure it&#39;s applied each dto (not dt).
+    &#39;noise&#39;: 0.25 / tseq.dto,
+    # &#39;noise&#39;: 0.5 / t.dto,
 }
 
 X0 = modelling.GaussRV(mu=x0(Nx), C=0.001)

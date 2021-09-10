@@ -232,9 +232,9 @@ class FAUSt(DataSeries, StatPrint):
 
     Four attributes, each of which is an ndarray:
 
-    - `.f` for forecast      , `(KObs+1,)+item_shape`
-    - `.a` for analysis      , `(KObs+1,)+item_shape`
-    - `.s` for smoothed      , `(KObs+1,)+item_shape`
+    - `.f` for forecast      , `(KO+1,)+item_shape`
+    - `.a` for analysis      , `(KO+1,)+item_shape`
+    - `.s` for smoothed      , `(KO+1,)+item_shape`
     - `.u` for universial/all, `(K   +1,)+item_shape`
 
     If `store_u=False`, then `.u` series has shape `(1,)+item_shape`,
@@ -242,8 +242,8 @@ class FAUSt(DataSeries, StatPrint):
 
     Series can also be indexed as in
 
-        self[kObs,&#39;a&#39;]
-        self[whatever,kObs,&#39;a&#39;]
+        self[ko,&#39;a&#39;]
+        self[whatever,ko,&#39;a&#39;]
         # ... and likewise for &#39;f&#39; and &#39;s&#39;. For &#39;u&#39;, can use:
         self[k,&#39;u&#39;]
         self[k,whatever,&#39;u&#39;]
@@ -252,17 +252,17 @@ class FAUSt(DataSeries, StatPrint):
               then you should use a plain np.array instead.
     &#34;&#34;&#34;
 
-    def __init__(self, K, KObs, item_shape, store_u, store_s, **kwargs):
+    def __init__(self, K, KO, item_shape, store_u, store_s, **kwargs):
         &#34;&#34;&#34;Construct object.
 
         - `item_shape` : shape of an item in the series.
         - `store_u`    : if False: only the current value is stored.
         - `kwargs`     : passed on to ndarrays.
         &#34;&#34;&#34;
-        self.f     = np.full((KObs+1,)+item_shape, nan, **kwargs)
-        self.a     = np.full((KObs+1,)+item_shape, nan, **kwargs)
+        self.f     = np.full((KO+1,)+item_shape, nan, **kwargs)
+        self.a     = np.full((KO+1,)+item_shape, nan, **kwargs)
         if store_s:
-            self.s = np.full((KObs+1,)+item_shape, nan, **kwargs)
+            self.s = np.full((KO+1,)+item_shape, nan, **kwargs)
         if store_u:
             self.u = np.full((K   + 1,)+item_shape, nan, **kwargs)
         else:
@@ -274,7 +274,7 @@ class FAUSt(DataSeries, StatPrint):
     store_u    = property(lambda self: len(self.u) &gt; 1)
 
     def _ind(self, key):
-        &#34;&#34;&#34;Aux function to unpack `key` (`k,kObs,faus`)&#34;&#34;&#34;
+        &#34;&#34;&#34;Aux function to unpack `key` (`k,ko,faus`)&#34;&#34;&#34;
         if key[-1] == &#39;u&#39;:
             return key[0] if self.store_u else 0
         else:
@@ -654,26 +654,26 @@ as estimated from its correlation-corrected variance.</p></div>
 </dd>
 <dt id="dapper.tools.series.FAUSt"><code class="flex name class">
 <span>class <span class="ident">FAUSt</span></span>
-<span>(</span><span>K, KObs, item_shape, store_u, store_s, **kwargs)</span>
+<span>(</span><span>K, KO, item_shape, store_u, store_s, **kwargs)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Container for time series of a statistic from filtering.</p>
 <p>Four attributes, each of which is an ndarray:</p>
 <ul>
 <li><code>.f</code> for forecast
-, <code>(KObs+1,)+item_shape</code></li>
+, <code>(KO+1,)+item_shape</code></li>
 <li><code>.a</code> for analysis
-, <code>(KObs+1,)+item_shape</code></li>
+, <code>(KO+1,)+item_shape</code></li>
 <li><code>.s</code> for smoothed
-, <code>(KObs+1,)+item_shape</code></li>
+, <code>(KO+1,)+item_shape</code></li>
 <li><code>.u</code> for universial/all, <code>(K
 +1,)+item_shape</code></li>
 </ul>
 <p>If <code>store_u=False</code>, then <code>.u</code> series has shape <code>(1,)+item_shape</code>,
 wherein only the most-recently-written item is stored.</p>
 <p>Series can also be indexed as in</p>
-<pre><code>self[kObs,'a']
-self[whatever,kObs,'a']
+<pre><code>self[ko,'a']
+self[whatever,ko,'a']
 # ... and likewise for 'f' and 's'. For 'u', can use:
 self[k,'u']
 self[k,whatever,'u']
@@ -700,9 +700,9 @@ self[k,whatever,'u']
 
     Four attributes, each of which is an ndarray:
 
-    - `.f` for forecast      , `(KObs+1,)+item_shape`
-    - `.a` for analysis      , `(KObs+1,)+item_shape`
-    - `.s` for smoothed      , `(KObs+1,)+item_shape`
+    - `.f` for forecast      , `(KO+1,)+item_shape`
+    - `.a` for analysis      , `(KO+1,)+item_shape`
+    - `.s` for smoothed      , `(KO+1,)+item_shape`
     - `.u` for universial/all, `(K   +1,)+item_shape`
 
     If `store_u=False`, then `.u` series has shape `(1,)+item_shape`,
@@ -710,8 +710,8 @@ self[k,whatever,'u']
 
     Series can also be indexed as in
 
-        self[kObs,&#39;a&#39;]
-        self[whatever,kObs,&#39;a&#39;]
+        self[ko,&#39;a&#39;]
+        self[whatever,ko,&#39;a&#39;]
         # ... and likewise for &#39;f&#39; and &#39;s&#39;. For &#39;u&#39;, can use:
         self[k,&#39;u&#39;]
         self[k,whatever,&#39;u&#39;]
@@ -720,17 +720,17 @@ self[k,whatever,'u']
               then you should use a plain np.array instead.
     &#34;&#34;&#34;
 
-    def __init__(self, K, KObs, item_shape, store_u, store_s, **kwargs):
+    def __init__(self, K, KO, item_shape, store_u, store_s, **kwargs):
         &#34;&#34;&#34;Construct object.
 
         - `item_shape` : shape of an item in the series.
         - `store_u`    : if False: only the current value is stored.
         - `kwargs`     : passed on to ndarrays.
         &#34;&#34;&#34;
-        self.f     = np.full((KObs+1,)+item_shape, nan, **kwargs)
-        self.a     = np.full((KObs+1,)+item_shape, nan, **kwargs)
+        self.f     = np.full((KO+1,)+item_shape, nan, **kwargs)
+        self.a     = np.full((KO+1,)+item_shape, nan, **kwargs)
         if store_s:
-            self.s = np.full((KObs+1,)+item_shape, nan, **kwargs)
+            self.s = np.full((KO+1,)+item_shape, nan, **kwargs)
         if store_u:
             self.u = np.full((K   + 1,)+item_shape, nan, **kwargs)
         else:
@@ -742,7 +742,7 @@ self[k,whatever,'u']
     store_u    = property(lambda self: len(self.u) &gt; 1)
 
     def _ind(self, key):
-        &#34;&#34;&#34;Aux function to unpack `key` (`k,kObs,faus`)&#34;&#34;&#34;
+        &#34;&#34;&#34;Aux function to unpack `key` (`k,ko,faus`)&#34;&#34;&#34;
         if key[-1] == &#39;u&#39;:
             return key[0] if self.store_u else 0
         else:

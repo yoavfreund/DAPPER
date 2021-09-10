@@ -41,7 +41,7 @@ body.gsc-overflow-hidden #sidebar {overflow: visible;}
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L1-L633" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L1-L639" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">&#34;&#34;&#34;Tools (notably `xpList`) for setup and running of experiments (known as `xp`s).
 
@@ -207,30 +207,36 @@ def run_experiment(xp, label, savedir, HMM, setup=seed_and_simulate, free=True,
 
 def _print_cropped_traceback(ERR):
 
-    def crop_traceback(ERR, lvl):
+    # A more &#34;standard&#34; (robust) way:
+    # https://stackoverflow.com/a/32999522
+    def crop_traceback(ERR):
         msg = &#34;Traceback (most recent call last):\n&#34;
         try:
             # If in IPython, use its coloring functionality
             __IPYTHON__  # type: ignore
+        except (NameError, ImportError):
+            msg += &#34;&#34;.join(traceback.format_tb(ERR.__traceback__))
+        else:
             from IPython.core.debugger import Pdb
             pdb_instance = Pdb()
             pdb_instance.curframe = inspect.currentframe()
 
-            for i, frame in enumerate(traceback.walk_tb(ERR.__traceback__)):
-                if i &lt; lvl:
-                    continue  # skip frames
-                if i == lvl:
+            import dapper.da_methods
+            keep = False
+            for frame in traceback.walk_tb(ERR.__traceback__):
+                if keep:
+                    msg += pdb_instance.format_stack_entry(frame, context=3)
+                elif frame[0].f_code.co_filename == dapper.da_methods.__file__:
+                    keep = True
                     msg += &#34;   ⋮ [cropped] \n&#34;
-                msg += pdb_instance.format_stack_entry(frame, context=3)
-
-        except (NameError, ImportError):
-            msg += &#34;&#34;.join(traceback.format_tb(ERR.__traceback__))
 
         return msg
 
-    msg = crop_traceback(ERR, 1) + &#34;\nError message: &#34; + str(ERR)
-    msg += &#34;\n\nResuming execution. &#34; \
-        &#34;Use `fail_gently=False` to raise exception &amp; halt execution.\n&#34;
+    msg = crop_traceback(ERR) + &#34;\nError message: &#34; + str(ERR)
+    msg += (&#34;\n\nResuming execution.&#34;
+            &#34;\nIf instead you wish to raise the exceptions as usual,&#34;
+            &#34;\nwhich will halt the execution (and enable post-mortem debug),&#34;
+            &#34;\nthen use `fail_gently=False`&#34;)
     print(msg, file=sys.stderr)
 
 
@@ -928,7 +934,7 @@ this xp.</dd>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L192-L197" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L198-L203" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def collapse_str(string, length=6):
     &#34;&#34;&#34;Truncate a string (in the middle) to the given `length`&#34;&#34;&#34;
@@ -955,7 +961,7 @@ then you'll create many more than you intend.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L608-L633" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L614-L639" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def combinator(param_dict, **glob_dict):
     &#34;&#34;&#34;Mass creation of `xp`&#39;s by combining the value lists in the parameter dicts.
@@ -1034,7 +1040,7 @@ as opposed to this class (<code><a title="dapper.xp_launch.xpList" href="#dapper
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L200-L605" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L206-L611" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class xpList(list):
     &#34;&#34;&#34;Subclass of `list` specialized for experiment (&#34;xp&#34;) objects.
@@ -1455,7 +1461,7 @@ as opposed to this class (<code><a title="dapper.xp_launch.xpList" href="#dapper
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L280-L283" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L286-L289" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">@property
 def da_methods(self):
@@ -1474,7 +1480,7 @@ def da_methods(self):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L252-L255" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L258-L261" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def append(self, xp):
     &#34;&#34;&#34;Append **if** not `self.unique` &amp; present.&#34;&#34;&#34;
@@ -1492,7 +1498,7 @@ unless the missingval (e.g. <code>None</code>) matches the required value.</p></
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L267-L278" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L273-L284" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def inds(self, strict=True, missingval=&#34;NONSENSE&#34;, **kws):
     &#34;&#34;&#34;Find (all) indices of `xps` whose attributes match kws.
@@ -1525,7 +1531,7 @@ need be included.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L285-L396" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L291-L402" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def split_attrs(self, nomerge=()):
     &#34;&#34;&#34;Classify each/every attribute of the `xp`s into: distinct, redundant, common.
@@ -1654,7 +1660,7 @@ need be included.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L406-L444" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L412-L450" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def gen_names(self, abbrev=6, tab=False):
     &#34;&#34;&#34;Similiar to `self.__repr__()`, but:
@@ -1706,7 +1712,7 @@ need be included.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L446-L454" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L452-L460" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def tabulate_avrgs(self, *args, **kwargs):
     &#34;&#34;&#34;Pretty (tabulated) `repr` of `xps` **and** their `avrgs.`
@@ -1749,7 +1755,7 @@ in <code>sys.path[0]</code> are uploaded.</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L456-L605" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L462-L611" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def launch(self, HMM, save_as=&#34;noname&#34;, mp=False, fail_gently=None, **kwargs):
     &#34;&#34;&#34;Essentially: `for xp in self: run_experiment(xp, ..., **kwargs)`.
