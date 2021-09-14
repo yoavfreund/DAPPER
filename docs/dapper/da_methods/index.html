@@ -82,7 +82,7 @@ You probably don't need statistical significance while debugging.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/__init__.py#L1-L140" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/__init__.py#L1-L189" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">&#34;&#34;&#34;Contains the data assimilation methods included with DAPPER.
 
@@ -90,7 +90,10 @@ You probably don't need statistical significance while debugging.</p>
 &#34;&#34;&#34;
 import dataclasses
 import functools
+import inspect
+import sys
 import time
+import traceback
 from dataclasses import dataclass
 
 import dapper.stats
@@ -184,17 +187,28 @@ def da_method(*default_dataclasses):
         # Create new class (NB: old/new classes have same id)
         cls = dataclass(cls)
 
-        # The new assimilate method
-        def assimilate(self, HMM, xx, yy, desc=None, **stat_kwargs):
+        # Define the new assimilate method (has bells and whistles)
+        def assimilate(self, HMM, xx, yy, desc=None, fail_gently=False, **stat_kwargs):
             # Progressbar name
             pb_name_hook = self.da_method if desc is None else desc # noqa
+
             # Init stats
             self.stats = dapper.stats.Stats(self, HMM, xx, yy, **stat_kwargs)
+
             # Assimilate
-            time_start = time.time()
-            _assimilate(self, HMM, xx, yy)
-            dapper.stats.register_stat(
-                self.stats, &#34;duration&#34;, time.time()-time_start)
+            time0 = time.time()
+            try:
+                _assimilate(self, HMM, xx, yy)
+            except Exception as ERR:
+                if fail_gently:
+                    self.crashed = True
+                    if fail_gently not in [&#34;silent&#34;, &#34;quiet&#34;]:
+                        _print_cropped_traceback(ERR)
+                else:
+                    # Don&#39;t use _print_cropped_traceback here -- It would
+                    # crop out errors in the DAPPER infrastructure itself.
+                    raise ERR
+            self.stat(&#34;duration&#34;, time.time()-time0)
 
         # Overwrite the assimilate method with the new one
         try:
@@ -216,6 +230,41 @@ def da_method(*default_dataclasses):
 
         return cls
     return dataclass_with_defaults
+
+
+def _print_cropped_traceback(ERR):
+
+    # A more &#34;standard&#34; (robust) way:
+    # https://stackoverflow.com/a/32999522
+    def crop_traceback(ERR):
+        msg = &#34;Traceback (most recent call last):\n&#34;
+        try:
+            # If in IPython, use its coloring functionality
+            __IPYTHON__  # type: ignore
+        except (NameError, ImportError):
+            msg += &#34;&#34;.join(traceback.format_tb(ERR.__traceback__))
+        else:
+            from IPython.core.debugger import Pdb
+            pdb_instance = Pdb()
+            pdb_instance.curframe = inspect.currentframe()
+
+            import dapper.da_methods
+            keep = False
+            for frame in traceback.walk_tb(ERR.__traceback__):
+                if keep:
+                    msg += pdb_instance.format_stack_entry(frame, context=3)
+                elif frame[0].f_code.co_filename == dapper.da_methods.__file__:
+                    keep = True
+                    msg += &#34;   ⋮ [cropped] \n&#34;
+
+        return msg
+
+    msg = crop_traceback(ERR) + &#34;\nError message: &#34; + str(ERR)
+    msg += (&#34;\n\nResuming execution.&#34;
+            &#34;\nIf instead you wish to raise the exceptions as usual,&#34;
+            &#34;\nwhich will halt the execution (and enable post-mortem debug),&#34;
+            &#34;\nthen use `fail_gently=False`&#34;)
+    print(msg, file=sys.stderr)
 
 
 from .baseline import Climatology, OptInterp, Var3D
@@ -337,7 +386,7 @@ experiments (see <code><a title="dapper.xp_launch.run_experiment" href="../xp_la
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/__init__.py#L13-L132" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/__init__.py#L16-L146" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def da_method(*default_dataclasses):
     &#34;&#34;&#34;Turn a dataclass-style class into a DA method for DAPPER (`xp`).
@@ -427,17 +476,28 @@ experiments (see <code><a title="dapper.xp_launch.run_experiment" href="../xp_la
         # Create new class (NB: old/new classes have same id)
         cls = dataclass(cls)
 
-        # The new assimilate method
-        def assimilate(self, HMM, xx, yy, desc=None, **stat_kwargs):
+        # Define the new assimilate method (has bells and whistles)
+        def assimilate(self, HMM, xx, yy, desc=None, fail_gently=False, **stat_kwargs):
             # Progressbar name
             pb_name_hook = self.da_method if desc is None else desc # noqa
+
             # Init stats
             self.stats = dapper.stats.Stats(self, HMM, xx, yy, **stat_kwargs)
+
             # Assimilate
-            time_start = time.time()
-            _assimilate(self, HMM, xx, yy)
-            dapper.stats.register_stat(
-                self.stats, &#34;duration&#34;, time.time()-time_start)
+            time0 = time.time()
+            try:
+                _assimilate(self, HMM, xx, yy)
+            except Exception as ERR:
+                if fail_gently:
+                    self.crashed = True
+                    if fail_gently not in [&#34;silent&#34;, &#34;quiet&#34;]:
+                        _print_cropped_traceback(ERR)
+                else:
+                    # Don&#39;t use _print_cropped_traceback here -- It would
+                    # crop out errors in the DAPPER infrastructure itself.
+                    raise ERR
+            self.stat(&#34;duration&#34;, time.time()-time0)
 
         # Overwrite the assimilate method with the new one
         try:

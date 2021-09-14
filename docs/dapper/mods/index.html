@@ -60,8 +60,9 @@ workings of the model.</p>
 <p>Typically, this culminates in a <code>step(x, t, dt)</code> function,
 which defines the dynamical model/system mapping the state <code>x</code>
 from one time <code>t</code> to another <code>t + dt</code>.
-This model "operator" must support
-2D-array (i.e. ensemble) and 1D-array (single realization) input.
+This model "operator" must support 2D-array (i.e. ensemble)
+and 1D-array (single realization) input, and return output of the same
+number of dimensions (as the input).
 See</p>
 <ul>
 <li><code><a title="dapper.mods.Lorenz63" href="Lorenz63/index.html">dapper.mods.Lorenz63</a></code>: use of <code>ens_compatible</code>.</li>
@@ -170,7 +171,7 @@ DAPPER, used for cross-referenced with literature to verify the workings of DAPP
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/__init__.py#L1-L196" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/__init__.py#L1-L199" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">&#34;&#34;&#34;Models included with DAPPER.
 
@@ -301,13 +302,16 @@ class HiddenMarkovModel(struct_tools.NicePrint):
         xx    = np.zeros((tseq.K   + 1, Dyn.M))
         yy    = np.zeros((tseq.Ko+1, Obs.M))
 
-        xx[0] = X0.sample(1)
+        x = X0.sample(1)
+        xx[0] = x
 
         # Loop
         for k, ko, t, dt in pb.progbar(tseq.ticker, desc):
-            xx[k] = Dyn(xx[k-1], t-dt, dt) + np.sqrt(dt)*Dyn.noise.sample(1)
+            x = Dyn(x, t-dt, dt)
+            x = x + np.sqrt(dt)*Dyn.noise.sample(1)
             if ko is not None:
-                yy[ko] = Obs(xx[k], t) + Obs.noise.sample(1)
+                yy[ko] = Obs(x, t) + Obs.noise.sample(1)
+            xx[k] = x
 
         return xx, yy
 
@@ -518,7 +522,7 @@ and <code>dapper/mods/Lorenz96/miyoshi2011.py</code></dd>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/__init__.py#L27-L150" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/__init__.py#L27-L153" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class HiddenMarkovModel(struct_tools.NicePrint):
     &#34;&#34;&#34;Container for a Hidden Markov Model (HMM).
@@ -623,13 +627,16 @@ and <code>dapper/mods/Lorenz96/miyoshi2011.py</code></dd>
         xx    = np.zeros((tseq.K   + 1, Dyn.M))
         yy    = np.zeros((tseq.Ko+1, Obs.M))
 
-        xx[0] = X0.sample(1)
+        x = X0.sample(1)
+        xx[0] = x
 
         # Loop
         for k, ko, t, dt in pb.progbar(tseq.ticker, desc):
-            xx[k] = Dyn(xx[k-1], t-dt, dt) + np.sqrt(dt)*Dyn.noise.sample(1)
+            x = Dyn(x, t-dt, dt)
+            x = x + np.sqrt(dt)*Dyn.noise.sample(1)
             if ko is not None:
-                yy[ko] = Obs(xx[k], t) + Obs.noise.sample(1)
+                yy[ko] = Obs(x, t) + Obs.noise.sample(1)
+            xx[k] = x
 
         return xx, yy
 
@@ -693,7 +700,7 @@ def Ny(self): return self.Obs.M</code></pre>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/__init__.py#L122-L138" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/__init__.py#L122-L141" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def simulate(self, desc=&#39;Truth &amp; Obs&#39;):
     &#34;&#34;&#34;Generate synthetic truth and observations.&#34;&#34;&#34;
@@ -703,13 +710,16 @@ def Ny(self): return self.Obs.M</code></pre>
     xx    = np.zeros((tseq.K   + 1, Dyn.M))
     yy    = np.zeros((tseq.Ko+1, Obs.M))
 
-    xx[0] = X0.sample(1)
+    x = X0.sample(1)
+    xx[0] = x
 
     # Loop
     for k, ko, t, dt in pb.progbar(tseq.ticker, desc):
-        xx[k] = Dyn(xx[k-1], t-dt, dt) + np.sqrt(dt)*Dyn.noise.sample(1)
+        x = Dyn(x, t-dt, dt)
+        x = x + np.sqrt(dt)*Dyn.noise.sample(1)
         if ko is not None:
-            yy[ko] = Obs(xx[k], t) + Obs.noise.sample(1)
+            yy[ko] = Obs(x, t) + Obs.noise.sample(1)
+        xx[k] = x
 
     return xx, yy</code></pre>
 </details>
@@ -722,7 +732,7 @@ def Ny(self): return self.Obs.M</code></pre>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/__init__.py#L140-L141" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/__init__.py#L143-L144" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def copy(self):
     return cp.deepcopy(self)</code></pre>
@@ -750,7 +760,7 @@ array, producing <code>GaussRV(C=noise)</code>.</dd>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/__init__.py#L153-L196" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/__init__.py#L156-L199" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Operator(struct_tools.NicePrint):
     &#34;&#34;&#34;Container for the dynamical and the observational maps.

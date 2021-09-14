@@ -40,7 +40,7 @@ body.gsc-overflow-hidden #sidebar {overflow: visible;}
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/chronos.py#L1-L283" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/chronos.py#L1-L291" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">&#34;&#34;&#34;Time sequence management, notably Chronology and Ticker.&#34;&#34;&#34;
 
@@ -229,6 +229,14 @@ class Chronology():
         &#34;&#34;&#34;Example use: `kko_BI = kko[masko]`&#34;&#34;&#34;
         return self.tto &gt; self.BurnIn
 
+    @property
+    def iBurnIn(self):
+        return self.mask.nonzero()[0][0]
+
+    @property
+    def ioBurnIn(self):
+        return self.masko.nonzero()[0][0]
+
     ######################################
     # Other
     ######################################
@@ -342,7 +350,7 @@ def format_time(k, ko, t):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/chronos.py#L273-L283" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/chronos.py#L281-L291" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def format_time(k, ko, t):
     if k is None:
@@ -402,7 +410,7 @@ and so should/will raise an exception.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/chronos.py#L10-L231" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/chronos.py#L10-L239" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Chronology():
     &#34;&#34;&#34;Time schedules with consistency checks.
@@ -581,6 +589,14 @@ and so should/will raise an exception.</p></div>
     def masko(self):
         &#34;&#34;&#34;Example use: `kko_BI = kko[masko]`&#34;&#34;&#34;
         return self.tto &gt; self.BurnIn
+
+    @property
+    def iBurnIn(self):
+        return self.mask.nonzero()[0][0]
+
+    @property
+    def ioBurnIn(self):
+        return self.masko.nonzero()[0][0]
 
     ######################################
     # Other
@@ -787,6 +803,32 @@ def masko(self):
     return self.tto &gt; self.BurnIn</code></pre>
 </details>
 </dd>
+<dt id="dapper.tools.chronos.Chronology.iBurnIn"><code class="name">var <span class="ident">iBurnIn</span></code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/chronos.py#L188-L190" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">@property
+def iBurnIn(self):
+    return self.mask.nonzero()[0][0]</code></pre>
+</details>
+</dd>
+<dt id="dapper.tools.chronos.Chronology.ioBurnIn"><code class="name">var <span class="ident">ioBurnIn</span></code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/chronos.py#L192-L194" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">@property
+def ioBurnIn(self):
+    return self.masko.nonzero()[0][0]</code></pre>
+</details>
+</dd>
 <dt id="dapper.tools.chronos.Chronology.ticker"><code class="name">var <span class="ident">ticker</span></code></dt>
 <dd>
 <div class="desc"><p>Fancy version of <code>range(1,K+1)</code>.</p>
@@ -794,7 +836,7 @@ def masko(self):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/chronos.py#L191-L199" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/chronos.py#L199-L207" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">@property
 def ticker(self):
@@ -819,7 +861,7 @@ def ticker(self):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/chronos.py#L201-L209" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/chronos.py#L209-L217" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def cycle(self, ko):
     &#34;&#34;&#34;The range (in `kk`) between observation `ko-1` and `ko`.
@@ -840,7 +882,7 @@ def ticker(self):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/chronos.py#L221-L223" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/chronos.py#L229-L231" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def copy(self):
     &#34;&#34;&#34;Copy via state vars.&#34;&#34;&#34;
@@ -861,7 +903,7 @@ but computed without this repeated look-up operation.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/chronos.py#L234-L270" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/chronos.py#L242-L278" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Ticker:
     &#34;&#34;&#34;Iterator over kk and `kko`, yielding `(k,ko,t,dt)`.
@@ -911,7 +953,7 @@ but computed without this repeated look-up operation.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/chronos.py#L248-L251" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/chronos.py#L256-L259" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def reset(self):
     self.k   = 0
@@ -969,6 +1011,8 @@ data-gaCategoryParameter="dapper.tools.chronos">
 <li><code><a title="dapper.tools.chronos.Chronology.tto" href="#dapper.tools.chronos.Chronology.tto">tto</a></code></li>
 <li><code><a title="dapper.tools.chronos.Chronology.mask" href="#dapper.tools.chronos.Chronology.mask">mask</a></code></li>
 <li><code><a title="dapper.tools.chronos.Chronology.masko" href="#dapper.tools.chronos.Chronology.masko">masko</a></code></li>
+<li><code><a title="dapper.tools.chronos.Chronology.iBurnIn" href="#dapper.tools.chronos.Chronology.iBurnIn">iBurnIn</a></code></li>
+<li><code><a title="dapper.tools.chronos.Chronology.ioBurnIn" href="#dapper.tools.chronos.Chronology.ioBurnIn">ioBurnIn</a></code></li>
 <li><code><a title="dapper.tools.chronos.Chronology.ticker" href="#dapper.tools.chronos.Chronology.ticker">ticker</a></code></li>
 </ul>
 </li>
