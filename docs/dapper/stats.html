@@ -103,7 +103,7 @@ must be "registered":</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L1-L786" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L1-L804" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">&#34;&#34;&#34;Statistics for the assessment of DA methods.
 
@@ -198,19 +198,19 @@ class Stats(series.StatPrint):
         self.new_series(&#39;kurt&#39;, 1)  # Kurtosis
 
         if hasattr(xp, &#39;N&#39;):
-            N            = xp.N
+            N = xp.N
             self.new_series(&#39;w&#39;, N, field_mean=True)  # Importance weights
             self.new_series(&#39;rh&#39;, Nx, dtype=int)  # Rank histogram
 
             self._is_ens = True
-            minN         = min(Nx, N)
-            do_spectral  = np.sqrt(Nx*N) &lt;= rc.comp_threshold_b
+            minN = min(Nx, N)
+            self.do_spectral  = np.sqrt(Nx*N) &lt;= rc.comps[&#34;max_spectral&#34;]
         else:
             self._is_ens = False
-            minN         = Nx
-            do_spectral  = Nx &lt;= rc.comp_threshold_b
+            minN = Nx
+            self.do_spectral = Nx &lt;= rc.comps[&#34;max_spectral&#34;]
 
-        if do_spectral:
+        if self.do_spectral:
             # Note: the mean-field and RMS time-series of
             # (i) svals and (ii) umisf should match the corresponding series of
             # (i) spread and (ii) err.
@@ -307,7 +307,8 @@ class Stats(series.StatPrint):
         if faus is None:
             faus = &#39;u&#39; if ko is None else &#39;au&#39;
 
-        # TODO 4: don&#39;t need to re-compute stats?
+        # TODO 4: for faus=&#34;au&#34; (e.g.) we don&#39;t need to re-**compute** stats,
+        #         merely re-write them?
         for sub in faus:
 
             # Skip assessment if (&#39;u&#39; and stats not stored or plotted)
@@ -355,27 +356,40 @@ class Stats(series.StatPrint):
 
     def derivative_stats(self, now):
         &#34;&#34;&#34;Stats that derive from others, and are not specific for `_ens` or `_ext`).&#34;&#34;&#34;
-        now.gscore = 2*np.log(now.spread) + (now.err/now.spread)**2
+        try:
+            now.gscore = 2*np.log(now.spread) + (now.err/now.spread)**2
+        except AttributeError:
+            # happens in case rc.comps[&#39;error_only&#39;]
+            pass
 
     def assess_ens(self, now, x, E, w):
         &#34;&#34;&#34;Ensemble and Particle filter (weighted/importance) assessment.&#34;&#34;&#34;
         N, Nx = E.shape
 
+        # weights
         if w is None:
             w = np.ones(N)/N  # All equal. Also, rm attr from stats:
             if hasattr(self, &#39;w&#39;):
                 delattr(self, &#39;w&#39;)
+            # Use non-weight formula (since w=None) for mu computations.
+            # The savings are noticeable when rc.comps[&#39;error_only&#39;] is noticeable.
+            now.mu = E.mean(0)
         else:
             now.w = w
             if abs(w.sum()-1) &gt; 1e-5:
                 raise RuntimeError(&#34;Weights did not sum to one.&#34;)
+            now.mu = w @ E
+
+        # Crash checks
         if not np.all(np.isfinite(E)):
             raise RuntimeError(&#34;Ensemble not finite.&#34;)
         if not np.all(np.isreal(E)):
             raise RuntimeError(&#34;Ensemble not Real.&#34;)
 
-        now.mu  = w @ E
+        # Compute errors
         now.err = now.mu - x
+        if rc.comps[&#39;error_only&#39;]:
+            return
 
         A = E - now.mu
         # While A**2 is approx as fast as A*A,
@@ -403,7 +417,7 @@ class Stats(series.StatPrint):
 
         now.mad  = np.nanmean(w @ abs(A))
 
-        if hasattr(self, &#39;svals&#39;):
+        if self.do_spectral:
             if N &lt;= Nx:
                 _, s, UT  = sla.svd((np.sqrt(w)*A.T).T, full_matrices=False)
                 s        *= np.sqrt(ub)  # Makes s^2 unbiased
@@ -429,16 +443,20 @@ class Stats(series.StatPrint):
             raise RuntimeError(&#34;Estimates not Real.&#34;)
         # Don&#39;t check the cov (might not be explicitly availble)
 
+        # Compute errors
         now.mu  = mu
         now.err = now.mu - x
+        if rc.comps[&#39;error_only&#39;]:
+            return
 
+        # Compute standard deviation (&#34;Spread&#34;)
         var = P.diag if isinstance(P, CovMat) else np.diag(P)
         now.spread = np.sqrt(var)
 
         # Here, sqrt(2/pi) is the ratio, of MAD/Spread for Gaussians
         now.mad = np.nanmean(now.spread) * np.sqrt(2/np.pi)
 
-        if hasattr(self, &#39;svals&#39;):
+        if self.do_spectral:
             P         = P.full if isinstance(P, CovMat) else P
             s2, U     = sla.eigh(P)
             now.svals = np.sqrt(np.maximum(s2, 0.0))[::-1]
@@ -909,7 +927,7 @@ def unbias_var(w=None, N_eff=None, avoid_pathological=False):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L453-L461" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L471-L479" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def register_stat(self, name, value):
     &#34;&#34;&#34;Do `self.name = value` and register `name` as in self&#39;s `stat_register`.
@@ -943,7 +961,7 @@ Default: <code>None</code>. In this case, the formatting is left to the <code>uq
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L583-L637" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L601-L655" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def unpack_uqs(uq_list, decimals=None):
     &#34;&#34;&#34;Convert list of `uq`s into dict of lists (of equal-length) of attributes.
@@ -1010,7 +1028,7 @@ Default: <code>None</code>. In this case, the formatting is left to the <code>uq
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L640-L658" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L658-L676" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def tabulate_avrgs(avrgs_list, statkeys=(), decimals=None):
     &#34;&#34;&#34;Tabulate avrgs (val±prec).&#34;&#34;&#34;
@@ -1060,7 +1078,7 @@ where N is the ensemble size. Default: False</dd>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L661-L696" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L679-L714" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def center(E, axis=0, rescale=False):
     r&#34;&#34;&#34;Center ensemble.
@@ -1110,7 +1128,7 @@ when used to center observation perturbations.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L699-L705" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L717-L723" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def mean0(E, axis=0, rescale=True):
     &#34;&#34;&#34;Like `center`, but only return the anomalies (not the mean).
@@ -1141,7 +1159,7 @@ when used to center observation perturbations.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L708-L728" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L726-L746" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def inflate_ens(E, factor):
     &#34;&#34;&#34;Inflate the ensemble (center, inflate, re-combine).
@@ -1188,7 +1206,7 @@ should be nearly one since sum(w) = 1</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L731-L750" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L749-L768" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def weight_degeneracy(w, prec=1e-10):
     &#34;&#34;&#34;Check if the weights are degenerate.
@@ -1239,7 +1257,7 @@ The unbiasing factor is <span><span class="MathJax_Preview"> N_{eff} / (N_{eff} 
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L753-L786" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L771-L804" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def unbias_var(w=None, N_eff=None, avoid_pathological=False):
     &#34;&#34;&#34;Compute unbias-ing factor for variance estimation.
@@ -1292,7 +1310,7 @@ The unbiasing factor is <span><span class="MathJax_Preview"> N_{eff} / (N_{eff} 
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L33-L450" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L33-L468" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Stats(series.StatPrint):
     &#34;&#34;&#34;Contains and computes statistics of the DA methods.&#34;&#34;&#34;
@@ -1355,19 +1373,19 @@ The unbiasing factor is <span><span class="MathJax_Preview"> N_{eff} / (N_{eff} 
         self.new_series(&#39;kurt&#39;, 1)  # Kurtosis
 
         if hasattr(xp, &#39;N&#39;):
-            N            = xp.N
+            N = xp.N
             self.new_series(&#39;w&#39;, N, field_mean=True)  # Importance weights
             self.new_series(&#39;rh&#39;, Nx, dtype=int)  # Rank histogram
 
             self._is_ens = True
-            minN         = min(Nx, N)
-            do_spectral  = np.sqrt(Nx*N) &lt;= rc.comp_threshold_b
+            minN = min(Nx, N)
+            self.do_spectral  = np.sqrt(Nx*N) &lt;= rc.comps[&#34;max_spectral&#34;]
         else:
             self._is_ens = False
-            minN         = Nx
-            do_spectral  = Nx &lt;= rc.comp_threshold_b
+            minN = Nx
+            self.do_spectral = Nx &lt;= rc.comps[&#34;max_spectral&#34;]
 
-        if do_spectral:
+        if self.do_spectral:
             # Note: the mean-field and RMS time-series of
             # (i) svals and (ii) umisf should match the corresponding series of
             # (i) spread and (ii) err.
@@ -1464,7 +1482,8 @@ The unbiasing factor is <span><span class="MathJax_Preview"> N_{eff} / (N_{eff} 
         if faus is None:
             faus = &#39;u&#39; if ko is None else &#39;au&#39;
 
-        # TODO 4: don&#39;t need to re-compute stats?
+        # TODO 4: for faus=&#34;au&#34; (e.g.) we don&#39;t need to re-**compute** stats,
+        #         merely re-write them?
         for sub in faus:
 
             # Skip assessment if (&#39;u&#39; and stats not stored or plotted)
@@ -1512,27 +1531,40 @@ The unbiasing factor is <span><span class="MathJax_Preview"> N_{eff} / (N_{eff} 
 
     def derivative_stats(self, now):
         &#34;&#34;&#34;Stats that derive from others, and are not specific for `_ens` or `_ext`).&#34;&#34;&#34;
-        now.gscore = 2*np.log(now.spread) + (now.err/now.spread)**2
+        try:
+            now.gscore = 2*np.log(now.spread) + (now.err/now.spread)**2
+        except AttributeError:
+            # happens in case rc.comps[&#39;error_only&#39;]
+            pass
 
     def assess_ens(self, now, x, E, w):
         &#34;&#34;&#34;Ensemble and Particle filter (weighted/importance) assessment.&#34;&#34;&#34;
         N, Nx = E.shape
 
+        # weights
         if w is None:
             w = np.ones(N)/N  # All equal. Also, rm attr from stats:
             if hasattr(self, &#39;w&#39;):
                 delattr(self, &#39;w&#39;)
+            # Use non-weight formula (since w=None) for mu computations.
+            # The savings are noticeable when rc.comps[&#39;error_only&#39;] is noticeable.
+            now.mu = E.mean(0)
         else:
             now.w = w
             if abs(w.sum()-1) &gt; 1e-5:
                 raise RuntimeError(&#34;Weights did not sum to one.&#34;)
+            now.mu = w @ E
+
+        # Crash checks
         if not np.all(np.isfinite(E)):
             raise RuntimeError(&#34;Ensemble not finite.&#34;)
         if not np.all(np.isreal(E)):
             raise RuntimeError(&#34;Ensemble not Real.&#34;)
 
-        now.mu  = w @ E
+        # Compute errors
         now.err = now.mu - x
+        if rc.comps[&#39;error_only&#39;]:
+            return
 
         A = E - now.mu
         # While A**2 is approx as fast as A*A,
@@ -1560,7 +1592,7 @@ The unbiasing factor is <span><span class="MathJax_Preview"> N_{eff} / (N_{eff} 
 
         now.mad  = np.nanmean(w @ abs(A))
 
-        if hasattr(self, &#39;svals&#39;):
+        if self.do_spectral:
             if N &lt;= Nx:
                 _, s, UT  = sla.svd((np.sqrt(w)*A.T).T, full_matrices=False)
                 s        *= np.sqrt(ub)  # Makes s^2 unbiased
@@ -1586,16 +1618,20 @@ The unbiasing factor is <span><span class="MathJax_Preview"> N_{eff} / (N_{eff} 
             raise RuntimeError(&#34;Estimates not Real.&#34;)
         # Don&#39;t check the cov (might not be explicitly availble)
 
+        # Compute errors
         now.mu  = mu
         now.err = now.mu - x
+        if rc.comps[&#39;error_only&#39;]:
+            return
 
+        # Compute standard deviation (&#34;Spread&#34;)
         var = P.diag if isinstance(P, CovMat) else np.diag(P)
         now.spread = np.sqrt(var)
 
         # Here, sqrt(2/pi) is the ratio, of MAD/Spread for Gaussians
         now.mad = np.nanmean(now.spread) * np.sqrt(2/np.pi)
 
-        if hasattr(self, &#39;svals&#39;):
+        if self.do_spectral:
             P         = P.full if isinstance(P, CovMat) else P
             s2, U     = sla.eigh(P)
             now.svals = np.sqrt(np.maximum(s2, 0.0))[::-1]
@@ -1809,7 +1845,7 @@ Default: <code>'u' if ko is None else 'au' ('a' and 'u')</code>.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L172-L235" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L172-L236" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def assess(self, k, ko=None, faus=None,
            E=None, w=None, mu=None, Cov=None):
@@ -1842,7 +1878,8 @@ Default: <code>'u' if ko is None else 'au' ('a' and 'u')</code>.</p></div>
     if faus is None:
         faus = &#39;u&#39; if ko is None else &#39;au&#39;
 
-    # TODO 4: don&#39;t need to re-compute stats?
+    # TODO 4: for faus=&#34;au&#34; (e.g.) we don&#39;t need to re-**compute** stats,
+    #         merely re-write them?
     for sub in faus:
 
         # Skip assessment if (&#39;u&#39; and stats not stored or plotted)
@@ -1885,7 +1922,7 @@ Default: <code>'u' if ko is None else 'au' ('a' and 'u')</code>.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L237-L247" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L238-L248" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def summarize_marginals(self, now):
     &#34;&#34;&#34;Compute Mean-field and RMS values&#34;&#34;&#34;
@@ -1908,11 +1945,15 @@ Default: <code>'u' if ko is None else 'au' ('a' and 'u')</code>.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L249-L251" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L250-L256" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def derivative_stats(self, now):
     &#34;&#34;&#34;Stats that derive from others, and are not specific for `_ens` or `_ext`).&#34;&#34;&#34;
-    now.gscore = 2*np.log(now.spread) + (now.err/now.spread)**2</code></pre>
+    try:
+        now.gscore = 2*np.log(now.spread) + (now.err/now.spread)**2
+    except AttributeError:
+        # happens in case rc.comps[&#39;error_only&#39;]
+        pass</code></pre>
 </details>
 </dd>
 <dt id="dapper.stats.Stats.assess_ens"><code class="name flex">
@@ -1923,27 +1964,36 @@ Default: <code>'u' if ko is None else 'au' ('a' and 'u')</code>.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L253-L315" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L258-L329" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def assess_ens(self, now, x, E, w):
     &#34;&#34;&#34;Ensemble and Particle filter (weighted/importance) assessment.&#34;&#34;&#34;
     N, Nx = E.shape
 
+    # weights
     if w is None:
         w = np.ones(N)/N  # All equal. Also, rm attr from stats:
         if hasattr(self, &#39;w&#39;):
             delattr(self, &#39;w&#39;)
+        # Use non-weight formula (since w=None) for mu computations.
+        # The savings are noticeable when rc.comps[&#39;error_only&#39;] is noticeable.
+        now.mu = E.mean(0)
     else:
         now.w = w
         if abs(w.sum()-1) &gt; 1e-5:
             raise RuntimeError(&#34;Weights did not sum to one.&#34;)
+        now.mu = w @ E
+
+    # Crash checks
     if not np.all(np.isfinite(E)):
         raise RuntimeError(&#34;Ensemble not finite.&#34;)
     if not np.all(np.isreal(E)):
         raise RuntimeError(&#34;Ensemble not Real.&#34;)
 
-    now.mu  = w @ E
+    # Compute errors
     now.err = now.mu - x
+    if rc.comps[&#39;error_only&#39;]:
+        return
 
     A = E - now.mu
     # While A**2 is approx as fast as A*A,
@@ -1971,7 +2021,7 @@ Default: <code>'u' if ko is None else 'au' ('a' and 'u')</code>.</p></div>
 
     now.mad  = np.nanmean(w @ abs(A))
 
-    if hasattr(self, &#39;svals&#39;):
+    if self.do_spectral:
         if N &lt;= Nx:
             _, s, UT  = sla.svd((np.sqrt(w)*A.T).T, full_matrices=False)
             s        *= np.sqrt(ub)  # Makes s^2 unbiased
@@ -1998,7 +2048,7 @@ Default: <code>'u' if ko is None else 'au' ('a' and 'u')</code>.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L317-L338" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L331-L356" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def assess_ext(self, now, x, mu, P):
     &#34;&#34;&#34;Kalman filter (Gaussian) assessment.&#34;&#34;&#34;
@@ -2008,16 +2058,20 @@ Default: <code>'u' if ko is None else 'au' ('a' and 'u')</code>.</p></div>
         raise RuntimeError(&#34;Estimates not Real.&#34;)
     # Don&#39;t check the cov (might not be explicitly availble)
 
+    # Compute errors
     now.mu  = mu
     now.err = now.mu - x
+    if rc.comps[&#39;error_only&#39;]:
+        return
 
+    # Compute standard deviation (&#34;Spread&#34;)
     var = P.diag if isinstance(P, CovMat) else np.diag(P)
     now.spread = np.sqrt(var)
 
     # Here, sqrt(2/pi) is the ratio, of MAD/Spread for Gaussians
     now.mad = np.nanmean(now.spread) * np.sqrt(2/np.pi)
 
-    if hasattr(self, &#39;svals&#39;):
+    if self.do_spectral:
         P         = P.full if isinstance(P, CovMat) else P
         s2, U     = sla.eigh(P)
         now.svals = np.sqrt(np.maximum(s2, 0.0))[::-1]
@@ -2037,7 +2091,7 @@ time inds for averaging</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L340-L400" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L358-L418" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def average_in_time(self, kk=None, kko=None, free=False):
     &#34;&#34;&#34;Avarage all univariate (scalar) time series.
@@ -2122,7 +2176,7 @@ time inds for averaging</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L402-L450" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L420-L468" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def replay(self, figlist=&#34;default&#34;, speed=np.inf, t1=0, t2=None, **kwargs):
     &#34;&#34;&#34;Replay LivePlot with what&#39;s been stored in &#39;self&#39;.
@@ -2193,7 +2247,7 @@ time inds for averaging</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L464-L489" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L482-L507" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Avrgs(series.StatPrint, struct_tools.DotDict):
     &#34;&#34;&#34;A `dict` specialized for the averages of statistics.
@@ -2247,7 +2301,7 @@ time inds for averaging</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L474-L476" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L492-L494" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def tabulate(self, statkeys=(), decimals=None):
     columns = tabulate_avrgs([self], statkeys, decimals=decimals)

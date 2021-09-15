@@ -37,19 +37,22 @@ body.gsc-overflow-hidden #sidebar {overflow: visible;}
 </header>
 <section id="section-intro">
 <p>Load default and user configurations into the <code>rc</code> dict.</p>
-<p>This includes disabling liveplotting if necessary.</p>
+<p>The <code>rc</code> dict can be updated (after startup) as any normal dict. See the
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/dpr_config.yaml">source</a>
+for the default configuration.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/dpr_config.py#L1-L71" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/dpr_config.py#L1-L79" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">&#34;&#34;&#34;Load default and user configurations into the `rc` dict.
 
-This includes disabling liveplotting if necessary.
+The `rc` dict can be updated (after startup) as any normal dict. See the
+[source](https://github.com/nansencenter/DAPPER/blob/master/dapper/dpr_config.yaml)
+for the default configuration.
 &#34;&#34;&#34;
 
 import os
-import sys
 from pathlib import Path
 
 import matplotlib as mpl
@@ -63,15 +66,22 @@ from struct_tools import DotDict
 dapper_dir = Path(__file__).absolute().parent
 rc = DotDict()
 rc.loaded_from = []
-for d in [dapper_dir, &#34;~&#34;, &#34;~/.config&#34;, sys.path[0]]:
-    d = Path(d).expanduser()
+for d in [dapper_dir, &#34;~&#34;, &#34;~/.config&#34;, &#34;.&#34;]:
+    d = Path(d).expanduser().absolute()
     for prefix in [&#34;.&#34;, &#34;&#34;]:
         f = d / (prefix+&#34;dpr_config.yaml&#34;)
         if f.is_file():
             dct = yaml.load(open(f), Loader=yaml.SafeLoader)
             rc.loaded_from.append(str(f))
             if dct:
-                rc.update(dct)
+                if d == dapper_dir:
+                    rc.update(dct)
+                else:
+                    for k in dct:
+                        if k in rc:
+                            rc[k] = dct[k]
+                        else:
+                            print(f&#34;Warning: invalid key &#39;{k}&#39; in &#39;{f}&#39;&#34;)
 
 
 ##################################
