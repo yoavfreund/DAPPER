@@ -41,7 +41,7 @@ body.gsc-overflow-hidden #sidebar {overflow: visible;}
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L1-L592" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L1-L598" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">&#34;&#34;&#34;Tools (notably `xpList`) for setup and running of experiments (known as `xp`s).
 
@@ -610,15 +610,21 @@ class xpList(list):
 
 
 def combinator(param_dict, **glob_dict):
-    &#34;&#34;&#34;Mass creation of `xp`&#39;s by combining the value lists in the parameter dicts.
+    &#34;&#34;&#34;Mass creation of `xp`&#39;s by combining the value lists in the `param_dict`.
 
-    The parameters are trimmed to the ones available for the given method.
-    This is a good deal more efficient than relying on `xpList`&#39;s `unique=True`.
+    Returns a function (`for_params`) that creates all possible combinations
+    of parameters (from their value list) for a given `dapper.da_methods.da_method`.
+    This is a good deal more efficient than relying on `xpList`&#39;s `unique`. Parameters
+
+    - not found among the args of the given DA method are ignored by `for_params`.
+    - specified as keywords to the `for_params` fix the value
+      preventing using the corresponding (if any) value list in the `param_dict`.
+
 
     .. caution::
-        Beware! If, eg., `infl` or `rot` are in the param_dict, aimed at the EnKF,
+        Beware! If, eg., `infl` or `rot` are in `param_dict`, aimed at the `EnKF`,
         but you forget that they are also attributes some method where you don&#39;t
-        actually want to use them (eg. SVGDF),
+        actually want to use them (eg. `SVGDF`),
         then you&#39;ll create many more than you intend.
     &#34;&#34;&#34;
     def for_params(method, **fixed_params):
@@ -893,31 +899,43 @@ this xp.</dd>
 <span>def <span class="ident">combinator</span></span>(<span>param_dict, **glob_dict)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Mass creation of <code>xp</code>'s by combining the value lists in the parameter dicts.</p>
-<p>The parameters are trimmed to the ones available for the given method.
-This is a good deal more efficient than relying on <code><a title="dapper.xp_launch.xpList" href="#dapper.xp_launch.xpList">xpList</a></code>'s <code>unique=True</code>.</p>
+<div class="desc"><p>Mass creation of <code>xp</code>'s by combining the value lists in the <code>param_dict</code>.</p>
+<p>Returns a function (<code>for_params</code>) that creates all possible combinations
+of parameters (from their value list) for a given <code><a title="dapper.da_methods.da_method" href="da_methods/index.html#dapper.da_methods.da_method">da_method()</a></code>.
+This is a good deal more efficient than relying on <code><a title="dapper.xp_launch.xpList" href="#dapper.xp_launch.xpList">xpList</a></code>'s <code>unique</code>. Parameters</p>
+<ul>
+<li>not found among the args of the given DA method are ignored by <code>for_params</code>.</li>
+<li>specified as keywords to the <code>for_params</code> fix the value
+preventing using the corresponding (if any) value list in the <code>param_dict</code>.</li>
+</ul>
 <div class="admonition caution">
 <p class="admonition-title">Caution</p>
-<p>Beware! If, eg., <code>infl</code> or <code>rot</code> are in the param_dict, aimed at the EnKF,
+<p>Beware! If, eg., <code>infl</code> or <code>rot</code> are in <code>param_dict</code>, aimed at the <code>EnKF</code>,
 but you forget that they are also attributes some method where you don't
-actually want to use them (eg. SVGDF),
+actually want to use them (eg. <code>SVGDF</code>),
 then you'll create many more than you intend.</p>
 </div></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L567-L592" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L567-L598" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def combinator(param_dict, **glob_dict):
-    &#34;&#34;&#34;Mass creation of `xp`&#39;s by combining the value lists in the parameter dicts.
+    &#34;&#34;&#34;Mass creation of `xp`&#39;s by combining the value lists in the `param_dict`.
 
-    The parameters are trimmed to the ones available for the given method.
-    This is a good deal more efficient than relying on `xpList`&#39;s `unique=True`.
+    Returns a function (`for_params`) that creates all possible combinations
+    of parameters (from their value list) for a given `dapper.da_methods.da_method`.
+    This is a good deal more efficient than relying on `xpList`&#39;s `unique`. Parameters
+
+    - not found among the args of the given DA method are ignored by `for_params`.
+    - specified as keywords to the `for_params` fix the value
+      preventing using the corresponding (if any) value list in the `param_dict`.
+
 
     .. caution::
-        Beware! If, eg., `infl` or `rot` are in the param_dict, aimed at the EnKF,
+        Beware! If, eg., `infl` or `rot` are in `param_dict`, aimed at the `EnKF`,
         but you forget that they are also attributes some method where you don&#39;t
-        actually want to use them (eg. SVGDF),
+        actually want to use them (eg. `SVGDF`),
         then you&#39;ll create many more than you intend.
     &#34;&#34;&#34;
     def for_params(method, **fixed_params):
