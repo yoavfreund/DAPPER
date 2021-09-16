@@ -41,7 +41,7 @@ body.gsc-overflow-hidden #sidebar {overflow: visible;}
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/remote/uplink.py#L1-L367" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/remote/uplink.py#L1-L370" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">&#34;&#34;&#34;Tools related to running experimentes remotely
 
@@ -57,6 +57,7 @@ import time
 from datetime import timedelta, timezone
 
 from dateutil.parser import parse as datetime_parse
+from patlib.std import sorted_human
 from tqdm import tqdm
 
 from dapper.dpr_config import rc
@@ -353,8 +354,10 @@ def _monitor_progress(self):
 
 
 def list_job_dirs(xps_path):
-    dirs = [xps_path/d for d in sorted(os.listdir(xps_path))]
-    return [d for d in dirs if d.is_dir() and d.stem.isnumeric()]
+    dirs = sorted_human(os.listdir(xps_path))
+    dirs = [xps_path/d for d in dirs]
+    dirs = [d for d in dirs if d.is_dir() and d.stem.isnumeric()]
+    return dirs
 
 
 def get_ip(instance):
@@ -427,7 +430,7 @@ def sub_run(*args, check=True, capture_output=True, text=True, **kwargs):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/remote/uplink.py#L106-L140" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/remote/uplink.py#L107-L141" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def submit_job_GCP(xps_path, **kwargs):
     &#34;&#34;&#34;GCP/HTCondor launcher&#34;&#34;&#34;
@@ -474,7 +477,7 @@ def sub_run(*args, check=True, capture_output=True, text=True, **kwargs):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/remote/uplink.py#L227-L235" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/remote/uplink.py#L228-L236" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def print_condor_status(self):
     status = &#34;&#34;&#34;condor_status -total&#34;&#34;&#34;
@@ -495,11 +498,13 @@ def sub_run(*args, check=True, capture_output=True, text=True, **kwargs):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/remote/uplink.py#L310-L312" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/remote/uplink.py#L311-L315" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def list_job_dirs(xps_path):
-    dirs = [xps_path/d for d in sorted(os.listdir(xps_path))]
-    return [d for d in dirs if d.is_dir() and d.stem.isnumeric()]</code></pre>
+    dirs = sorted_human(os.listdir(xps_path))
+    dirs = [xps_path/d for d in dirs]
+    dirs = [d for d in dirs if d.is_dir() and d.stem.isnumeric()]
+    return dirs</code></pre>
 </details>
 </dd>
 <dt id="dapper.tools.remote.uplink.get_ip"><code class="name flex">
@@ -516,7 +521,7 @@ and that you've already logged into the instance once using (eg)
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/remote/uplink.py#L315-L341" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/remote/uplink.py#L318-L344" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def get_ip(instance):
     &#34;&#34;&#34;Get ip-address of instance.
@@ -562,7 +567,7 @@ and that you've already logged into the instance once using (eg)
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/remote/uplink.py#L344-L367" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/remote/uplink.py#L347-L370" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def sub_run(*args, check=True, capture_output=True, text=True, **kwargs):
     r&#34;&#34;&#34;Run `subprocess.run`, with other defaults, and return stdout.
@@ -604,7 +609,7 @@ and that you've already logged into the instance once using (eg)
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/remote/uplink.py#L20-L103" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/remote/uplink.py#L21-L104" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class SubmissionConnection:
     &#34;&#34;&#34;Establish multiplexed ssh to a given submit-node for a given xps_path.&#34;&#34;&#34;
@@ -701,7 +706,7 @@ and that you've already logged into the instance once using (eg)
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/remote/uplink.py#L54-L60" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/remote/uplink.py#L55-L61" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def remote_cmd(self, cmd_string, **kwargs):
     &#34;&#34;&#34;Run command at self.host via multiplexed ssh.&#34;&#34;&#34;
@@ -720,7 +725,7 @@ and that you've already logged into the instance once using (eg)
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/remote/uplink.py#L62-L103" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/remote/uplink.py#L63-L104" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def rsync(self, src, dst, opts=(), rev=False, prog=False, dry=False, use_M=True):
     # Prepare: opts

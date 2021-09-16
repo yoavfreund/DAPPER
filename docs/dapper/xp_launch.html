@@ -41,7 +41,7 @@ body.gsc-overflow-hidden #sidebar {overflow: visible;}
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L1-L598" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L1-L597" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">&#34;&#34;&#34;Tools (notably `xpList`) for setup and running of experiments (known as `xp`s).
 
@@ -620,7 +620,6 @@ def combinator(param_dict, **glob_dict):
     - specified as keywords to the `for_params` fix the value
       preventing using the corresponding (if any) value list in the `param_dict`.
 
-
     .. caution::
         Beware! If, eg., `infl` or `rot` are in `param_dict`, aimed at the `EnKF`,
         but you forget that they are also attributes some method where you don&#39;t
@@ -918,7 +917,7 @@ then you'll create many more than you intend.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L567-L598" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L567-L597" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def combinator(param_dict, **glob_dict):
     &#34;&#34;&#34;Mass creation of `xp`&#39;s by combining the value lists in the `param_dict`.
@@ -930,7 +929,6 @@ then you'll create many more than you intend.</p>
     - not found among the args of the given DA method are ignored by `for_params`.
     - specified as keywords to the `for_params` fix the value
       preventing using the corresponding (if any) value list in the `param_dict`.
-
 
     .. caution::
         Beware! If, eg., `infl` or `rot` are in `param_dict`, aimed at the `EnKF`,
