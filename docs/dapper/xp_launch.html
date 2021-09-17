@@ -41,7 +41,7 @@ body.gsc-overflow-hidden #sidebar {overflow: visible;}
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L1-L597" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L1-L608" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">&#34;&#34;&#34;Tools (notably `xpList`) for setup and running of experiments (known as `xp`s).
 
@@ -217,14 +217,14 @@ class xpList(list):
     - `__getitem__` supports lists, similar to `np.ndarray`
     - `__repr__`: prints the list as rows of a table,
       where the columns represent attributes whose value is not shared among all `xp`s.
-      Refer to `xpList.split_attrs` for more information.
+      Refer to `xpList.squeeze` for more information.
 
     Add-ons:
 
     - `xpList.launch`: run the experiments in current list.
-    - `xpList.split_attrs`: find all attributes of the `xp`s in the list;
+    - `xpList.squeeze`: find all attributes of the `xp`s in the list;
       classify as distinct, redundant, or common.
-    - `xpList.gen_names`: use `xpList.split_attrs` to generate
+    - `xpList.gen_names`: use `xpList.squeeze` to generate
       a short &amp; unique name for each `xp` in the list.
     - `xpList.tabulate_avrgs`: tabulate time-averaged results.
     - `xpList.inds` to search by kw-attrs.
@@ -289,14 +289,24 @@ class xpList(list):
         &#34;&#34;&#34;List `da_method` attributes in this list.&#34;&#34;&#34;
         return [xp.da_method for xp in self]
 
-    def split_attrs(self, nomerge=()):
-        &#34;&#34;&#34;Classify each/every attribute of the `xp`s into: distinct, redundant, common.
+    def squeeze(self, nomerge=()):
+        &#34;&#34;&#34;Classify all attrs. of all `xp`s as `distinct`, `redundant`, or `common`.
 
-        Insert `None` if an attribute is distinct but not in `xp`.
+        An attribute of the `xp`s is inserted in one of the 3 dicts as follows:
+        The attribute names become dict keys. If the values of an attribute
+        (collected from all of the `xp`s) are all __equal__, then the attribute
+        is inserted in `common`, but only with **a single value**.
+        If they are all the same **or missing**, then it is inserted in `redundant`
+        **with a single value**. Otherwise, it is inserted in `distinct`,
+        with **its full list of values** (filling with `None` where the attribute
+        was missing in the corresponding `xp`).
 
-        Used by `repr` on `xpList` to make a nice table of the list,
-        in which only the attributes that differ among the `xp`s
-        need be included.
+        The function gets its name from the fact that the attrs in `distinct` are
+        sufficient to (but not generally necessary, since there might exist a subset of
+        attributes that) uniquely identify each `xp` in the list (the `redundant` and
+        `common` can be &#34;squeezed&#34; out).  Thus, the `repr` (which is a table of the
+        `xp`s and their attributes) does not need to print all of the attributes.
+        This function also does the heavy lifting for `xpSpace.squeeze`.
 
         Parameters
         ----------
@@ -342,54 +352,35 @@ class xpList(list):
             aggregate = struct_tools.complement(aggregate, excluded)
             return aggregate
 
-        distinct, redundant, common = {}, {}, {}
+        def _getattr_safe(xp, key):
+            # Don&#39;t use None, to avoid mixing with actual None&#39;s
+            # TODO 4: use an object yet more likely to be unique.
+            missing = &#34;N/A&#34;
+            a = getattr(xp, key, missing)
 
-        for key in _aggregate_keys():
+            # Replace ndarray by its id, since o/w it will
+            # complain that you must use all().
+            # Alternative: replace all == (and !=) below by &#34;is&#34;.
+            #     Tabulation with multi-line params actually works,
+            #     (though it&#39;s still likely to take up too much space,
+            #     unless we set np.printoptions...).
+            #     However, then python (since 3.8) will complain about
+            #     comparison to literal.
+            if isinstance(a, np.ndarray):
+                shorten = 6
+                a = f&#34;arr(&lt;id {id(a)//10**shorten}&gt;)&#34;
+            # TODO 3: leave formatting to sub() below?
+            # TODO 4: do similar formatting for other non-trivial params?
+            # TODO 4: document alternative way to specify non-trivial params:
+            #         use key to be looked up in some globally accessible dct.
+            #         Advantage: names are meaningful, rather than ids.
+            return a
 
-            def _getattr(xp, key):
-                # Don&#39;t use None, to avoid mixing with actual None&#39;s
-                # TODO 4: use an object yet more likely to be unique.
-                missing = &#34;N/A&#34;
-                a = getattr(xp, key, missing)
+        def replace_NA_by_None(vals):
+            &#34;&#34;&#34;Supports different types of `vals`.&#34;&#34;&#34;
+            def sub(v):
+                return None if v == &#34;N/A&#34; else v
 
-                # Replace ndarray by its id, since o/w it will
-                # complain that you must use all().
-                # Alternative: replace all == (and !=) below by &#34;is&#34;.
-                #     Tabulation with multi-line params actually works,
-                #     (though it&#39;s still likely to take up too much space,
-                #     unless we set np.printoptions...).
-                #     However, then python (since 3.8) will complain about
-                #     comparison to literal.
-                if isinstance(a, np.ndarray):
-                    shorten = 6
-                    a = f&#34;arr(&lt;id {id(a)//10**shorten}&gt;)&#34;
-                # TODO 3: leave formatting to sub() below?
-                # TODO 4: do similar formatting for other non-trivial params?
-                # TODO 4: document alternative way to specify non-trivial params:
-                #         use key to be looked up in some globally accessible dct.
-                #         Advantage: names are meaningful, rather than ids.
-                return a
-
-            vals = [_getattr(xp, key) for xp in self]
-
-            # Sort (assign dct) into distinct, redundant, common
-            if struct_tools.flexcomp(key, *nomerge):
-                # nomerge =&gt; Distinct
-                dct, vals = distinct, vals
-            elif all(vals[0] == v for v in vals):
-                # all values equal =&gt; common
-                dct, vals = common, vals[0]
-            else:
-                v0 = next(v for v in vals if &#34;N/A&#34; != v)
-                if all(v == &#34;N/A&#34; or v == v0 for v in vals):
-                    # all values equal or &#34;N/A&#34; =&gt; redundant
-                    dct, vals = redundant, v0
-                else:
-                    # otherwise =&gt; distinct
-                    dct, vals = distinct, vals
-
-            # Replace &#34;N/A&#34; by None
-            def sub(v): return None if v == &#34;N/A&#34; else v
             if isinstance(vals, str):
                 vals = sub(vals)
             else:
@@ -397,13 +388,33 @@ class xpList(list):
                     vals = [sub(v) for v in vals]
                 except TypeError:
                     vals = sub(vals)
+            return vals
 
-            dct[key] = vals
+        # Main
+        distinct, redundant, common = {}, {}, {}
+        for key in _aggregate_keys():
+            vals = [_getattr_safe(xp, key) for xp in self]
+
+            if struct_tools.flexcomp(key, *nomerge):
+                dct, vals = distinct, vals
+
+            elif all(vals[0] == v for v in vals):
+                dct, vals = common, vals[0]
+
+            else:
+                nonNA = next(v for v in vals if &#34;N/A&#34; != v)
+                if all(v == &#34;N/A&#34; or v == nonNA for v in vals):
+                    dct, vals = redundant, nonNA
+
+                else:
+                    dct, vals = distinct, vals
+
+            dct[key] = replace_NA_by_None(vals)
 
         return distinct, redundant, common
 
     def __repr__(self):
-        distinct, redundant, common = self.split_attrs()
+        distinct, redundant, common = self.squeeze()
         s = &#39;&lt;xpList&gt; of length %d with attributes:\n&#39; % len(self)
         s += tabulate(distinct, headers=&#34;keys&#34;, showindex=True)
         s += &#34;\nOther attributes:\n&#34;
@@ -417,7 +428,7 @@ class xpList(list):
         - tabulation is optional
         - attaches (abbreviated) labels to each attribute
         &#34;&#34;&#34;
-        distinct, redundant, common = self.split_attrs(nomerge=[&#34;da_method&#34;])
+        distinct, redundant, common = self.squeeze(nomerge=[&#34;da_method&#34;])
         labels = distinct.keys()
         values = distinct.values()
 
@@ -452,7 +463,7 @@ class xpList(list):
 
     @wraps(dapper.stats.tabulate_avrgs)
     def tabulate_avrgs(self, *args, **kwargs):
-        distinct, redundant, common = self.split_attrs()
+        distinct, redundant, common = self.squeeze()
         averages = dapper.stats.tabulate_avrgs([C.avrgs for C in self], *args, **kwargs)
         columns = {**distinct, &#39;|&#39;: [&#39;|&#39;]*len(self), **averages}  # merge
         return tabulate(columns, headers=&#34;keys&#34;, showindex=True).replace(&#39;␣&#39;, &#39; &#39;)
@@ -917,7 +928,7 @@ then you'll create many more than you intend.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L567-L597" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L578-L608" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def combinator(param_dict, **glob_dict):
     &#34;&#34;&#34;Mass creation of `xp`&#39;s by combining the value lists in the `param_dict`.
@@ -972,14 +983,14 @@ this is hackey, but convenience is king.</li>
 <li><code>__getitem__</code> supports lists, similar to <code>np.ndarray</code></li>
 <li><code>__repr__</code>: prints the list as rows of a table,
 where the columns represent attributes whose value is not shared among all <code>xp</code>s.
-Refer to <code><a title="dapper.xp_launch.xpList.split_attrs" href="#dapper.xp_launch.xpList.split_attrs">xpList.split_attrs()</a></code> for more information.</li>
+Refer to <code><a title="dapper.xp_launch.xpList.squeeze" href="#dapper.xp_launch.xpList.squeeze">xpList.squeeze()</a></code> for more information.</li>
 </ul>
 <p>Add-ons:</p>
 <ul>
 <li><code><a title="dapper.xp_launch.xpList.launch" href="#dapper.xp_launch.xpList.launch">xpList.launch()</a></code>: run the experiments in current list.</li>
-<li><code><a title="dapper.xp_launch.xpList.split_attrs" href="#dapper.xp_launch.xpList.split_attrs">xpList.split_attrs()</a></code>: find all attributes of the <code>xp</code>s in the list;
+<li><code><a title="dapper.xp_launch.xpList.squeeze" href="#dapper.xp_launch.xpList.squeeze">xpList.squeeze()</a></code>: find all attributes of the <code>xp</code>s in the list;
 classify as distinct, redundant, or common.</li>
-<li><code><a title="dapper.xp_launch.xpList.gen_names" href="#dapper.xp_launch.xpList.gen_names">xpList.gen_names()</a></code>: use <code><a title="dapper.xp_launch.xpList.split_attrs" href="#dapper.xp_launch.xpList.split_attrs">xpList.split_attrs()</a></code> to generate
+<li><code><a title="dapper.xp_launch.xpList.gen_names" href="#dapper.xp_launch.xpList.gen_names">xpList.gen_names()</a></code>: use <code><a title="dapper.xp_launch.xpList.squeeze" href="#dapper.xp_launch.xpList.squeeze">xpList.squeeze()</a></code> to generate
 a short &amp; unique name for each <code>xp</code> in the list.</li>
 <li><code><a title="dapper.xp_launch.xpList.tabulate_avrgs" href="#dapper.xp_launch.xpList.tabulate_avrgs">tabulate_avrgs()</a></code>: tabulate time-averaged results.</li>
 <li><code><a title="dapper.xp_launch.xpList.inds" href="#dapper.xp_launch.xpList.inds">xpList.inds()</a></code> to search by kw-attrs.</li>
@@ -1001,7 +1012,7 @@ as opposed to this class (<code><a title="dapper.xp_launch.xpList" href="#dapper
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L162-L564" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L162-L575" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class xpList(list):
     &#34;&#34;&#34;Subclass of `list` specialized for experiment (&#34;xp&#34;) objects.
@@ -1016,14 +1027,14 @@ as opposed to this class (<code><a title="dapper.xp_launch.xpList" href="#dapper
     - `__getitem__` supports lists, similar to `np.ndarray`
     - `__repr__`: prints the list as rows of a table,
       where the columns represent attributes whose value is not shared among all `xp`s.
-      Refer to `xpList.split_attrs` for more information.
+      Refer to `xpList.squeeze` for more information.
 
     Add-ons:
 
     - `xpList.launch`: run the experiments in current list.
-    - `xpList.split_attrs`: find all attributes of the `xp`s in the list;
+    - `xpList.squeeze`: find all attributes of the `xp`s in the list;
       classify as distinct, redundant, or common.
-    - `xpList.gen_names`: use `xpList.split_attrs` to generate
+    - `xpList.gen_names`: use `xpList.squeeze` to generate
       a short &amp; unique name for each `xp` in the list.
     - `xpList.tabulate_avrgs`: tabulate time-averaged results.
     - `xpList.inds` to search by kw-attrs.
@@ -1088,14 +1099,24 @@ as opposed to this class (<code><a title="dapper.xp_launch.xpList" href="#dapper
         &#34;&#34;&#34;List `da_method` attributes in this list.&#34;&#34;&#34;
         return [xp.da_method for xp in self]
 
-    def split_attrs(self, nomerge=()):
-        &#34;&#34;&#34;Classify each/every attribute of the `xp`s into: distinct, redundant, common.
+    def squeeze(self, nomerge=()):
+        &#34;&#34;&#34;Classify all attrs. of all `xp`s as `distinct`, `redundant`, or `common`.
 
-        Insert `None` if an attribute is distinct but not in `xp`.
+        An attribute of the `xp`s is inserted in one of the 3 dicts as follows:
+        The attribute names become dict keys. If the values of an attribute
+        (collected from all of the `xp`s) are all __equal__, then the attribute
+        is inserted in `common`, but only with **a single value**.
+        If they are all the same **or missing**, then it is inserted in `redundant`
+        **with a single value**. Otherwise, it is inserted in `distinct`,
+        with **its full list of values** (filling with `None` where the attribute
+        was missing in the corresponding `xp`).
 
-        Used by `repr` on `xpList` to make a nice table of the list,
-        in which only the attributes that differ among the `xp`s
-        need be included.
+        The function gets its name from the fact that the attrs in `distinct` are
+        sufficient to (but not generally necessary, since there might exist a subset of
+        attributes that) uniquely identify each `xp` in the list (the `redundant` and
+        `common` can be &#34;squeezed&#34; out).  Thus, the `repr` (which is a table of the
+        `xp`s and their attributes) does not need to print all of the attributes.
+        This function also does the heavy lifting for `xpSpace.squeeze`.
 
         Parameters
         ----------
@@ -1141,54 +1162,35 @@ as opposed to this class (<code><a title="dapper.xp_launch.xpList" href="#dapper
             aggregate = struct_tools.complement(aggregate, excluded)
             return aggregate
 
-        distinct, redundant, common = {}, {}, {}
+        def _getattr_safe(xp, key):
+            # Don&#39;t use None, to avoid mixing with actual None&#39;s
+            # TODO 4: use an object yet more likely to be unique.
+            missing = &#34;N/A&#34;
+            a = getattr(xp, key, missing)
 
-        for key in _aggregate_keys():
+            # Replace ndarray by its id, since o/w it will
+            # complain that you must use all().
+            # Alternative: replace all == (and !=) below by &#34;is&#34;.
+            #     Tabulation with multi-line params actually works,
+            #     (though it&#39;s still likely to take up too much space,
+            #     unless we set np.printoptions...).
+            #     However, then python (since 3.8) will complain about
+            #     comparison to literal.
+            if isinstance(a, np.ndarray):
+                shorten = 6
+                a = f&#34;arr(&lt;id {id(a)//10**shorten}&gt;)&#34;
+            # TODO 3: leave formatting to sub() below?
+            # TODO 4: do similar formatting for other non-trivial params?
+            # TODO 4: document alternative way to specify non-trivial params:
+            #         use key to be looked up in some globally accessible dct.
+            #         Advantage: names are meaningful, rather than ids.
+            return a
 
-            def _getattr(xp, key):
-                # Don&#39;t use None, to avoid mixing with actual None&#39;s
-                # TODO 4: use an object yet more likely to be unique.
-                missing = &#34;N/A&#34;
-                a = getattr(xp, key, missing)
+        def replace_NA_by_None(vals):
+            &#34;&#34;&#34;Supports different types of `vals`.&#34;&#34;&#34;
+            def sub(v):
+                return None if v == &#34;N/A&#34; else v
 
-                # Replace ndarray by its id, since o/w it will
-                # complain that you must use all().
-                # Alternative: replace all == (and !=) below by &#34;is&#34;.
-                #     Tabulation with multi-line params actually works,
-                #     (though it&#39;s still likely to take up too much space,
-                #     unless we set np.printoptions...).
-                #     However, then python (since 3.8) will complain about
-                #     comparison to literal.
-                if isinstance(a, np.ndarray):
-                    shorten = 6
-                    a = f&#34;arr(&lt;id {id(a)//10**shorten}&gt;)&#34;
-                # TODO 3: leave formatting to sub() below?
-                # TODO 4: do similar formatting for other non-trivial params?
-                # TODO 4: document alternative way to specify non-trivial params:
-                #         use key to be looked up in some globally accessible dct.
-                #         Advantage: names are meaningful, rather than ids.
-                return a
-
-            vals = [_getattr(xp, key) for xp in self]
-
-            # Sort (assign dct) into distinct, redundant, common
-            if struct_tools.flexcomp(key, *nomerge):
-                # nomerge =&gt; Distinct
-                dct, vals = distinct, vals
-            elif all(vals[0] == v for v in vals):
-                # all values equal =&gt; common
-                dct, vals = common, vals[0]
-            else:
-                v0 = next(v for v in vals if &#34;N/A&#34; != v)
-                if all(v == &#34;N/A&#34; or v == v0 for v in vals):
-                    # all values equal or &#34;N/A&#34; =&gt; redundant
-                    dct, vals = redundant, v0
-                else:
-                    # otherwise =&gt; distinct
-                    dct, vals = distinct, vals
-
-            # Replace &#34;N/A&#34; by None
-            def sub(v): return None if v == &#34;N/A&#34; else v
             if isinstance(vals, str):
                 vals = sub(vals)
             else:
@@ -1196,13 +1198,33 @@ as opposed to this class (<code><a title="dapper.xp_launch.xpList" href="#dapper
                     vals = [sub(v) for v in vals]
                 except TypeError:
                     vals = sub(vals)
+            return vals
 
-            dct[key] = vals
+        # Main
+        distinct, redundant, common = {}, {}, {}
+        for key in _aggregate_keys():
+            vals = [_getattr_safe(xp, key) for xp in self]
+
+            if struct_tools.flexcomp(key, *nomerge):
+                dct, vals = distinct, vals
+
+            elif all(vals[0] == v for v in vals):
+                dct, vals = common, vals[0]
+
+            else:
+                nonNA = next(v for v in vals if &#34;N/A&#34; != v)
+                if all(v == &#34;N/A&#34; or v == nonNA for v in vals):
+                    dct, vals = redundant, nonNA
+
+                else:
+                    dct, vals = distinct, vals
+
+            dct[key] = replace_NA_by_None(vals)
 
         return distinct, redundant, common
 
     def __repr__(self):
-        distinct, redundant, common = self.split_attrs()
+        distinct, redundant, common = self.squeeze()
         s = &#39;&lt;xpList&gt; of length %d with attributes:\n&#39; % len(self)
         s += tabulate(distinct, headers=&#34;keys&#34;, showindex=True)
         s += &#34;\nOther attributes:\n&#34;
@@ -1216,7 +1238,7 @@ as opposed to this class (<code><a title="dapper.xp_launch.xpList" href="#dapper
         - tabulation is optional
         - attaches (abbreviated) labels to each attribute
         &#34;&#34;&#34;
-        distinct, redundant, common = self.split_attrs(nomerge=[&#34;da_method&#34;])
+        distinct, redundant, common = self.squeeze(nomerge=[&#34;da_method&#34;])
         labels = distinct.keys()
         values = distinct.values()
 
@@ -1251,7 +1273,7 @@ as opposed to this class (<code><a title="dapper.xp_launch.xpList" href="#dapper
 
     @wraps(dapper.stats.tabulate_avrgs)
     def tabulate_avrgs(self, *args, **kwargs):
-        distinct, redundant, common = self.split_attrs()
+        distinct, redundant, common = self.squeeze()
         averages = dapper.stats.tabulate_avrgs([C.avrgs for C in self], *args, **kwargs)
         columns = {**distinct, &#39;|&#39;: [&#39;|&#39;]*len(self), **averages}  # merge
         return tabulate(columns, headers=&#34;keys&#34;, showindex=True).replace(&#39;␣&#39;, &#39; &#39;)
@@ -1472,15 +1494,26 @@ unless the missingval (e.g. <code>None</code>) matches the required value.</p></
     return [i for i, xp in enumerate(self) if match(xp)]</code></pre>
 </details>
 </dd>
-<dt id="dapper.xp_launch.xpList.split_attrs"><code class="name flex">
-<span>def <span class="ident">split_attrs</span></span>(<span>self, nomerge=())</span>
+<dt id="dapper.xp_launch.xpList.squeeze"><code class="name flex">
+<span>def <span class="ident">squeeze</span></span>(<span>self, nomerge=())</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Classify each/every attribute of the <code>xp</code>s into: distinct, redundant, common.</p>
-<p>Insert <code>None</code> if an attribute is distinct but not in <code>xp</code>.</p>
-<p>Used by <code>repr</code> on <code><a title="dapper.xp_launch.xpList" href="#dapper.xp_launch.xpList">xpList</a></code> to make a nice table of the list,
-in which only the attributes that differ among the <code>xp</code>s
-need be included.</p>
+<div class="desc"><p>Classify all attrs. of all <code>xp</code>s as <code>distinct</code>, <code>redundant</code>, or <code>common</code>.</p>
+<p>An attribute of the <code>xp</code>s is inserted in one of the 3 dicts as follows:
+The attribute names become dict keys. If the values of an attribute
+(collected from all of the <code>xp</code>s) are all <strong>equal</strong>, then the attribute
+is inserted in <code>common</code>, but only with <strong>a single value</strong>.
+If they are all the same <strong>or missing</strong>, then it is inserted in <code>redundant</code>
+<strong>with a single value</strong>. Otherwise, it is inserted in <code>distinct</code>,
+with <strong>its full list of values</strong> (filling with <code>None</code> where the attribute
+was missing in the corresponding <code>xp</code>).</p>
+<p>The function gets its name from the fact that the attrs in <code>distinct</code> are
+sufficient to (but not generally necessary, since there might exist a subset of
+attributes that) uniquely identify each <code>xp</code> in the list (the <code>redundant</code> and
+<code>common</code> can be "squeezed" out).
+Thus, the <code>repr</code> (which is a table of the
+<code>xp</code>s and their attributes) does not need to print all of the attributes.
+This function also does the heavy lifting for <code>xpSpace.squeeze</code>.</p>
 <h2 id="parameters">Parameters</h2>
 <dl>
 <dt><strong><code>nomerge</code></strong> :&ensp;<code>list</code></dt>
@@ -1489,16 +1522,26 @@ need be included.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L247-L358" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L247-L369" class="git-link">Browse git</a>
 </summary>
-<pre><code class="python">def split_attrs(self, nomerge=()):
-    &#34;&#34;&#34;Classify each/every attribute of the `xp`s into: distinct, redundant, common.
+<pre><code class="python">def squeeze(self, nomerge=()):
+    &#34;&#34;&#34;Classify all attrs. of all `xp`s as `distinct`, `redundant`, or `common`.
 
-    Insert `None` if an attribute is distinct but not in `xp`.
+    An attribute of the `xp`s is inserted in one of the 3 dicts as follows:
+    The attribute names become dict keys. If the values of an attribute
+    (collected from all of the `xp`s) are all __equal__, then the attribute
+    is inserted in `common`, but only with **a single value**.
+    If they are all the same **or missing**, then it is inserted in `redundant`
+    **with a single value**. Otherwise, it is inserted in `distinct`,
+    with **its full list of values** (filling with `None` where the attribute
+    was missing in the corresponding `xp`).
 
-    Used by `repr` on `xpList` to make a nice table of the list,
-    in which only the attributes that differ among the `xp`s
-    need be included.
+    The function gets its name from the fact that the attrs in `distinct` are
+    sufficient to (but not generally necessary, since there might exist a subset of
+    attributes that) uniquely identify each `xp` in the list (the `redundant` and
+    `common` can be &#34;squeezed&#34; out).  Thus, the `repr` (which is a table of the
+    `xp`s and their attributes) does not need to print all of the attributes.
+    This function also does the heavy lifting for `xpSpace.squeeze`.
 
     Parameters
     ----------
@@ -1544,54 +1587,35 @@ need be included.</p>
         aggregate = struct_tools.complement(aggregate, excluded)
         return aggregate
 
-    distinct, redundant, common = {}, {}, {}
+    def _getattr_safe(xp, key):
+        # Don&#39;t use None, to avoid mixing with actual None&#39;s
+        # TODO 4: use an object yet more likely to be unique.
+        missing = &#34;N/A&#34;
+        a = getattr(xp, key, missing)
 
-    for key in _aggregate_keys():
+        # Replace ndarray by its id, since o/w it will
+        # complain that you must use all().
+        # Alternative: replace all == (and !=) below by &#34;is&#34;.
+        #     Tabulation with multi-line params actually works,
+        #     (though it&#39;s still likely to take up too much space,
+        #     unless we set np.printoptions...).
+        #     However, then python (since 3.8) will complain about
+        #     comparison to literal.
+        if isinstance(a, np.ndarray):
+            shorten = 6
+            a = f&#34;arr(&lt;id {id(a)//10**shorten}&gt;)&#34;
+        # TODO 3: leave formatting to sub() below?
+        # TODO 4: do similar formatting for other non-trivial params?
+        # TODO 4: document alternative way to specify non-trivial params:
+        #         use key to be looked up in some globally accessible dct.
+        #         Advantage: names are meaningful, rather than ids.
+        return a
 
-        def _getattr(xp, key):
-            # Don&#39;t use None, to avoid mixing with actual None&#39;s
-            # TODO 4: use an object yet more likely to be unique.
-            missing = &#34;N/A&#34;
-            a = getattr(xp, key, missing)
+    def replace_NA_by_None(vals):
+        &#34;&#34;&#34;Supports different types of `vals`.&#34;&#34;&#34;
+        def sub(v):
+            return None if v == &#34;N/A&#34; else v
 
-            # Replace ndarray by its id, since o/w it will
-            # complain that you must use all().
-            # Alternative: replace all == (and !=) below by &#34;is&#34;.
-            #     Tabulation with multi-line params actually works,
-            #     (though it&#39;s still likely to take up too much space,
-            #     unless we set np.printoptions...).
-            #     However, then python (since 3.8) will complain about
-            #     comparison to literal.
-            if isinstance(a, np.ndarray):
-                shorten = 6
-                a = f&#34;arr(&lt;id {id(a)//10**shorten}&gt;)&#34;
-            # TODO 3: leave formatting to sub() below?
-            # TODO 4: do similar formatting for other non-trivial params?
-            # TODO 4: document alternative way to specify non-trivial params:
-            #         use key to be looked up in some globally accessible dct.
-            #         Advantage: names are meaningful, rather than ids.
-            return a
-
-        vals = [_getattr(xp, key) for xp in self]
-
-        # Sort (assign dct) into distinct, redundant, common
-        if struct_tools.flexcomp(key, *nomerge):
-            # nomerge =&gt; Distinct
-            dct, vals = distinct, vals
-        elif all(vals[0] == v for v in vals):
-            # all values equal =&gt; common
-            dct, vals = common, vals[0]
-        else:
-            v0 = next(v for v in vals if &#34;N/A&#34; != v)
-            if all(v == &#34;N/A&#34; or v == v0 for v in vals):
-                # all values equal or &#34;N/A&#34; =&gt; redundant
-                dct, vals = redundant, v0
-            else:
-                # otherwise =&gt; distinct
-                dct, vals = distinct, vals
-
-        # Replace &#34;N/A&#34; by None
-        def sub(v): return None if v == &#34;N/A&#34; else v
         if isinstance(vals, str):
             vals = sub(vals)
         else:
@@ -1599,8 +1623,28 @@ need be included.</p>
                 vals = [sub(v) for v in vals]
             except TypeError:
                 vals = sub(vals)
+        return vals
 
-        dct[key] = vals
+    # Main
+    distinct, redundant, common = {}, {}, {}
+    for key in _aggregate_keys():
+        vals = [_getattr_safe(xp, key) for xp in self]
+
+        if struct_tools.flexcomp(key, *nomerge):
+            dct, vals = distinct, vals
+
+        elif all(vals[0] == v for v in vals):
+            dct, vals = common, vals[0]
+
+        else:
+            nonNA = next(v for v in vals if &#34;N/A&#34; != v)
+            if all(v == &#34;N/A&#34; or v == nonNA for v in vals):
+                dct, vals = redundant, nonNA
+
+            else:
+                dct, vals = distinct, vals
+
+        dct[key] = replace_NA_by_None(vals)
 
     return distinct, redundant, common</code></pre>
 </details>
@@ -1618,7 +1662,7 @@ need be included.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L368-L406" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L379-L417" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def gen_names(self, abbrev=6, tab=False):
     &#34;&#34;&#34;Similiar to `self.__repr__()`, but:
@@ -1627,7 +1671,7 @@ need be included.</p>
     - tabulation is optional
     - attaches (abbreviated) labels to each attribute
     &#34;&#34;&#34;
-    distinct, redundant, common = self.split_attrs(nomerge=[&#34;da_method&#34;])
+    distinct, redundant, common = self.squeeze(nomerge=[&#34;da_method&#34;])
     labels = distinct.keys()
     values = distinct.values()
 
@@ -1722,7 +1766,7 @@ in <code>sys.path[0]</code> are uploaded.</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L415-L564" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L426-L575" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def launch(self, HMM, save_as=&#34;noname&#34;, mp=False, fail_gently=None, **kwargs):
     &#34;&#34;&#34;Essentially: `for xp in self: run_experiment(xp, ..., **kwargs)`.
@@ -1917,7 +1961,7 @@ data-gaCategoryParameter="dapper.xp_launch">
 <ul class="two-column">
 <li><code><a title="dapper.xp_launch.xpList.append" href="#dapper.xp_launch.xpList.append">append</a></code></li>
 <li><code><a title="dapper.xp_launch.xpList.inds" href="#dapper.xp_launch.xpList.inds">inds</a></code></li>
-<li><code><a title="dapper.xp_launch.xpList.split_attrs" href="#dapper.xp_launch.xpList.split_attrs">split_attrs</a></code></li>
+<li><code><a title="dapper.xp_launch.xpList.squeeze" href="#dapper.xp_launch.xpList.squeeze">squeeze</a></code></li>
 <li><code><a title="dapper.xp_launch.xpList.gen_names" href="#dapper.xp_launch.xpList.gen_names">gen_names</a></code></li>
 <li><code><a title="dapper.xp_launch.xpList.tabulate_avrgs" href="#dapper.xp_launch.xpList.tabulate_avrgs">tabulate_avrgs</a></code></li>
 <li><code><a title="dapper.xp_launch.xpList.launch" href="#dapper.xp_launch.xpList.launch">launch</a></code></li>
