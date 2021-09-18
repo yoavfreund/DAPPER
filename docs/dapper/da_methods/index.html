@@ -225,7 +225,7 @@ def da_method(*default_dataclasses):
         cls.stat = stat
 
         # Make self.__class__.__name__ an attrib.
-        # Used by xpList.squeeze().
+        # Used by xpList.table_prep().
         cls.da_method = cls.__name__
 
         return cls
@@ -514,7 +514,7 @@ experiments (see <code><a title="dapper.xp_launch.run_experiment" href="../xp_la
         cls.stat = stat
 
         # Make self.__class__.__name__ an attrib.
-        # Used by xpList.squeeze().
+        # Used by xpList.table_prep().
         cls.da_method = cls.__name__
 
         return cls

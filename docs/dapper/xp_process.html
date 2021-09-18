@@ -486,9 +486,6 @@ class SparseSpace(dict):
         # return [x for x in self if match(x)]
 
     def __repr__(self):
-        # Note: print(xpList(self)) produces more human-readable key listing,
-        # but we don&#39;t want to implement it here, coz it requires squeeze(),
-        # which we don&#39;t really want to call again.
         txt  = f&#34;&lt;{self.__class__.__name__}&gt;&#34;
         txt += &#34; with Coord/axes: &#34;
         try:
@@ -496,6 +493,9 @@ class SparseSpace(dict):
         except AttributeError:
             txt += str(self.axes) + &#34;\n&#34;
 
+        # Note: print(xpList(self)) produces a more human-readable table,
+        # but requires prep_table(), which we don&#39;t really want to call again
+        # (it&#39;s only called in from_list, not (necessarily) in any nested spaces)
         L = 2
         keys = [str(k) for k in self]
         if 2*L &lt; len(keys):
@@ -652,7 +652,7 @@ class xpSpace(SparseSpace):
 
         # Define and fill SparseSpace
         xp_list = xpList(xps)
-        axes = xp_list.squeeze(nomerge=[&#39;xSect&#39;])[0]
+        axes = xp_list.prep_table(nomerge=[&#39;xSect&#39;])[0]
         self = cls(axes)
         self.fill(xps)
 
@@ -670,7 +670,7 @@ class xpSpace(SparseSpace):
 
     def squeeze(self):
         &#34;&#34;&#34;Eliminate unnecessary axes/dimensions.&#34;&#34;&#34;
-        squeezed = xpSpace(xpList(self).squeeze()[0])
+        squeezed = xpSpace(xpList(self).prep_table()[0])
         squeezed.fill(self)
         return squeezed
 
@@ -1895,9 +1895,6 @@ KeyError: (1, 2, 3, 4)
         # return [x for x in self if match(x)]
 
     def __repr__(self):
-        # Note: print(xpList(self)) produces more human-readable key listing,
-        # but we don&#39;t want to implement it here, coz it requires squeeze(),
-        # which we don&#39;t really want to call again.
         txt  = f&#34;&lt;{self.__class__.__name__}&gt;&#34;
         txt += &#34; with Coord/axes: &#34;
         try:
@@ -1905,6 +1902,9 @@ KeyError: (1, 2, 3, 4)
         except AttributeError:
             txt += str(self.axes) + &#34;\n&#34;
 
+        # Note: print(xpList(self)) produces a more human-readable table,
+        # but requires prep_table(), which we don&#39;t really want to call again
+        # (it&#39;s only called in from_list, not (necessarily) in any nested spaces)
         L = 2
         keys = [str(k) for k in self]
         if 2*L &lt; len(keys):
@@ -2377,7 +2377,7 @@ both of which call <code><a title="dapper.xp_process.xpSpace.table_tree" href="#
 
         # Define and fill SparseSpace
         xp_list = xpList(xps)
-        axes = xp_list.squeeze(nomerge=[&#39;xSect&#39;])[0]
+        axes = xp_list.prep_table(nomerge=[&#39;xSect&#39;])[0]
         self = cls(axes)
         self.fill(xps)
 
@@ -2395,7 +2395,7 @@ both of which call <code><a title="dapper.xp_process.xpSpace.table_tree" href="#
 
     def squeeze(self):
         &#34;&#34;&#34;Eliminate unnecessary axes/dimensions.&#34;&#34;&#34;
-        squeezed = xpSpace(xpList(self).squeeze()[0])
+        squeezed = xpSpace(xpList(self).prep_table()[0])
         squeezed.fill(self)
         return squeezed
 
@@ -2920,7 +2920,7 @@ def from_list(cls, xps, ordering=None):
 
     # Define and fill SparseSpace
     xp_list = xpList(xps)
-    axes = xp_list.squeeze(nomerge=[&#39;xSect&#39;])[0]
+    axes = xp_list.prep_table(nomerge=[&#39;xSect&#39;])[0]
     self = cls(axes)
     self.fill(xps)
 
@@ -2963,7 +2963,7 @@ def from_list(cls, xps, ordering=None):
 </summary>
 <pre><code class="python">def squeeze(self):
     &#34;&#34;&#34;Eliminate unnecessary axes/dimensions.&#34;&#34;&#34;
-    squeezed = xpSpace(xpList(self).squeeze()[0])
+    squeezed = xpSpace(xpList(self).prep_table()[0])
     squeezed.fill(self)
     return squeezed</code></pre>
 </details>
