@@ -40,7 +40,7 @@ body.gsc-overflow-hidden #sidebar {overflow: visible;}
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L1-L1147" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L1-L1146" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">&#34;&#34;&#34;Tools (notably `xpSpace`) for processing and presenting experiment data.&#34;&#34;&#34;
 
@@ -336,8 +336,7 @@ class SparseSpace(dict):
     - A list of any of the above. Returns list.
 
     This flexibility can cause bugs, but it&#39;s probably still worth it.
-    Also see `__call__`, `get_for`, and `coords`,
-    for further convenience.
+    Also see `__call__`, `get_for`, and `coords_matching`, for further convenience.
 
     Inspired by
 
@@ -371,9 +370,6 @@ class SparseSpace(dict):
         ----------
         axes: list
             The attributes defining the coordinate system.
-
-        args: entries
-            Nothing, or a list of `xp`s.
         &#34;&#34;&#34;
         # Define coordinate system
         self.Coord = collections.namedtuple(&#39;Coord&#39;, axes)
@@ -384,10 +380,10 @@ class SparseSpace(dict):
         self.Coord.repr2 = lambda c: repr(c).replace(&#34;Coord&#34;, &#34;&#34;).strip(&#34;()&#34;)
 
     def update(self, items):
-        &#34;&#34;&#34;Make update use custom `__setitem__`.
+        &#34;&#34;&#34;Update dict, using the custom `__setitem__` to ensure key conformity.
 
-        The `kwargs` syntax is not supported because it only works for keys that consist
-        of (a single) string, which is not very interesting for SparseSpace.
+        NB: the `kwargs` syntax is not supported because it only works for keys that
+        consist of (a single) string, which is not very interesting for SparseSpace.
         &#34;&#34;&#34;
         # See https://stackoverflow.com/a/2588648
         # and https://stackoverflow.com/a/2390997
@@ -423,8 +419,8 @@ class SparseSpace(dict):
         # Subspace (by dict, ie. an informal, partial coordinate)
         elif isinstance(key, dict):
             outer = self.nest(outer_axes=list(key))  # nest
-            coord = outer.Coord(*key.values())      # create coord
-            inner = outer[coord]                    # chose subspace
+            coord = outer.Coord(*key.values())       # create coord
+            inner = outer[coord]                     # chose subspace
             return inner
 
         # Single item (by Coord object, coz an integer (eg)
@@ -436,16 +432,8 @@ class SparseSpace(dict):
             # Also see bugs.python.org/issue7796
             return super().__getitem__(key)
 
-    def __getkey__(self, entry):
-        &#34;&#34;&#34;Inverse of `dict.__getitem__`, but also works on coords.
-
-        Note: This dunder method is not a &#34;builtin&#34; naming convention.
-        &#34;&#34;&#34;
-        coord = (getattr(entry, a, None) for a in self.axes)
-        return self.Coord(*coord)
-
     def __call__(self, **kwargs):
-        &#34;&#34;&#34;Convenience.
+        &#34;&#34;&#34;Convenient syntax to get/access items.
 
         Example
         -------
@@ -457,25 +445,36 @@ class SparseSpace(dict):
         &#34;&#34;&#34;Almost `[self.get(Coord(x)) for x in ticks]`.
 
         NB: using the &#34;naive&#34; thing: `[self[x] for x in ticks]`
-        would probably be a BUG coz x gets interpreted as indices
+        would probably be a BUG coz integer `x` gets interpreted as indices
         for the internal list.
         &#34;&#34;&#34;
         singleton = not hasattr(ticks[0], &#34;__iter__&#34;)
         def coord(xyz): return self.Coord(xyz if singleton else xyz)
         return [self.get(coord(x), default) for x in ticks]
 
-    def coords(self, **kwargs):
+    def coord_from_attrs(self, entry):
+        &#34;&#34;&#34;Form a `coord` for this `xpSpace` by extracting attrs. from `obj`.
+
+        **If** the entries of `self` have attributes matching their `coord`s,
+        then this can be seen as the inverse of `__getitem__`. I.e.
+        &gt;&gt;&gt; self.coord_from_attrs(self[coord]) == coord  # doctest: +SKIP
+        &#34;&#34;&#34;
+        coord = (getattr(entry, a, None) for a in self.axes)
+        return self.Coord(*coord)
+
+    def coords_matching(self, **kwargs):
         &#34;&#34;&#34;Get all `coord`s matching kwargs.
 
-        Unlike `__getitem__(kwargs)`,
+        Unlike `__getitem__(**kwargs)`,
+
         - A list is returned, not a subspace.
         - This list constains keys (coords), not values.
         - The coords refer to the original space, not the subspace.
 
-        The last point is especially useful for
-        `SparseSpace.label_xSection`.
+        The last point is especially useful for `SparseSpace.label_xSection`.
         &#34;&#34;&#34;
-        def embed(coord): return {**kwargs, **coord._asdict()}
+        def embed(coord):
+            return {**kwargs, **coord._asdict()}
         return [self.Coord(**embed(x)) for x in self[kwargs]]
 
         # Old implementation.
@@ -529,7 +528,7 @@ class SparseSpace(dict):
         outer_space = self.__class__(outer_axes)
         for coord, entry in self.items():
             # Lookup subspace coord
-            outer_coord = outer_space.__getkey__(coord)
+            outer_coord = outer_space.coord_from_attrs(coord)
             try:
                 # Get subspace
                 inner_space = outer_space[outer_coord]
@@ -538,18 +537,12 @@ class SparseSpace(dict):
                 inner_space = self.__class__(inner_axes)
                 outer_space[outer_coord] = inner_space
             # Add entry to subspace, similar to .fill()
-            inner_space[inner_space.__getkey__(coord)] = entry
+            inner_space[inner_space.coord_from_attrs(coord)] = entry
 
         return outer_space
 
-    def add_axis(self, axis):
-        self.__init__(self.axes+(axis,))
-        for coord in list(self):
-            entry = self.pop(coord)
-            self[coord + (None,)] = entry
-
     def intersect_axes(self, attrs):
-        &#34;&#34;&#34;Rm those a in attrs that are not in self.axes.
+        &#34;&#34;&#34;Rm those `a` in `attrs` that are not in `self.axes`.
 
         This allows errors in the axes allotment, for ease-of-use.
         &#34;&#34;&#34;
@@ -569,6 +562,12 @@ class SparseSpace(dict):
             attrs = struct_tools.complement(attrs, absent)
         return attrs
 
+    def append_axis(self, axis):
+        self.__init__(self.axes+(axis,))
+        for coord in list(self):
+            entry = self.pop(coord)
+            self[coord + (None,)] = entry
+
     def label_xSection(self, label, *NoneAttrs, **sub_coord):
         &#34;&#34;&#34;Insert duplicate entries for the given cross-section.
 
@@ -583,9 +582,9 @@ class SparseSpace(dict):
         preventing them from being shown in plot labels and tuning panels.
         &#34;&#34;&#34;
         if &#34;xSect&#34; not in self.axes:
-            self.add_axis(&#39;xSect&#39;)
+            self.append_axis(&#39;xSect&#39;)
 
-        for coord in self.coords(**self.intersect_axes(sub_coord)):
+        for coord in self.coords_matching(**self.intersect_axes(sub_coord)):
             entry = copy.deepcopy(self[coord])
             coord = coord._replace(xSect=label)
             coord = coord._replace(**{a: None for a in NoneAttrs})
@@ -667,7 +666,7 @@ class xpSpace(SparseSpace):
 
     def fill(self, xps):
         &#34;&#34;&#34;Mass insertion.&#34;&#34;&#34;
-        self.update([(self.__getkey__(xp), xp) for xp in xps])
+        self.update([(self.coord_from_attrs(xp), xp) for xp in xps])
 
     def squeeze(self):
         &#34;&#34;&#34;Eliminate unnecessary axes/dimensions.&#34;&#34;&#34;
@@ -822,7 +821,7 @@ class xpSpace(SparseSpace):
         # before doing outer/inner nesting. This is because then the axes of
         # a row (xpSpace) should not include mean&amp;optim, and thus:
         #  - Column header/coords may be had directly as row.keys(),
-        #    without extraction by __getkey__() from (e.g.) row[0].
+        #    without extraction by coord_from_attrs() from (e.g.) row[0].
         #  - Don&#39;t need to propagate mean&amp;optim axes down to the row level.
         #    which would require defining rows by the nesting:
         #    rows = table.nest(outer_axes=struct_tools.complement(table.axes,
@@ -1579,7 +1578,7 @@ This is probably also the reason that the loading time is sometimes reduced.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L1105-L1147" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L1104-L1146" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def default_fig_adjustments(tables, xticks_from_data=False):
     &#34;&#34;&#34;Beautify. These settings do not generalize well.&#34;&#34;&#34;
@@ -1684,8 +1683,7 @@ which is used (by <code><a title="dapper.xp_process.xpSpace.table_tree" href="#d
 <li>A list of any of the above. Returns list.</li>
 </ul>
 <p>This flexibility can cause bugs, but it's probably still worth it.
-Also see <code>__call__</code>, <code>get_for</code>, and <code>coords</code>,
-for further convenience.</p>
+Also see <code>__call__</code>, <code>get_for</code>, and <code>coords_matching</code>, for further convenience.</p>
 <p>Inspired by</p>
 <ul>
 <li><a href="https://stackoverflow.com/a/7728830">https://stackoverflow.com/a/7728830</a></li>
@@ -1711,13 +1709,11 @@ KeyError: (1, 2, 3, 4)
 <dl>
 <dt><strong><code>axes</code></strong> :&ensp;<code>list</code></dt>
 <dd>The attributes defining the coordinate system.</dd>
-<dt><strong><code>args</code></strong> :&ensp;<code>entries</code></dt>
-<dd>Nothing, or a list of <code>xp</code>s.</dd>
 </dl></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L265-L548" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L265-L547" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class SparseSpace(dict):
     &#34;&#34;&#34;Subclass of `dict` that enforces key conformity to a given `namedtuple`.
@@ -1749,8 +1745,7 @@ KeyError: (1, 2, 3, 4)
     - A list of any of the above. Returns list.
 
     This flexibility can cause bugs, but it&#39;s probably still worth it.
-    Also see `__call__`, `get_for`, and `coords`,
-    for further convenience.
+    Also see `__call__`, `get_for`, and `coords_matching`, for further convenience.
 
     Inspired by
 
@@ -1784,9 +1779,6 @@ KeyError: (1, 2, 3, 4)
         ----------
         axes: list
             The attributes defining the coordinate system.
-
-        args: entries
-            Nothing, or a list of `xp`s.
         &#34;&#34;&#34;
         # Define coordinate system
         self.Coord = collections.namedtuple(&#39;Coord&#39;, axes)
@@ -1797,10 +1789,10 @@ KeyError: (1, 2, 3, 4)
         self.Coord.repr2 = lambda c: repr(c).replace(&#34;Coord&#34;, &#34;&#34;).strip(&#34;()&#34;)
 
     def update(self, items):
-        &#34;&#34;&#34;Make update use custom `__setitem__`.
+        &#34;&#34;&#34;Update dict, using the custom `__setitem__` to ensure key conformity.
 
-        The `kwargs` syntax is not supported because it only works for keys that consist
-        of (a single) string, which is not very interesting for SparseSpace.
+        NB: the `kwargs` syntax is not supported because it only works for keys that
+        consist of (a single) string, which is not very interesting for SparseSpace.
         &#34;&#34;&#34;
         # See https://stackoverflow.com/a/2588648
         # and https://stackoverflow.com/a/2390997
@@ -1836,8 +1828,8 @@ KeyError: (1, 2, 3, 4)
         # Subspace (by dict, ie. an informal, partial coordinate)
         elif isinstance(key, dict):
             outer = self.nest(outer_axes=list(key))  # nest
-            coord = outer.Coord(*key.values())      # create coord
-            inner = outer[coord]                    # chose subspace
+            coord = outer.Coord(*key.values())       # create coord
+            inner = outer[coord]                     # chose subspace
             return inner
 
         # Single item (by Coord object, coz an integer (eg)
@@ -1849,16 +1841,8 @@ KeyError: (1, 2, 3, 4)
             # Also see bugs.python.org/issue7796
             return super().__getitem__(key)
 
-    def __getkey__(self, entry):
-        &#34;&#34;&#34;Inverse of `dict.__getitem__`, but also works on coords.
-
-        Note: This dunder method is not a &#34;builtin&#34; naming convention.
-        &#34;&#34;&#34;
-        coord = (getattr(entry, a, None) for a in self.axes)
-        return self.Coord(*coord)
-
     def __call__(self, **kwargs):
-        &#34;&#34;&#34;Convenience.
+        &#34;&#34;&#34;Convenient syntax to get/access items.
 
         Example
         -------
@@ -1870,25 +1854,36 @@ KeyError: (1, 2, 3, 4)
         &#34;&#34;&#34;Almost `[self.get(Coord(x)) for x in ticks]`.
 
         NB: using the &#34;naive&#34; thing: `[self[x] for x in ticks]`
-        would probably be a BUG coz x gets interpreted as indices
+        would probably be a BUG coz integer `x` gets interpreted as indices
         for the internal list.
         &#34;&#34;&#34;
         singleton = not hasattr(ticks[0], &#34;__iter__&#34;)
         def coord(xyz): return self.Coord(xyz if singleton else xyz)
         return [self.get(coord(x), default) for x in ticks]
 
-    def coords(self, **kwargs):
+    def coord_from_attrs(self, entry):
+        &#34;&#34;&#34;Form a `coord` for this `xpSpace` by extracting attrs. from `obj`.
+
+        **If** the entries of `self` have attributes matching their `coord`s,
+        then this can be seen as the inverse of `__getitem__`. I.e.
+        &gt;&gt;&gt; self.coord_from_attrs(self[coord]) == coord  # doctest: +SKIP
+        &#34;&#34;&#34;
+        coord = (getattr(entry, a, None) for a in self.axes)
+        return self.Coord(*coord)
+
+    def coords_matching(self, **kwargs):
         &#34;&#34;&#34;Get all `coord`s matching kwargs.
 
-        Unlike `__getitem__(kwargs)`,
+        Unlike `__getitem__(**kwargs)`,
+
         - A list is returned, not a subspace.
         - This list constains keys (coords), not values.
         - The coords refer to the original space, not the subspace.
 
-        The last point is especially useful for
-        `SparseSpace.label_xSection`.
+        The last point is especially useful for `SparseSpace.label_xSection`.
         &#34;&#34;&#34;
-        def embed(coord): return {**kwargs, **coord._asdict()}
+        def embed(coord):
+            return {**kwargs, **coord._asdict()}
         return [self.Coord(**embed(x)) for x in self[kwargs]]
 
         # Old implementation.
@@ -1942,7 +1937,7 @@ KeyError: (1, 2, 3, 4)
         outer_space = self.__class__(outer_axes)
         for coord, entry in self.items():
             # Lookup subspace coord
-            outer_coord = outer_space.__getkey__(coord)
+            outer_coord = outer_space.coord_from_attrs(coord)
             try:
                 # Get subspace
                 inner_space = outer_space[outer_coord]
@@ -1951,18 +1946,12 @@ KeyError: (1, 2, 3, 4)
                 inner_space = self.__class__(inner_axes)
                 outer_space[outer_coord] = inner_space
             # Add entry to subspace, similar to .fill()
-            inner_space[inner_space.__getkey__(coord)] = entry
+            inner_space[inner_space.coord_from_attrs(coord)] = entry
 
         return outer_space
 
-    def add_axis(self, axis):
-        self.__init__(self.axes+(axis,))
-        for coord in list(self):
-            entry = self.pop(coord)
-            self[coord + (None,)] = entry
-
     def intersect_axes(self, attrs):
-        &#34;&#34;&#34;Rm those a in attrs that are not in self.axes.
+        &#34;&#34;&#34;Rm those `a` in `attrs` that are not in `self.axes`.
 
         This allows errors in the axes allotment, for ease-of-use.
         &#34;&#34;&#34;
@@ -1982,6 +1971,12 @@ KeyError: (1, 2, 3, 4)
             attrs = struct_tools.complement(attrs, absent)
         return attrs
 
+    def append_axis(self, axis):
+        self.__init__(self.axes+(axis,))
+        for coord in list(self):
+            entry = self.pop(coord)
+            self[coord + (None,)] = entry
+
     def label_xSection(self, label, *NoneAttrs, **sub_coord):
         &#34;&#34;&#34;Insert duplicate entries for the given cross-section.
 
@@ -1996,9 +1991,9 @@ KeyError: (1, 2, 3, 4)
         preventing them from being shown in plot labels and tuning panels.
         &#34;&#34;&#34;
         if &#34;xSect&#34; not in self.axes:
-            self.add_axis(&#39;xSect&#39;)
+            self.append_axis(&#39;xSect&#39;)
 
-        for coord in self.coords(**self.intersect_axes(sub_coord)):
+        for coord in self.coords_matching(**self.intersect_axes(sub_coord)):
             entry = copy.deepcopy(self[coord])
             coord = coord._replace(xSect=label)
             coord = coord._replace(**{a: None for a in NoneAttrs})
@@ -2020,7 +2015,7 @@ KeyError: (1, 2, 3, 4)
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L319-L321" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L318-L320" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">@property
 def axes(self):
@@ -2034,19 +2029,19 @@ def axes(self):
 <span>def <span class="ident">update</span></span>(<span>self, items)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Make update use custom <code>__setitem__</code>.</p>
-<p>The <code>kwargs</code> syntax is not supported because it only works for keys that consist
-of (a single) string, which is not very interesting for SparseSpace.</p></div>
+<div class="desc"><p>Update dict, using the custom <code>__setitem__</code> to ensure key conformity.</p>
+<p>NB: the <code>kwargs</code> syntax is not supported because it only works for keys that
+consist of (a single) string, which is not very interesting for SparseSpace.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L342-L355" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L338-L351" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def update(self, items):
-    &#34;&#34;&#34;Make update use custom `__setitem__`.
+    &#34;&#34;&#34;Update dict, using the custom `__setitem__` to ensure key conformity.
 
-    The `kwargs` syntax is not supported because it only works for keys that consist
-    of (a single) string, which is not very interesting for SparseSpace.
+    NB: the `kwargs` syntax is not supported because it only works for keys that
+    consist of (a single) string, which is not very interesting for SparseSpace.
     &#34;&#34;&#34;
     # See https://stackoverflow.com/a/2588648
     # and https://stackoverflow.com/a/2390997
@@ -2064,18 +2059,18 @@ of (a single) string, which is not very interesting for SparseSpace.</p></div>
 <dd>
 <div class="desc"><p>Almost <code>[self.get(Coord(x)) for x in ticks]</code>.</p>
 <p>NB: using the "naive" thing: <code>[self[x] for x in ticks]</code>
-would probably be a BUG coz x gets interpreted as indices
+would probably be a BUG coz integer <code>x</code> gets interpreted as indices
 for the internal list.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L412-L421" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L400-L409" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def get_for(self, ticks, default=None):
     &#34;&#34;&#34;Almost `[self.get(Coord(x)) for x in ticks]`.
 
     NB: using the &#34;naive&#34; thing: `[self[x] for x in ticks]`
-    would probably be a BUG coz x gets interpreted as indices
+    would probably be a BUG coz integer `x` gets interpreted as indices
     for the internal list.
     &#34;&#34;&#34;
     singleton = not hasattr(ticks[0], &#34;__iter__&#34;)
@@ -2083,34 +2078,61 @@ for the internal list.</p></div>
     return [self.get(coord(x), default) for x in ticks]</code></pre>
 </details>
 </dd>
-<dt id="dapper.xp_process.SparseSpace.coords"><code class="name flex">
-<span>def <span class="ident">coords</span></span>(<span>self, **kwargs)</span>
+<dt id="dapper.xp_process.SparseSpace.coord_from_attrs"><code class="name flex">
+<span>def <span class="ident">coord_from_attrs</span></span>(<span>self, entry)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Get all <code>coord</code>s matching kwargs.</p>
-<p>Unlike <code>__getitem__(kwargs)</code>,
-- A list is returned, not a subspace.
-- This list constains keys (coords), not values.
-- The coords refer to the original space, not the subspace.</p>
-<p>The last point is especially useful for
-<code><a title="dapper.xp_process.SparseSpace.label_xSection" href="#dapper.xp_process.SparseSpace.label_xSection">SparseSpace.label_xSection()</a></code>.</p></div>
+<div class="desc"><p>Form a <code>coord</code> for this <code><a title="dapper.xp_process.xpSpace" href="#dapper.xp_process.xpSpace">xpSpace</a></code> by extracting attrs. from <code>obj</code>.</p>
+<p><strong>If</strong> the entries of <code>self</code> have attributes matching their <code>coord</code>s,
+then this can be seen as the inverse of <code>__getitem__</code>. I.e.</p>
+<pre><code class="language-python-repl">&gt;&gt;&gt; self.coord_from_attrs(self[coord]) == coord  # doctest: +SKIP
+</code></pre></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L423-L443" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L411-L419" class="git-link">Browse git</a>
 </summary>
-<pre><code class="python">def coords(self, **kwargs):
+<pre><code class="python">def coord_from_attrs(self, entry):
+    &#34;&#34;&#34;Form a `coord` for this `xpSpace` by extracting attrs. from `obj`.
+
+    **If** the entries of `self` have attributes matching their `coord`s,
+    then this can be seen as the inverse of `__getitem__`. I.e.
+    &gt;&gt;&gt; self.coord_from_attrs(self[coord]) == coord  # doctest: +SKIP
+    &#34;&#34;&#34;
+    coord = (getattr(entry, a, None) for a in self.axes)
+    return self.Coord(*coord)</code></pre>
+</details>
+</dd>
+<dt id="dapper.xp_process.SparseSpace.coords_matching"><code class="name flex">
+<span>def <span class="ident">coords_matching</span></span>(<span>self, **kwargs)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Get all <code>coord</code>s matching kwargs.</p>
+<p>Unlike <code>__getitem__(**kwargs)</code>,</p>
+<ul>
+<li>A list is returned, not a subspace.</li>
+<li>This list constains keys (coords), not values.</li>
+<li>The coords refer to the original space, not the subspace.</li>
+</ul>
+<p>The last point is especially useful for <code><a title="dapper.xp_process.SparseSpace.label_xSection" href="#dapper.xp_process.SparseSpace.label_xSection">SparseSpace.label_xSection()</a></code>.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L421-L442" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def coords_matching(self, **kwargs):
     &#34;&#34;&#34;Get all `coord`s matching kwargs.
 
-    Unlike `__getitem__(kwargs)`,
+    Unlike `__getitem__(**kwargs)`,
+
     - A list is returned, not a subspace.
     - This list constains keys (coords), not values.
     - The coords refer to the original space, not the subspace.
 
-    The last point is especially useful for
-    `SparseSpace.label_xSection`.
+    The last point is especially useful for `SparseSpace.label_xSection`.
     &#34;&#34;&#34;
-    def embed(coord): return {**kwargs, **coord._asdict()}
+    def embed(coord):
+        return {**kwargs, **coord._asdict()}
     return [self.Coord(**embed(x)) for x in self[kwargs]]
 
     # Old implementation.
@@ -2133,7 +2155,7 @@ each one regrouping the entries with the same (projected) coordinate.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L463-L499" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L462-L498" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def nest(self, inner_axes=None, outer_axes=None):
     &#34;&#34;&#34;Project along `inner_acces` to yield a new `xpSpace` with axes `outer_axes`
@@ -2160,7 +2182,7 @@ each one regrouping the entries with the same (projected) coordinate.</p>
     outer_space = self.__class__(outer_axes)
     for coord, entry in self.items():
         # Lookup subspace coord
-        outer_coord = outer_space.__getkey__(coord)
+        outer_coord = outer_space.coord_from_attrs(coord)
         try:
             # Get subspace
             inner_space = outer_space[outer_coord]
@@ -2169,41 +2191,24 @@ each one regrouping the entries with the same (projected) coordinate.</p>
             inner_space = self.__class__(inner_axes)
             outer_space[outer_coord] = inner_space
         # Add entry to subspace, similar to .fill()
-        inner_space[inner_space.__getkey__(coord)] = entry
+        inner_space[inner_space.coord_from_attrs(coord)] = entry
 
     return outer_space</code></pre>
-</details>
-</dd>
-<dt id="dapper.xp_process.SparseSpace.add_axis"><code class="name flex">
-<span>def <span class="ident">add_axis</span></span>(<span>self, axis)</span>
-</code></dt>
-<dd>
-<div class="desc"></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L501-L505" class="git-link">Browse git</a>
-</summary>
-<pre><code class="python">def add_axis(self, axis):
-    self.__init__(self.axes+(axis,))
-    for coord in list(self):
-        entry = self.pop(coord)
-        self[coord + (None,)] = entry</code></pre>
 </details>
 </dd>
 <dt id="dapper.xp_process.SparseSpace.intersect_axes"><code class="name flex">
 <span>def <span class="ident">intersect_axes</span></span>(<span>self, attrs)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Rm those a in attrs that are not in self.axes.</p>
+<div class="desc"><p>Rm those <code>a</code> in <code>attrs</code> that are not in <code>self.axes</code>.</p>
 <p>This allows errors in the axes allotment, for ease-of-use.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L507-L526" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L500-L519" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def intersect_axes(self, attrs):
-    &#34;&#34;&#34;Rm those a in attrs that are not in self.axes.
+    &#34;&#34;&#34;Rm those `a` in `attrs` that are not in `self.axes`.
 
     This allows errors in the axes allotment, for ease-of-use.
     &#34;&#34;&#34;
@@ -2224,6 +2229,23 @@ each one regrouping the entries with the same (projected) coordinate.</p>
     return attrs</code></pre>
 </details>
 </dd>
+<dt id="dapper.xp_process.SparseSpace.append_axis"><code class="name flex">
+<span>def <span class="ident">append_axis</span></span>(<span>self, axis)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L521-L525" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def append_axis(self, axis):
+    self.__init__(self.axes+(axis,))
+    for coord in list(self):
+        entry = self.pop(coord)
+        self[coord + (None,)] = entry</code></pre>
+</details>
+</dd>
 <dt id="dapper.xp_process.SparseSpace.label_xSection"><code class="name flex">
 <span>def <span class="ident">label_xSection</span></span>(<span>self, label, *NoneAttrs, **sub_coord)</span>
 </code></dt>
@@ -2240,7 +2262,7 @@ preventing them from being shown in plot labels and tuning panels.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L528-L548" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L527-L547" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def label_xSection(self, label, *NoneAttrs, **sub_coord):
     &#34;&#34;&#34;Insert duplicate entries for the given cross-section.
@@ -2256,9 +2278,9 @@ preventing them from being shown in plot labels and tuning panels.</p></div>
     preventing them from being shown in plot labels and tuning panels.
     &#34;&#34;&#34;
     if &#34;xSect&#34; not in self.axes:
-        self.add_axis(&#39;xSect&#39;)
+        self.append_axis(&#39;xSect&#39;)
 
-    for coord in self.coords(**self.intersect_axes(sub_coord)):
+    for coord in self.coords_matching(**self.intersect_axes(sub_coord)):
         entry = copy.deepcopy(self[coord])
         coord = coord._replace(xSect=label)
         coord = coord._replace(**{a: None for a in NoneAttrs})
@@ -2291,13 +2313,11 @@ both of which call <code><a title="dapper.xp_process.xpSpace.table_tree" href="#
 <dl>
 <dt><strong><code>axes</code></strong> :&ensp;<code>list</code></dt>
 <dd>The attributes defining the coordinate system.</dd>
-<dt><strong><code>args</code></strong> :&ensp;<code>entries</code></dt>
-<dd>Nothing, or a list of <code>xp</code>s.</dd>
 </dl></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L554-L1102" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L553-L1101" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class xpSpace(SparseSpace):
     &#34;&#34;&#34;Functionality to facilitate working with `xps` and their results.
@@ -2371,7 +2391,7 @@ both of which call <code><a title="dapper.xp_process.xpSpace.table_tree" href="#
 
     def fill(self, xps):
         &#34;&#34;&#34;Mass insertion.&#34;&#34;&#34;
-        self.update([(self.__getkey__(xp), xp) for xp in xps])
+        self.update([(self.coord_from_attrs(xp), xp) for xp in xps])
 
     def squeeze(self):
         &#34;&#34;&#34;Eliminate unnecessary axes/dimensions.&#34;&#34;&#34;
@@ -2526,7 +2546,7 @@ both of which call <code><a title="dapper.xp_process.xpSpace.table_tree" href="#
         # before doing outer/inner nesting. This is because then the axes of
         # a row (xpSpace) should not include mean&amp;optim, and thus:
         #  - Column header/coords may be had directly as row.keys(),
-        #    without extraction by __getkey__() from (e.g.) row[0].
+        #    without extraction by coord_from_attrs() from (e.g.) row[0].
         #  - Don&#39;t need to propagate mean&amp;optim axes down to the row level.
         #    which would require defining rows by the nesting:
         #    rows = table.nest(outer_axes=struct_tools.complement(table.axes,
@@ -2864,7 +2884,7 @@ both of which call <code><a title="dapper.xp_process.xpSpace.table_tree" href="#
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L578-L622" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L577-L621" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">@classmethod
 def from_list(cls, xps, ordering=None):
@@ -2924,11 +2944,11 @@ def from_list(cls, xps, ordering=None):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L624-L626" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L623-L625" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def fill(self, xps):
     &#34;&#34;&#34;Mass insertion.&#34;&#34;&#34;
-    self.update([(self.__getkey__(xp), xp) for xp in xps])</code></pre>
+    self.update([(self.coord_from_attrs(xp), xp) for xp in xps])</code></pre>
 </details>
 </dd>
 <dt id="dapper.xp_process.xpSpace.squeeze"><code class="name flex">
@@ -2939,7 +2959,7 @@ def from_list(cls, xps, ordering=None):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L628-L632" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L627-L631" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def squeeze(self):
     &#34;&#34;&#34;Eliminate unnecessary axes/dimensions.&#34;&#34;&#34;
@@ -2956,7 +2976,7 @@ def from_list(cls, xps, ordering=None):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L634-L649" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L633-L648" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def get_stat(self, statkey=&#34;rmse.a&#34;):
     &#34;&#34;&#34;Make `xpSpace` with identical `keys`, but values `xp.avrgs.statkey`.&#34;&#34;&#34;
@@ -2984,7 +3004,7 @@ def from_list(cls, xps, ordering=None):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L651-L678" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L650-L677" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def mean(self, axes=None):
     # Note: The case `axes=()` should work w/o special treatment.
@@ -3024,7 +3044,7 @@ def from_list(cls, xps, ordering=None):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L680-L709" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L679-L708" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def tune(self, axes=None, costfun=None):
     &#34;&#34;&#34;Get (compile/tabulate) a stat. optimised wrt. tuning params.&#34;&#34;&#34;
@@ -3069,7 +3089,7 @@ Use <code>axis or ()</code> wherever tuples are required.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L711-L742" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L710-L741" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def validate_axes(self, axes):
     &#34;&#34;&#34;Validate axes.
@@ -3129,7 +3149,7 @@ when optimizing over tuning_axes.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L744-L807" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L743-L806" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def table_tree(self, statkey, axes, *, costfun=None):
     &#34;&#34;&#34;Hierarchical nest(): xp_dict&gt;outer&gt;inner&gt;mean&gt;optim.
@@ -3168,7 +3188,7 @@ when optimizing over tuning_axes.</p></div>
     # before doing outer/inner nesting. This is because then the axes of
     # a row (xpSpace) should not include mean&amp;optim, and thus:
     #  - Column header/coords may be had directly as row.keys(),
-    #    without extraction by __getkey__() from (e.g.) row[0].
+    #    without extraction by coord_from_attrs() from (e.g.) row[0].
     #  - Don&#39;t need to propagate mean&amp;optim axes down to the row level.
     #    which would require defining rows by the nesting:
     #    rows = table.nest(outer_axes=struct_tools.complement(table.axes,
@@ -3205,7 +3225,7 @@ when optimizing over tuning_axes.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L809-L811" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L808-L810" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def tickz(self, axis_name):
     &#34;&#34;&#34;Axis ticks without None&#34;&#34;&#34;
@@ -3276,7 +3296,7 @@ If <code>None</code>, this is determined for each statistic by its uncertainty.<
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L813-L950" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L812-L949" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def print(self, statkey=&#34;rmse.a&#34;, axes=AXES_ROLES,  # noqa
           subcols=True, decimals=None, costfun=None,
@@ -3455,7 +3475,7 @@ Caution: <code>get_style</code> will not be able to access the eliminated attrs.
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L952-L1102" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L951-L1101" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def plot(self, statkey=&#34;rmse.a&#34;, axes=AXES_ROLES, get_style=default_styles,
          fignum=None, figsize=None, panels=None,
@@ -3615,7 +3635,8 @@ Caution: <code>get_style</code> will not be able to access the eliminated attrs.
 <ul class="hlist">
 <li><code><b><a title="dapper.xp_process.SparseSpace" href="#dapper.xp_process.SparseSpace">SparseSpace</a></b></code>:
 <ul class="hlist">
-<li><code><a title="dapper.xp_process.SparseSpace.coords" href="#dapper.xp_process.SparseSpace.coords">coords</a></code></li>
+<li><code><a title="dapper.xp_process.SparseSpace.coord_from_attrs" href="#dapper.xp_process.SparseSpace.coord_from_attrs">coord_from_attrs</a></code></li>
+<li><code><a title="dapper.xp_process.SparseSpace.coords_matching" href="#dapper.xp_process.SparseSpace.coords_matching">coords_matching</a></code></li>
 <li><code><a title="dapper.xp_process.SparseSpace.get_for" href="#dapper.xp_process.SparseSpace.get_for">get_for</a></code></li>
 <li><code><a title="dapper.xp_process.SparseSpace.intersect_axes" href="#dapper.xp_process.SparseSpace.intersect_axes">intersect_axes</a></code></li>
 <li><code><a title="dapper.xp_process.SparseSpace.label_xSection" href="#dapper.xp_process.SparseSpace.label_xSection">label_xSection</a></code></li>
@@ -3676,10 +3697,11 @@ data-gaCategoryParameter="dapper.xp_process">
 <ul class="two-column">
 <li><code><a title="dapper.xp_process.SparseSpace.update" href="#dapper.xp_process.SparseSpace.update">update</a></code></li>
 <li><code><a title="dapper.xp_process.SparseSpace.get_for" href="#dapper.xp_process.SparseSpace.get_for">get_for</a></code></li>
-<li><code><a title="dapper.xp_process.SparseSpace.coords" href="#dapper.xp_process.SparseSpace.coords">coords</a></code></li>
+<li><code><a title="dapper.xp_process.SparseSpace.coord_from_attrs" href="#dapper.xp_process.SparseSpace.coord_from_attrs">coord_from_attrs</a></code></li>
+<li><code><a title="dapper.xp_process.SparseSpace.coords_matching" href="#dapper.xp_process.SparseSpace.coords_matching">coords_matching</a></code></li>
 <li><code><a title="dapper.xp_process.SparseSpace.nest" href="#dapper.xp_process.SparseSpace.nest">nest</a></code></li>
-<li><code><a title="dapper.xp_process.SparseSpace.add_axis" href="#dapper.xp_process.SparseSpace.add_axis">add_axis</a></code></li>
 <li><code><a title="dapper.xp_process.SparseSpace.intersect_axes" href="#dapper.xp_process.SparseSpace.intersect_axes">intersect_axes</a></code></li>
+<li><code><a title="dapper.xp_process.SparseSpace.append_axis" href="#dapper.xp_process.SparseSpace.append_axis">append_axis</a></code></li>
 <li><code><a title="dapper.xp_process.SparseSpace.label_xSection" href="#dapper.xp_process.SparseSpace.label_xSection">label_xSection</a></code></li>
 <li><code><a title="dapper.xp_process.SparseSpace.axes" href="#dapper.xp_process.SparseSpace.axes">axes</a></code></li>
 </ul>
