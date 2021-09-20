@@ -40,7 +40,7 @@ body.gsc-overflow-hidden #sidebar {overflow: visible;}
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L1-L1145" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L1-L1152" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">&#34;&#34;&#34;Tools (notably `xpSpace`) for processing and presenting experiment data.&#34;&#34;&#34;
 
@@ -68,7 +68,7 @@ from tqdm.auto import tqdm
 import dapper.tools.remote.uplink as uplink
 from dapper.dpr_config import rc
 from dapper.stats import align_col, unpack_uqs
-from dapper.tools.colors import color_text
+from dapper.tools.colors import color_text, stripe
 from dapper.tools.rounding import UncertainQtty
 from dapper.tools.viz import axis_scale_by_array
 from dapper.xp_launch import XP_TIMESTAMP_TEMPLATE, collapse_str, xpList
@@ -856,7 +856,7 @@ class xpSpace(SparseSpace):
 
     def print(self, statkey=&#34;rmse.a&#34;, axes=AXES_ROLES,  # noqa
               subcols=True, decimals=None, costfun=None,
-              squeeze_labels=True):
+              squeeze_labels=True, colorize=True):
         &#34;&#34;&#34;Print tables of results.
 
         Parameters
@@ -904,6 +904,8 @@ class xpSpace(SparseSpace):
         squeeze_labels: bool
             Don&#39;t include redundant attributes in the line labels.
             Caution: `get_style` will not be able to access the eliminated attrs.
+        colorize: bool
+            Add color to tables for readability.
         &#34;&#34;&#34;
         # Inform axes[&#34;mean&#34;]
         if axes.get(&#39;mean&#39;, None):
@@ -967,8 +969,8 @@ class xpSpace(SparseSpace):
 
         for table_coord, table in tables.items():
 
-            # Get table&#39;s column coords
-            # It&#39;s supposed to be a set, but we use a dict to keep ordering.
+            # Get table&#39;s column coords/ticks (cc).
+            # cc is really a set, but we use dict for ordering.
             # cc = self.ticks[axes[&#34;inner&#34;]]  # may be &gt; needed
             # cc = table[0].keys()            # may be &lt; needed
             cc = {c: None for row in table.values() for c in row}
@@ -994,9 +996,14 @@ class xpSpace(SparseSpace):
             print(&#34;\n&#34;, end=&#34;&#34;)
             if axes[&#39;outer&#39;]:
                 table_title = &#34;Table for &#34; + table_coord.repr2()
-                print(color_text(table_title, colorama.Back.YELLOW))
+                if colorize:
+                    clrs = colorama.Back.YELLOW, colorama.Fore.BLACK
+                    table_title = color_text(table_title, *clrs)
+                print(table_title)
             headers, *rows = rows
             t = tabulate(rows, headers).replace(&#39;␣&#39;, &#39; &#39;)
+            if colorize:
+                t = stripe(t, slice(2, None))
             print(t)
 
     def plot(self, statkey=&#34;rmse.a&#34;, axes=AXES_ROLES, get_style=default_styles,
@@ -1100,7 +1107,7 @@ class xpSpace(SparseSpace):
             title = &#34;&#34; if axes[&#34;outer&#34;] is None else table_coord.repr2()
 
             if squeeze_labels:
-                distinct = xpList(table.keys()).squeeze()[0]
+                distinct = xpList(table.keys()).prep_table()[0]
             else:
                 distinct = table.axes
 
@@ -1577,7 +1584,7 @@ This is probably also the reason that the loading time is sometimes reduced.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L1103-L1145" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L1110-L1152" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def default_fig_adjustments(tables, xticks_from_data=False):
     &#34;&#34;&#34;Beautify. These settings do not generalize well.&#34;&#34;&#34;
@@ -2318,7 +2325,7 @@ both of which call <code><a title="dapper.xp_process.xpSpace.table_tree" href="#
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L554-L1100" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L554-L1107" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class xpSpace(SparseSpace):
     &#34;&#34;&#34;Functionality to facilitate working with `xps` and their results.
@@ -2581,7 +2588,7 @@ both of which call <code><a title="dapper.xp_process.xpSpace.table_tree" href="#
 
     def print(self, statkey=&#34;rmse.a&#34;, axes=AXES_ROLES,  # noqa
               subcols=True, decimals=None, costfun=None,
-              squeeze_labels=True):
+              squeeze_labels=True, colorize=True):
         &#34;&#34;&#34;Print tables of results.
 
         Parameters
@@ -2629,6 +2636,8 @@ both of which call <code><a title="dapper.xp_process.xpSpace.table_tree" href="#
         squeeze_labels: bool
             Don&#39;t include redundant attributes in the line labels.
             Caution: `get_style` will not be able to access the eliminated attrs.
+        colorize: bool
+            Add color to tables for readability.
         &#34;&#34;&#34;
         # Inform axes[&#34;mean&#34;]
         if axes.get(&#39;mean&#39;, None):
@@ -2692,8 +2701,8 @@ both of which call <code><a title="dapper.xp_process.xpSpace.table_tree" href="#
 
         for table_coord, table in tables.items():
 
-            # Get table&#39;s column coords
-            # It&#39;s supposed to be a set, but we use a dict to keep ordering.
+            # Get table&#39;s column coords/ticks (cc).
+            # cc is really a set, but we use dict for ordering.
             # cc = self.ticks[axes[&#34;inner&#34;]]  # may be &gt; needed
             # cc = table[0].keys()            # may be &lt; needed
             cc = {c: None for row in table.values() for c in row}
@@ -2719,9 +2728,14 @@ both of which call <code><a title="dapper.xp_process.xpSpace.table_tree" href="#
             print(&#34;\n&#34;, end=&#34;&#34;)
             if axes[&#39;outer&#39;]:
                 table_title = &#34;Table for &#34; + table_coord.repr2()
-                print(color_text(table_title, colorama.Back.YELLOW))
+                if colorize:
+                    clrs = colorama.Back.YELLOW, colorama.Fore.BLACK
+                    table_title = color_text(table_title, *clrs)
+                print(table_title)
             headers, *rows = rows
             t = tabulate(rows, headers).replace(&#39;␣&#39;, &#39; &#39;)
+            if colorize:
+                t = stripe(t, slice(2, None))
             print(t)
 
     def plot(self, statkey=&#34;rmse.a&#34;, axes=AXES_ROLES, get_style=default_styles,
@@ -2825,7 +2839,7 @@ both of which call <code><a title="dapper.xp_process.xpSpace.table_tree" href="#
             title = &#34;&#34; if axes[&#34;outer&#34;] is None else table_coord.repr2()
 
             if squeeze_labels:
-                distinct = xpList(table.keys()).squeeze()[0]
+                distinct = xpList(table.keys()).prep_table()[0]
             else:
                 distinct = table.axes
 
@@ -3232,7 +3246,7 @@ when optimizing over tuning_axes.</p></div>
 </details>
 </dd>
 <dt id="dapper.xp_process.xpSpace.print"><code class="name flex">
-<span>def <span class="ident">print</span></span>(<span>self, statkey='rmse.a', axes={'outer': None, 'inner': None, 'mean': None, 'optim': None}, subcols=True, decimals=None, costfun=None, squeeze_labels=True)</span>
+<span>def <span class="ident">print</span></span>(<span>self, statkey='rmse.a', axes={'outer': None, 'inner': None, 'mean': None, 'optim': None}, subcols=True, decimals=None, costfun=None, squeeze_labels=True, colorize=True)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Print tables of results.</p>
@@ -3285,15 +3299,17 @@ is defined as the lowest or highest value of the <code>statkey</code> found.</dd
 <dt><strong><code>squeeze_labels</code></strong> :&ensp;<code>bool</code></dt>
 <dd>Don't include redundant attributes in the line labels.
 Caution: <code>get_style</code> will not be able to access the eliminated attrs.</dd>
+<dt><strong><code>colorize</code></strong> :&ensp;<code>bool</code></dt>
+<dd>Add color to tables for readability.</dd>
 </dl></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L813-L956" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L813-L963" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def print(self, statkey=&#34;rmse.a&#34;, axes=AXES_ROLES,  # noqa
           subcols=True, decimals=None, costfun=None,
-          squeeze_labels=True):
+          squeeze_labels=True, colorize=True):
     &#34;&#34;&#34;Print tables of results.
 
     Parameters
@@ -3341,6 +3357,8 @@ Caution: <code>get_style</code> will not be able to access the eliminated attrs.
     squeeze_labels: bool
         Don&#39;t include redundant attributes in the line labels.
         Caution: `get_style` will not be able to access the eliminated attrs.
+    colorize: bool
+        Add color to tables for readability.
     &#34;&#34;&#34;
     # Inform axes[&#34;mean&#34;]
     if axes.get(&#39;mean&#39;, None):
@@ -3404,8 +3422,8 @@ Caution: <code>get_style</code> will not be able to access the eliminated attrs.
 
     for table_coord, table in tables.items():
 
-        # Get table&#39;s column coords
-        # It&#39;s supposed to be a set, but we use a dict to keep ordering.
+        # Get table&#39;s column coords/ticks (cc).
+        # cc is really a set, but we use dict for ordering.
         # cc = self.ticks[axes[&#34;inner&#34;]]  # may be &gt; needed
         # cc = table[0].keys()            # may be &lt; needed
         cc = {c: None for row in table.values() for c in row}
@@ -3431,9 +3449,14 @@ Caution: <code>get_style</code> will not be able to access the eliminated attrs.
         print(&#34;\n&#34;, end=&#34;&#34;)
         if axes[&#39;outer&#39;]:
             table_title = &#34;Table for &#34; + table_coord.repr2()
-            print(color_text(table_title, colorama.Back.YELLOW))
+            if colorize:
+                clrs = colorama.Back.YELLOW, colorama.Fore.BLACK
+                table_title = color_text(table_title, *clrs)
+            print(table_title)
         headers, *rows = rows
         t = tabulate(rows, headers).replace(&#39;␣&#39;, &#39; &#39;)
+        if colorize:
+            t = stripe(t, slice(2, None))
         print(t)</code></pre>
 </details>
 </dd>
@@ -3465,7 +3488,7 @@ usually as a function of the object's attributes.</dd>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L958-L1100" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L965-L1107" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def plot(self, statkey=&#34;rmse.a&#34;, axes=AXES_ROLES, get_style=default_styles,
          fignum=None, figsize=None, panels=None,
@@ -3568,7 +3591,7 @@ usually as a function of the object's attributes.</dd>
         title = &#34;&#34; if axes[&#34;outer&#34;] is None else table_coord.repr2()
 
         if squeeze_labels:
-            distinct = xpList(table.keys()).squeeze()[0]
+            distinct = xpList(table.keys()).prep_table()[0]
         else:
             distinct = table.axes
 
