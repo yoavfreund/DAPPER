@@ -40,7 +40,7 @@ body.gsc-overflow-hidden #sidebar {overflow: visible;}
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L1-L1146" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L1-L1145" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">&#34;&#34;&#34;Tools (notably `xpSpace`) for processing and presenting experiment data.&#34;&#34;&#34;
 
@@ -457,7 +457,8 @@ class SparseSpace(dict):
 
         **If** the entries of `self` have attributes matching their `coord`s,
         then this can be seen as the inverse of `__getitem__`. I.e.
-        &gt;&gt;&gt; self.coord_from_attrs(self[coord]) == coord  # doctest: +SKIP
+
+            self.coord_from_attrs(self[coord]) == coord
         &#34;&#34;&#34;
         coord = (getattr(entry, a, None) for a in self.axes)
         return self.Coord(*coord)
@@ -571,7 +572,7 @@ class SparseSpace(dict):
     def label_xSection(self, label, *NoneAttrs, **sub_coord):
         &#34;&#34;&#34;Insert duplicate entries for the given cross-section.
 
-        Works by adding the attr. `xSection` to the `SparseSpace.Coord`,
+        Works by adding the attr. `xSection` to the axes of `SparseSpace`,
         and setting it to `label` for entries matching `sub_coord`,
         reflecting the &#34;constance/constraint/fixation&#34; this represents.
         This distinguishes the entries in this fixed-affine subspace,
@@ -861,42 +862,48 @@ class xpSpace(SparseSpace):
         Parameters
         ----------
         statkey: str
-            The statistic from the experiments to report.
-        subcols: bool
-            If `True`, then subcolumns are added to indicate the
-            1σ confidence interval, and potentially some other stuff.
+            The statistic to extract from the `xp.avrgs` for each `xp`.
         axes: dict
-            Allots (maps) each role to a set of axis of the `xpSpace`.
-            Example:
-
-            &gt;&gt;&gt; dict(outer=&#39;da_method&#39;, inner=&#39;N&#39;, mean=&#39;seed&#39;,  # doctest: +SKIP
-            ...      optim=(&#39;infl&#39;,&#39;loc_rad&#39;))
+            Allots (maps) the axes/dimensions of `xpSpace` to different
+            roles in the printing of the table.
 
             - Herein, the &#34;role&#34; `outer` should list the axes/attributes
-            used to define the splitting of the results into *separate tables*:
-            one table for each distinct combination of attributes.
+              used to define the splitting of the results into *separate tables*:
+              one table for each distinct combination of attributes.
             - Similarly , the role `inner` determines which attributes
-            split a table into its columns.
-            - `mean` lists the attributes used over which the mean is taken.
-            - `optim` lists the attributes used over which the optimum result
-               is searched for.
+              split a table into its columns.
+            - `mean` lists the attributes over which the mean is taken
+              (for that row &amp; column)
+            - `optim` lists the attributes used over which the optimum
+               is searched for (after taking the mean).
 
-            Example: If `mean` is assigned to:
+            Example:
 
-            - `(&#34;seed&#34;,)`: Experiments are averaged accross seeds,
-                           and the 1σ (sub)col is computed as sqrt(var(xps)/N),
-                           where xps is a set of experiments.
+                dict(outer=&#39;da_method&#39;, inner=&#39;N&#39;, mean=&#39;seed&#39;,
+                     optim=(&#39;infl&#39;,&#39;loc_rad&#39;))
 
-            - `()`       : Experiments are averaged across nothing
-                           (i.e. this is an edge case).
+            Equivalently, use `mean=(&#34;seed&#34;,)`.
+            It is acceptible to not specify anything, e.g. `mean=()` or `mean=None`.
+        subcols: bool
+            If `True`, then subcolumns are added to indicate
 
-            - `None`     : Experiments are not averaged
-                           (i.e. the values are the same as above),
-                           and the 1σ (sub)col is computed from
-                           the time series of that single experiment.
+            - `1σ`: the confidence interval. If `mean=None` is used, this simply reports
+              the value `.prec` of the `statkey`, providing this is an `UncertainQtty`.
+              Otherwise, it is computed as `sqrt(var(xps)/N)`,
+              where `xps` is the set of statistic gathered over the `mean` axis.
+            - `*(optim)`: the optimal point (among all `optim` attributes),
+              as defined by `costfun`.
+            - `☠`: the number of failures (non-finite values) at that point.
+            - `✓`: the number of successes that go into the value
         decimals: int
             Number of decimals to print.
             If `None`, this is determined for each statistic by its uncertainty.
+        costfun: str or function
+            Use `&#39;increasing&#39;` (default) or `&#39;decreasing&#39;` to indicate that the optimum
+            is defined as the lowest or highest value of the `statkey` found.
+        squeeze_labels: bool
+            Don&#39;t include redundant attributes in the line labels.
+            Caution: `get_style` will not be able to access the eliminated attrs.
         &#34;&#34;&#34;
         # Inform axes[&#34;mean&#34;]
         if axes.get(&#39;mean&#39;, None):
@@ -996,39 +1003,31 @@ class xpSpace(SparseSpace):
              fignum=None, figsize=None, panels=None,
              title2=None, costfun=None, unique_labels=True,
              squeeze_labels=True):
-        &#34;&#34;&#34;Plot the avrgs of `statkey` as a function of `axis[&#34;inner&#34;]`.
+        &#34;&#34;&#34;Plot (tables of) results.
 
-        Optionally, the experiments can be grouped by `axis[&#34;outer&#34;]`,
-        producing a figure with columns of panels.
-        First of all, though, mean and optimum computations are done for
-        `axis[&#34;mean&#34;]` and `axis[&#34;optim&#34;]`, where the optimization can
-        be controlled through `costfun` (see `xpSpace.tune`)
+        Analagously to `xpSpace.print`,
+        the averages are grouped by `axis[&#34;inner&#34;]`,
+        which here plays the role of the x-axis.
 
-        This is entirely analogous to the roles of `axis` in `xpSpace.print`.
+        The averages can also be grouped by `axis[&#34;outer&#34;]`,
+        producing a figure with multiple (columns of) panels.
 
-        The optimal parameters are plotted in smaller panels below the main plot.
-        This can be prevented by providing the figure axes through the `panels` arg.
+        The optimal points/parameters/attributes are plotted in smaller panels
+        below the main plot. This can be turned off by providing the figure
+        axes through the `panels` argument.
+
+        The parameters `statkey`, `axes`, `costfun`, `sqeeze_labels`
+        are documented in `xpSpace.print`.
 
         Parameters
         ----------
-        statkey: str
-            The statistic to plot.
-        axes: dict
-            See `xpSpace.print`
         get_style: function
-            A function that accepts some object, and returns a dict of line styles,
+            A function that takes an object, and returns a dict of line styles,
             usually as a function of the object&#39;s attributes.
-        panels:
-            Plot axes to use (optional).
-        title2:
-            Figure title
-        costfun: function
-            Forwarded to `xpSpace.tune`
+        title2: str
+            Figure title (in addition to the defaults).
         unique_labels: bool
             Only show a given label once.
-        squeeze_labels: bool
-            Don&#39;t include redundant attributes in the line labels.
-            Caution: `get_style` will not be able to access the eliminated attrs.
         &#34;&#34;&#34;
         def plot1(panelcol, row, style):
             &#34;&#34;&#34;Plot a given line (row) in the main panel and the optim panels.
@@ -1578,7 +1577,7 @@ This is probably also the reason that the loading time is sometimes reduced.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L1104-L1146" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L1103-L1145" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def default_fig_adjustments(tables, xticks_from_data=False):
     &#34;&#34;&#34;Beautify. These settings do not generalize well.&#34;&#34;&#34;
@@ -1713,7 +1712,7 @@ KeyError: (1, 2, 3, 4)
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L265-L547" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L265-L548" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class SparseSpace(dict):
     &#34;&#34;&#34;Subclass of `dict` that enforces key conformity to a given `namedtuple`.
@@ -1866,7 +1865,8 @@ KeyError: (1, 2, 3, 4)
 
         **If** the entries of `self` have attributes matching their `coord`s,
         then this can be seen as the inverse of `__getitem__`. I.e.
-        &gt;&gt;&gt; self.coord_from_attrs(self[coord]) == coord  # doctest: +SKIP
+
+            self.coord_from_attrs(self[coord]) == coord
         &#34;&#34;&#34;
         coord = (getattr(entry, a, None) for a in self.axes)
         return self.Coord(*coord)
@@ -1980,7 +1980,7 @@ KeyError: (1, 2, 3, 4)
     def label_xSection(self, label, *NoneAttrs, **sub_coord):
         &#34;&#34;&#34;Insert duplicate entries for the given cross-section.
 
-        Works by adding the attr. `xSection` to the `SparseSpace.Coord`,
+        Works by adding the attr. `xSection` to the axes of `SparseSpace`,
         and setting it to `label` for entries matching `sub_coord`,
         reflecting the &#34;constance/constraint/fixation&#34; this represents.
         This distinguishes the entries in this fixed-affine subspace,
@@ -2085,19 +2085,20 @@ for the internal list.</p></div>
 <div class="desc"><p>Form a <code>coord</code> for this <code><a title="dapper.xp_process.xpSpace" href="#dapper.xp_process.xpSpace">xpSpace</a></code> by extracting attrs. from <code>obj</code>.</p>
 <p><strong>If</strong> the entries of <code>self</code> have attributes matching their <code>coord</code>s,
 then this can be seen as the inverse of <code>__getitem__</code>. I.e.</p>
-<pre><code class="language-python-repl">&gt;&gt;&gt; self.coord_from_attrs(self[coord]) == coord  # doctest: +SKIP
+<pre><code>self.coord_from_attrs(self[coord]) == coord
 </code></pre></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L411-L419" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L411-L420" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def coord_from_attrs(self, entry):
     &#34;&#34;&#34;Form a `coord` for this `xpSpace` by extracting attrs. from `obj`.
 
     **If** the entries of `self` have attributes matching their `coord`s,
     then this can be seen as the inverse of `__getitem__`. I.e.
-    &gt;&gt;&gt; self.coord_from_attrs(self[coord]) == coord  # doctest: +SKIP
+
+        self.coord_from_attrs(self[coord]) == coord
     &#34;&#34;&#34;
     coord = (getattr(entry, a, None) for a in self.axes)
     return self.Coord(*coord)</code></pre>
@@ -2118,7 +2119,7 @@ then this can be seen as the inverse of <code>__getitem__</code>. I.e.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L421-L442" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L422-L443" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def coords_matching(self, **kwargs):
     &#34;&#34;&#34;Get all `coord`s matching kwargs.
@@ -2155,7 +2156,7 @@ each one regrouping the entries with the same (projected) coordinate.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L462-L498" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L463-L499" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def nest(self, inner_axes=None, outer_axes=None):
     &#34;&#34;&#34;Project along `inner_acces` to yield a new `xpSpace` with axes `outer_axes`
@@ -2205,7 +2206,7 @@ each one regrouping the entries with the same (projected) coordinate.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L500-L519" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L501-L520" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def intersect_axes(self, attrs):
     &#34;&#34;&#34;Rm those `a` in `attrs` that are not in `self.axes`.
@@ -2237,7 +2238,7 @@ each one regrouping the entries with the same (projected) coordinate.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L521-L525" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L522-L526" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def append_axis(self, axis):
     self.__init__(self.axes+(axis,))
@@ -2251,7 +2252,7 @@ each one regrouping the entries with the same (projected) coordinate.</p>
 </code></dt>
 <dd>
 <div class="desc"><p>Insert duplicate entries for the given cross-section.</p>
-<p>Works by adding the attr. <code>xSection</code> to the <code>SparseSpace.Coord</code>,
+<p>Works by adding the attr. <code>xSection</code> to the axes of <code><a title="dapper.xp_process.SparseSpace" href="#dapper.xp_process.SparseSpace">SparseSpace</a></code>,
 and setting it to <code>label</code> for entries matching <code>sub_coord</code>,
 reflecting the "constance/constraint/fixation" this represents.
 This distinguishes the entries in this fixed-affine subspace,
@@ -2262,12 +2263,12 @@ preventing them from being shown in plot labels and tuning panels.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L527-L547" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L528-L548" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def label_xSection(self, label, *NoneAttrs, **sub_coord):
     &#34;&#34;&#34;Insert duplicate entries for the given cross-section.
 
-    Works by adding the attr. `xSection` to the `SparseSpace.Coord`,
+    Works by adding the attr. `xSection` to the axes of `SparseSpace`,
     and setting it to `label` for entries matching `sub_coord`,
     reflecting the &#34;constance/constraint/fixation&#34; this represents.
     This distinguishes the entries in this fixed-affine subspace,
@@ -2317,7 +2318,7 @@ both of which call <code><a title="dapper.xp_process.xpSpace.table_tree" href="#
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L553-L1101" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L554-L1100" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class xpSpace(SparseSpace):
     &#34;&#34;&#34;Functionality to facilitate working with `xps` and their results.
@@ -2586,42 +2587,48 @@ both of which call <code><a title="dapper.xp_process.xpSpace.table_tree" href="#
         Parameters
         ----------
         statkey: str
-            The statistic from the experiments to report.
-        subcols: bool
-            If `True`, then subcolumns are added to indicate the
-            1σ confidence interval, and potentially some other stuff.
+            The statistic to extract from the `xp.avrgs` for each `xp`.
         axes: dict
-            Allots (maps) each role to a set of axis of the `xpSpace`.
-            Example:
-
-            &gt;&gt;&gt; dict(outer=&#39;da_method&#39;, inner=&#39;N&#39;, mean=&#39;seed&#39;,  # doctest: +SKIP
-            ...      optim=(&#39;infl&#39;,&#39;loc_rad&#39;))
+            Allots (maps) the axes/dimensions of `xpSpace` to different
+            roles in the printing of the table.
 
             - Herein, the &#34;role&#34; `outer` should list the axes/attributes
-            used to define the splitting of the results into *separate tables*:
-            one table for each distinct combination of attributes.
+              used to define the splitting of the results into *separate tables*:
+              one table for each distinct combination of attributes.
             - Similarly , the role `inner` determines which attributes
-            split a table into its columns.
-            - `mean` lists the attributes used over which the mean is taken.
-            - `optim` lists the attributes used over which the optimum result
-               is searched for.
+              split a table into its columns.
+            - `mean` lists the attributes over which the mean is taken
+              (for that row &amp; column)
+            - `optim` lists the attributes used over which the optimum
+               is searched for (after taking the mean).
 
-            Example: If `mean` is assigned to:
+            Example:
 
-            - `(&#34;seed&#34;,)`: Experiments are averaged accross seeds,
-                           and the 1σ (sub)col is computed as sqrt(var(xps)/N),
-                           where xps is a set of experiments.
+                dict(outer=&#39;da_method&#39;, inner=&#39;N&#39;, mean=&#39;seed&#39;,
+                     optim=(&#39;infl&#39;,&#39;loc_rad&#39;))
 
-            - `()`       : Experiments are averaged across nothing
-                           (i.e. this is an edge case).
+            Equivalently, use `mean=(&#34;seed&#34;,)`.
+            It is acceptible to not specify anything, e.g. `mean=()` or `mean=None`.
+        subcols: bool
+            If `True`, then subcolumns are added to indicate
 
-            - `None`     : Experiments are not averaged
-                           (i.e. the values are the same as above),
-                           and the 1σ (sub)col is computed from
-                           the time series of that single experiment.
+            - `1σ`: the confidence interval. If `mean=None` is used, this simply reports
+              the value `.prec` of the `statkey`, providing this is an `UncertainQtty`.
+              Otherwise, it is computed as `sqrt(var(xps)/N)`,
+              where `xps` is the set of statistic gathered over the `mean` axis.
+            - `*(optim)`: the optimal point (among all `optim` attributes),
+              as defined by `costfun`.
+            - `☠`: the number of failures (non-finite values) at that point.
+            - `✓`: the number of successes that go into the value
         decimals: int
             Number of decimals to print.
             If `None`, this is determined for each statistic by its uncertainty.
+        costfun: str or function
+            Use `&#39;increasing&#39;` (default) or `&#39;decreasing&#39;` to indicate that the optimum
+            is defined as the lowest or highest value of the `statkey` found.
+        squeeze_labels: bool
+            Don&#39;t include redundant attributes in the line labels.
+            Caution: `get_style` will not be able to access the eliminated attrs.
         &#34;&#34;&#34;
         # Inform axes[&#34;mean&#34;]
         if axes.get(&#39;mean&#39;, None):
@@ -2721,39 +2728,31 @@ both of which call <code><a title="dapper.xp_process.xpSpace.table_tree" href="#
              fignum=None, figsize=None, panels=None,
              title2=None, costfun=None, unique_labels=True,
              squeeze_labels=True):
-        &#34;&#34;&#34;Plot the avrgs of `statkey` as a function of `axis[&#34;inner&#34;]`.
+        &#34;&#34;&#34;Plot (tables of) results.
 
-        Optionally, the experiments can be grouped by `axis[&#34;outer&#34;]`,
-        producing a figure with columns of panels.
-        First of all, though, mean and optimum computations are done for
-        `axis[&#34;mean&#34;]` and `axis[&#34;optim&#34;]`, where the optimization can
-        be controlled through `costfun` (see `xpSpace.tune`)
+        Analagously to `xpSpace.print`,
+        the averages are grouped by `axis[&#34;inner&#34;]`,
+        which here plays the role of the x-axis.
 
-        This is entirely analogous to the roles of `axis` in `xpSpace.print`.
+        The averages can also be grouped by `axis[&#34;outer&#34;]`,
+        producing a figure with multiple (columns of) panels.
 
-        The optimal parameters are plotted in smaller panels below the main plot.
-        This can be prevented by providing the figure axes through the `panels` arg.
+        The optimal points/parameters/attributes are plotted in smaller panels
+        below the main plot. This can be turned off by providing the figure
+        axes through the `panels` argument.
+
+        The parameters `statkey`, `axes`, `costfun`, `sqeeze_labels`
+        are documented in `xpSpace.print`.
 
         Parameters
         ----------
-        statkey: str
-            The statistic to plot.
-        axes: dict
-            See `xpSpace.print`
         get_style: function
-            A function that accepts some object, and returns a dict of line styles,
+            A function that takes an object, and returns a dict of line styles,
             usually as a function of the object&#39;s attributes.
-        panels:
-            Plot axes to use (optional).
-        title2:
-            Figure title
-        costfun: function
-            Forwarded to `xpSpace.tune`
+        title2: str
+            Figure title (in addition to the defaults).
         unique_labels: bool
             Only show a given label once.
-        squeeze_labels: bool
-            Don&#39;t include redundant attributes in the line labels.
-            Caution: `get_style` will not be able to access the eliminated attrs.
         &#34;&#34;&#34;
         def plot1(panelcol, row, style):
             &#34;&#34;&#34;Plot a given line (row) in the main panel and the optim panels.
@@ -2884,7 +2883,7 @@ both of which call <code><a title="dapper.xp_process.xpSpace.table_tree" href="#
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L577-L621" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L578-L622" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">@classmethod
 def from_list(cls, xps, ordering=None):
@@ -2944,7 +2943,7 @@ def from_list(cls, xps, ordering=None):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L623-L625" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L624-L626" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def fill(self, xps):
     &#34;&#34;&#34;Mass insertion.&#34;&#34;&#34;
@@ -2959,7 +2958,7 @@ def from_list(cls, xps, ordering=None):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L627-L631" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L628-L632" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def squeeze(self):
     &#34;&#34;&#34;Eliminate unnecessary axes/dimensions.&#34;&#34;&#34;
@@ -2976,7 +2975,7 @@ def from_list(cls, xps, ordering=None):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L633-L648" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L634-L649" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def get_stat(self, statkey=&#34;rmse.a&#34;):
     &#34;&#34;&#34;Make `xpSpace` with identical `keys`, but values `xp.avrgs.statkey`.&#34;&#34;&#34;
@@ -3004,7 +3003,7 @@ def from_list(cls, xps, ordering=None):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L650-L677" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L651-L678" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def mean(self, axes=None):
     # Note: The case `axes=()` should work w/o special treatment.
@@ -3044,7 +3043,7 @@ def from_list(cls, xps, ordering=None):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L679-L708" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L680-L709" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def tune(self, axes=None, costfun=None):
     &#34;&#34;&#34;Get (compile/tabulate) a stat. optimised wrt. tuning params.&#34;&#34;&#34;
@@ -3089,7 +3088,7 @@ Use <code>axis or ()</code> wherever tuples are required.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L710-L741" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L711-L742" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def validate_axes(self, axes):
     &#34;&#34;&#34;Validate axes.
@@ -3149,7 +3148,7 @@ when optimizing over tuning_axes.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L743-L806" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L744-L807" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def table_tree(self, statkey, axes, *, costfun=None):
     &#34;&#34;&#34;Hierarchical nest(): xp_dict&gt;outer&gt;inner&gt;mean&gt;optim.
@@ -3225,7 +3224,7 @@ when optimizing over tuning_axes.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L808-L810" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L809-L811" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def tickz(self, axis_name):
     &#34;&#34;&#34;Axis ticks without None&#34;&#34;&#34;
@@ -3240,63 +3239,57 @@ when optimizing over tuning_axes.</p></div>
 <h2 id="parameters">Parameters</h2>
 <dl>
 <dt><strong><code>statkey</code></strong> :&ensp;<code>str</code></dt>
-<dd>The statistic from the experiments to report.</dd>
-<dt><strong><code>subcols</code></strong> :&ensp;<code>bool</code></dt>
-<dd>If <code>True</code>, then subcolumns are added to indicate the
-1σ confidence interval, and potentially some other stuff.</dd>
+<dd>The statistic to extract from the <code>xp.avrgs</code> for each <code>xp</code>.</dd>
 <dt><strong><code>axes</code></strong> :&ensp;<code>dict</code></dt>
 <dd>
-<p>Allots (maps) each role to a set of axis of the <code><a title="dapper.xp_process.xpSpace" href="#dapper.xp_process.xpSpace">xpSpace</a></code>.
-Example:</p>
-<blockquote>
-<blockquote>
-<blockquote>
-<p>dict(outer='da_method', inner='N', mean='seed',
-# doctest: +SKIP
-&hellip;
-optim=('infl','loc_rad'))</p>
-</blockquote>
-</blockquote>
-</blockquote>
+<p>Allots (maps) the axes/dimensions of <code><a title="dapper.xp_process.xpSpace" href="#dapper.xp_process.xpSpace">xpSpace</a></code> to different
+roles in the printing of the table.</p>
 <ul>
 <li>Herein, the "role" <code>outer</code> should list the axes/attributes
 used to define the splitting of the results into <em>separate tables</em>:
 one table for each distinct combination of attributes.</li>
 <li>Similarly , the role <code>inner</code> determines which attributes
 split a table into its columns.</li>
-<li><code>mean</code> lists the attributes used over which the mean is taken.</li>
-<li><code>optim</code> lists the attributes used over which the optimum result
-is searched for.</li>
+<li><code>mean</code> lists the attributes over which the mean is taken
+(for that row &amp; column)</li>
+<li><code>optim</code> lists the attributes used over which the optimum
+is searched for (after taking the mean).</li>
 </ul>
-<p>Example: If <code>mean</code> is assigned to:</p>
+<p>Example:</p>
+<pre><code>dict(outer='da_method', inner='N', mean='seed',
+     optim=('infl','loc_rad'))
+</code></pre>
+<p>Equivalently, use <code>mean=("seed",)</code>.
+It is acceptible to not specify anything, e.g. <code>mean=()</code> or <code>mean=None</code>.</p>
+</dd>
+<dt><strong><code>subcols</code></strong> :&ensp;<code>bool</code></dt>
+<dd>
+<p>If <code>True</code>, then subcolumns are added to indicate</p>
 <ul>
-<li>
-<p><code>("seed",)</code>: Experiments are averaged accross seeds,
-and the 1σ (sub)col is computed as sqrt(var(xps)/N),
-where xps is a set of experiments.</p>
-</li>
-<li>
-<p><code>()</code>
-: Experiments are averaged across nothing
-(i.e. this is an edge case).</p>
-</li>
-<li>
-<p><code>None</code>
-: Experiments are not averaged
-(i.e. the values are the same as above),
-and the 1σ (sub)col is computed from
-the time series of that single experiment.</p>
-</li>
+<li><code>1σ</code>: the confidence interval. If <code>mean=None</code> is used, this simply reports
+the value <code>.prec</code> of the <code>statkey</code>, providing this is an <code>UncertainQtty</code>.
+Otherwise, it is computed as <code>sqrt(var(xps)/N)</code>,
+where <code>xps</code> is the set of statistic gathered over the <code>mean</code> axis.</li>
+<li><code>*(optim)</code>: the optimal point (among all <code>optim</code> attributes),
+as defined by <code>costfun</code>.</li>
+<li><code>☠</code>: the number of failures (non-finite values) at that point.</li>
+<li><code>✓</code>: the number of successes that go into the value</li>
 </ul>
 </dd>
 <dt><strong><code>decimals</code></strong> :&ensp;<code>int</code></dt>
 <dd>Number of decimals to print.
 If <code>None</code>, this is determined for each statistic by its uncertainty.</dd>
+<dt><strong><code>costfun</code></strong> :&ensp;<code>str</code> or <code>function</code></dt>
+<dd>Use <code>'increasing'</code> (default) or <code>'decreasing'</code> to indicate that the optimum
+is defined as the lowest or highest value of the <code>statkey</code> found.</dd>
+<dt><strong><code>squeeze_labels</code></strong> :&ensp;<code>bool</code></dt>
+<dd>Don't include redundant attributes in the line labels.
+Caution: <code>get_style</code> will not be able to access the eliminated attrs.</dd>
 </dl></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L812-L949" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L813-L956" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def print(self, statkey=&#34;rmse.a&#34;, axes=AXES_ROLES,  # noqa
           subcols=True, decimals=None, costfun=None,
@@ -3306,42 +3299,48 @@ If <code>None</code>, this is determined for each statistic by its uncertainty.<
     Parameters
     ----------
     statkey: str
-        The statistic from the experiments to report.
-    subcols: bool
-        If `True`, then subcolumns are added to indicate the
-        1σ confidence interval, and potentially some other stuff.
+        The statistic to extract from the `xp.avrgs` for each `xp`.
     axes: dict
-        Allots (maps) each role to a set of axis of the `xpSpace`.
-        Example:
-
-        &gt;&gt;&gt; dict(outer=&#39;da_method&#39;, inner=&#39;N&#39;, mean=&#39;seed&#39;,  # doctest: +SKIP
-        ...      optim=(&#39;infl&#39;,&#39;loc_rad&#39;))
+        Allots (maps) the axes/dimensions of `xpSpace` to different
+        roles in the printing of the table.
 
         - Herein, the &#34;role&#34; `outer` should list the axes/attributes
-        used to define the splitting of the results into *separate tables*:
-        one table for each distinct combination of attributes.
+          used to define the splitting of the results into *separate tables*:
+          one table for each distinct combination of attributes.
         - Similarly , the role `inner` determines which attributes
-        split a table into its columns.
-        - `mean` lists the attributes used over which the mean is taken.
-        - `optim` lists the attributes used over which the optimum result
-           is searched for.
+          split a table into its columns.
+        - `mean` lists the attributes over which the mean is taken
+          (for that row &amp; column)
+        - `optim` lists the attributes used over which the optimum
+           is searched for (after taking the mean).
 
-        Example: If `mean` is assigned to:
+        Example:
 
-        - `(&#34;seed&#34;,)`: Experiments are averaged accross seeds,
-                       and the 1σ (sub)col is computed as sqrt(var(xps)/N),
-                       where xps is a set of experiments.
+            dict(outer=&#39;da_method&#39;, inner=&#39;N&#39;, mean=&#39;seed&#39;,
+                 optim=(&#39;infl&#39;,&#39;loc_rad&#39;))
 
-        - `()`       : Experiments are averaged across nothing
-                       (i.e. this is an edge case).
+        Equivalently, use `mean=(&#34;seed&#34;,)`.
+        It is acceptible to not specify anything, e.g. `mean=()` or `mean=None`.
+    subcols: bool
+        If `True`, then subcolumns are added to indicate
 
-        - `None`     : Experiments are not averaged
-                       (i.e. the values are the same as above),
-                       and the 1σ (sub)col is computed from
-                       the time series of that single experiment.
+        - `1σ`: the confidence interval. If `mean=None` is used, this simply reports
+          the value `.prec` of the `statkey`, providing this is an `UncertainQtty`.
+          Otherwise, it is computed as `sqrt(var(xps)/N)`,
+          where `xps` is the set of statistic gathered over the `mean` axis.
+        - `*(optim)`: the optimal point (among all `optim` attributes),
+          as defined by `costfun`.
+        - `☠`: the number of failures (non-finite values) at that point.
+        - `✓`: the number of successes that go into the value
     decimals: int
         Number of decimals to print.
         If `None`, this is determined for each statistic by its uncertainty.
+    costfun: str or function
+        Use `&#39;increasing&#39;` (default) or `&#39;decreasing&#39;` to indicate that the optimum
+        is defined as the lowest or highest value of the `statkey` found.
+    squeeze_labels: bool
+        Don&#39;t include redundant attributes in the line labels.
+        Caution: `get_style` will not be able to access the eliminated attrs.
     &#34;&#34;&#34;
     # Inform axes[&#34;mean&#34;]
     if axes.get(&#39;mean&#39;, None):
@@ -3442,78 +3441,61 @@ If <code>None</code>, this is determined for each statistic by its uncertainty.<
 <span>def <span class="ident">plot</span></span>(<span>self, statkey='rmse.a', axes={'outer': None, 'inner': None, 'mean': None, 'optim': None}, get_style=&lt;function default_styles&gt;, fignum=None, figsize=None, panels=None, title2=None, costfun=None, unique_labels=True, squeeze_labels=True)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Plot the avrgs of <code>statkey</code> as a function of <code>axis["inner"]</code>.</p>
-<p>Optionally, the experiments can be grouped by <code>axis["outer"]</code>,
-producing a figure with columns of panels.
-First of all, though, mean and optimum computations are done for
-<code>axis["mean"]</code> and <code>axis["optim"]</code>, where the optimization can
-be controlled through <code>costfun</code> (see <code><a title="dapper.xp_process.xpSpace.tune" href="#dapper.xp_process.xpSpace.tune">xpSpace.tune()</a></code>)</p>
-<p>This is entirely analogous to the roles of <code>axis</code> in <code><a title="dapper.xp_process.xpSpace.print" href="#dapper.xp_process.xpSpace.print">xpSpace.print()</a></code>.</p>
-<p>The optimal parameters are plotted in smaller panels below the main plot.
-This can be prevented by providing the figure axes through the <code>panels</code> arg.</p>
+<div class="desc"><p>Plot (tables of) results.</p>
+<p>Analagously to <code><a title="dapper.xp_process.xpSpace.print" href="#dapper.xp_process.xpSpace.print">xpSpace.print()</a></code>,
+the averages are grouped by <code>axis["inner"]</code>,
+which here plays the role of the x-axis.</p>
+<p>The averages can also be grouped by <code>axis["outer"]</code>,
+producing a figure with multiple (columns of) panels.</p>
+<p>The optimal points/parameters/attributes are plotted in smaller panels
+below the main plot. This can be turned off by providing the figure
+axes through the <code>panels</code> argument.</p>
+<p>The parameters <code>statkey</code>, <code>axes</code>, <code>costfun</code>, <code>sqeeze_labels</code>
+are documented in <code><a title="dapper.xp_process.xpSpace.print" href="#dapper.xp_process.xpSpace.print">xpSpace.print()</a></code>.</p>
 <h2 id="parameters">Parameters</h2>
 <dl>
-<dt><strong><code>statkey</code></strong> :&ensp;<code>str</code></dt>
-<dd>The statistic to plot.</dd>
-<dt><strong><code>axes</code></strong> :&ensp;<code>dict</code></dt>
-<dd>See <code><a title="dapper.xp_process.xpSpace.print" href="#dapper.xp_process.xpSpace.print">xpSpace.print()</a></code></dd>
 <dt><strong><code>get_style</code></strong> :&ensp;<code>function</code></dt>
-<dd>A function that accepts some object, and returns a dict of line styles,
+<dd>A function that takes an object, and returns a dict of line styles,
 usually as a function of the object's attributes.</dd>
-<dt>panels:</dt>
-<dt>Plot axes to use (optional).</dt>
-<dt>title2:</dt>
-<dt>Figure title</dt>
-<dt><strong><code>costfun</code></strong> :&ensp;<code>function</code></dt>
-<dd>Forwarded to <code><a title="dapper.xp_process.xpSpace.tune" href="#dapper.xp_process.xpSpace.tune">xpSpace.tune()</a></code></dd>
+<dt><strong><code>title2</code></strong> :&ensp;<code>str</code></dt>
+<dd>Figure title (in addition to the defaults).</dd>
 <dt><strong><code>unique_labels</code></strong> :&ensp;<code>bool</code></dt>
 <dd>Only show a given label once.</dd>
-<dt><strong><code>squeeze_labels</code></strong> :&ensp;<code>bool</code></dt>
-<dd>Don't include redundant attributes in the line labels.
-Caution: <code>get_style</code> will not be able to access the eliminated attrs.</dd>
 </dl></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L951-L1101" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L958-L1100" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def plot(self, statkey=&#34;rmse.a&#34;, axes=AXES_ROLES, get_style=default_styles,
          fignum=None, figsize=None, panels=None,
          title2=None, costfun=None, unique_labels=True,
          squeeze_labels=True):
-    &#34;&#34;&#34;Plot the avrgs of `statkey` as a function of `axis[&#34;inner&#34;]`.
+    &#34;&#34;&#34;Plot (tables of) results.
 
-    Optionally, the experiments can be grouped by `axis[&#34;outer&#34;]`,
-    producing a figure with columns of panels.
-    First of all, though, mean and optimum computations are done for
-    `axis[&#34;mean&#34;]` and `axis[&#34;optim&#34;]`, where the optimization can
-    be controlled through `costfun` (see `xpSpace.tune`)
+    Analagously to `xpSpace.print`,
+    the averages are grouped by `axis[&#34;inner&#34;]`,
+    which here plays the role of the x-axis.
 
-    This is entirely analogous to the roles of `axis` in `xpSpace.print`.
+    The averages can also be grouped by `axis[&#34;outer&#34;]`,
+    producing a figure with multiple (columns of) panels.
 
-    The optimal parameters are plotted in smaller panels below the main plot.
-    This can be prevented by providing the figure axes through the `panels` arg.
+    The optimal points/parameters/attributes are plotted in smaller panels
+    below the main plot. This can be turned off by providing the figure
+    axes through the `panels` argument.
+
+    The parameters `statkey`, `axes`, `costfun`, `sqeeze_labels`
+    are documented in `xpSpace.print`.
 
     Parameters
     ----------
-    statkey: str
-        The statistic to plot.
-    axes: dict
-        See `xpSpace.print`
     get_style: function
-        A function that accepts some object, and returns a dict of line styles,
+        A function that takes an object, and returns a dict of line styles,
         usually as a function of the object&#39;s attributes.
-    panels:
-        Plot axes to use (optional).
-    title2:
-        Figure title
-    costfun: function
-        Forwarded to `xpSpace.tune`
+    title2: str
+        Figure title (in addition to the defaults).
     unique_labels: bool
         Only show a given label once.
-    squeeze_labels: bool
-        Don&#39;t include redundant attributes in the line labels.
-        Caution: `get_style` will not be able to access the eliminated attrs.
     &#34;&#34;&#34;
     def plot1(panelcol, row, style):
         &#34;&#34;&#34;Plot a given line (row) in the main panel and the optim panels.
