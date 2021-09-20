@@ -40,153 +40,30 @@ body.gsc-overflow-hidden #sidebar {overflow: visible;}
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L1-L990" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L1-L867" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">&#34;&#34;&#34;Tools (notably `xpSpace`) for processing and presenting experiment data.&#34;&#34;&#34;
 
 import collections
 import copy
 import logging
-import os
-import shutil
 import warnings
-from datetime import datetime
-from pathlib import Path
 
 import colorama
-import dill
 import numpy as np
 import struct_tools
 from mpl_tools import place
 from patlib.std import nonchalance, set_tmp
 from tabulate import tabulate
-from tqdm.auto import tqdm
 
-import dapper.tools.remote.uplink as uplink
 from dapper.dpr_config import rc
 from dapper.stats import align_col, unpack_uqs
 from dapper.tools.colors import color_text, stripe
 from dapper.tools.rounding import UncertainQtty
 from dapper.tools.viz import NoneDict, default_styles
-from dapper.xp_launch import XP_TIMESTAMP_TEMPLATE, xpList
+from dapper.xp_launch import xpList
 
 mpl_logger = logging.getLogger(&#39;matplotlib&#39;)
-
-
-def find_latest_run(root: Path):
-    &#34;&#34;&#34;Find the latest experiment (dir containing many)&#34;&#34;&#34;
-    def parse(d):
-        try:
-            return datetime.strptime(d.name, XP_TIMESTAMP_TEMPLATE)
-        except ValueError:
-            return None
-    dd = [e for e in (parse(d) for d in root.iterdir()) if e is not None]
-    d = max(dd)
-    d = datetime.strftime(d, XP_TIMESTAMP_TEMPLATE)
-    return d
-
-
-def load_HMM(save_as):
-    &#34;&#34;&#34;Load HMM from `xp.com` from given dir.&#34;&#34;&#34;
-    save_as = Path(save_as).expanduser()
-    HMM = dill.load(open(save_as/&#34;xp.com&#34;, &#34;rb&#34;))[&#34;HMM&#34;]
-    return HMM
-
-
-def load_xps(save_as):
-    &#34;&#34;&#34;Load `xps` (as a `list`) from given dir.&#34;&#34;&#34;
-    save_as = Path(save_as).expanduser()
-    files = [d/&#34;xp&#34; for d in uplink.list_job_dirs(save_as)]
-
-    def load_any(filepath):
-        &#34;&#34;&#34;Load any/all `xp&#39;s` from `filepath`.&#34;&#34;&#34;
-        with open(filepath, &#34;rb&#34;) as F:
-            # If experiment crashed, then xp will be empty
-            try:
-                data = dill.load(F)
-            except EOFError:
-                return []
-            # Always return list
-            try:
-                return data[&#34;xps&#34;]
-            except KeyError:
-                return [data[&#34;xp&#34;]]
-
-    print(&#34;Loading %d files from %s&#34; % (len(files), save_as))
-    xps = []  # NB: progbar wont clean up properly w/ list compr.
-    for f in tqdm(files, desc=&#34;Loading&#34;):
-        xps.extend(load_any(f))
-
-    if len(xps) &lt; len(files):
-        print(f&#34;{len(files)-len(xps)} files could not be loaded.&#34;)
-
-    return xps
-
-
-def save_xps(xps, save_as, nDir=100):
-    &#34;&#34;&#34;Split xps and save in save_as/i for i in range(nDir).
-
-    Example
-    -------
-    Rename attr n_iter to nIter:
-    &gt;&gt;&gt; proj_name = &#34;Stein&#34;
-    &gt;&gt;&gt; dd = rc.dirs.data / proj_name
-    &gt;&gt;&gt; save_as = dd / &#34;run_2020-09-22__19:36:13&#34;
-
-    &gt;&gt;&gt; for save_as in dd.iterdir():  # doctest: +SKIP
-    ...     save_as = dd / save_as
-    ...
-    ...     xps = load_xps(save_as)
-    ...     HMM = load_HMM(save_as)
-    ...
-    ...     for xp in xps:
-    ...         if hasattr(xp,&#34;n_iter&#34;):
-    ...             xp.nIter = xp.n_iter
-    ...             del xp.n_iter
-    ...
-    ...     overwrite_xps(xps, save_as)
-    &#34;&#34;&#34;
-    save_as = Path(save_as).expanduser()
-    save_as.mkdir(parents=False, exist_ok=False)
-
-    splitting = np.array_split(xps, nDir)
-    for i, sub_xps in enumerate(tqdm(splitting, desc=&#34;Saving&#34;)):
-        if len(sub_xps):
-            iDir = save_as / str(i)
-            os.mkdir(iDir)
-            with open(iDir/&#34;xp&#34;, &#34;wb&#34;) as F:
-                dill.dump({&#39;xps&#39;: sub_xps}, F)
-
-
-def overwrite_xps(xps, save_as, nDir=100):
-    &#34;&#34;&#34;Save xps in save_as, but safely (by first saving to tmp).&#34;&#34;&#34;
-    save_xps(xps, save_as/&#34;tmp&#34;, nDir)
-
-    # Delete
-    for d in tqdm(uplink.list_job_dirs(save_as),
-                  desc=&#34;Deleting old&#34;):
-        shutil.rmtree(d)
-
-    # Mv up from tmp/ -- goes quick, coz there are not many.
-    for d in os.listdir(save_as/&#34;tmp&#34;):
-        shutil.move(save_as/&#34;tmp&#34;/d, save_as/d)
-
-    shutil.rmtree(save_as/&#34;tmp&#34;)
-
-
-def reduce_inodes(save_as, nDir=100):
-    &#34;&#34;&#34;Reduce the number of `xp` dirs
-
-    by packing multiple `xp`s into lists (`xps`).
-
-    This reduces the **number** of files (inodes) on the system,
-    which limits storage capacity (along with **size**).
-
-    It also deletes files &#34;xp.var&#34; and &#34;out&#34;,
-    whose main content tends to be the printed progbar.
-    This probably leads to reduced loading time is sometimes reduced.
-    &#34;&#34;&#34;
-    overwrite_xps(load_xps(save_as), save_as, nDir)
 
 
 class SparseSpace(dict):
@@ -1039,210 +916,6 @@ class xpSpace(SparseSpace):
 <section>
 </section>
 <section>
-<h2 class="section-title" id="header-functions">Functions</h2>
-<dl>
-<dt id="dapper.xp_process.find_latest_run"><code class="name flex">
-<span>def <span class="ident">find_latest_run</span></span>(<span>root: pathlib.Path)</span>
-</code></dt>
-<dd>
-<div class="desc"><p>Find the latest experiment (dir containing many)</p></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L32-L42" class="git-link">Browse git</a>
-</summary>
-<pre><code class="python">def find_latest_run(root: Path):
-    &#34;&#34;&#34;Find the latest experiment (dir containing many)&#34;&#34;&#34;
-    def parse(d):
-        try:
-            return datetime.strptime(d.name, XP_TIMESTAMP_TEMPLATE)
-        except ValueError:
-            return None
-    dd = [e for e in (parse(d) for d in root.iterdir()) if e is not None]
-    d = max(dd)
-    d = datetime.strftime(d, XP_TIMESTAMP_TEMPLATE)
-    return d</code></pre>
-</details>
-</dd>
-<dt id="dapper.xp_process.load_HMM"><code class="name flex">
-<span>def <span class="ident">load_HMM</span></span>(<span>save_as)</span>
-</code></dt>
-<dd>
-<div class="desc"><p>Load HMM from <code>xp.com</code> from given dir.</p></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L45-L49" class="git-link">Browse git</a>
-</summary>
-<pre><code class="python">def load_HMM(save_as):
-    &#34;&#34;&#34;Load HMM from `xp.com` from given dir.&#34;&#34;&#34;
-    save_as = Path(save_as).expanduser()
-    HMM = dill.load(open(save_as/&#34;xp.com&#34;, &#34;rb&#34;))[&#34;HMM&#34;]
-    return HMM</code></pre>
-</details>
-</dd>
-<dt id="dapper.xp_process.load_xps"><code class="name flex">
-<span>def <span class="ident">load_xps</span></span>(<span>save_as)</span>
-</code></dt>
-<dd>
-<div class="desc"><p>Load <code>xps</code> (as a <code>list</code>) from given dir.</p></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L52-L79" class="git-link">Browse git</a>
-</summary>
-<pre><code class="python">def load_xps(save_as):
-    &#34;&#34;&#34;Load `xps` (as a `list`) from given dir.&#34;&#34;&#34;
-    save_as = Path(save_as).expanduser()
-    files = [d/&#34;xp&#34; for d in uplink.list_job_dirs(save_as)]
-
-    def load_any(filepath):
-        &#34;&#34;&#34;Load any/all `xp&#39;s` from `filepath`.&#34;&#34;&#34;
-        with open(filepath, &#34;rb&#34;) as F:
-            # If experiment crashed, then xp will be empty
-            try:
-                data = dill.load(F)
-            except EOFError:
-                return []
-            # Always return list
-            try:
-                return data[&#34;xps&#34;]
-            except KeyError:
-                return [data[&#34;xp&#34;]]
-
-    print(&#34;Loading %d files from %s&#34; % (len(files), save_as))
-    xps = []  # NB: progbar wont clean up properly w/ list compr.
-    for f in tqdm(files, desc=&#34;Loading&#34;):
-        xps.extend(load_any(f))
-
-    if len(xps) &lt; len(files):
-        print(f&#34;{len(files)-len(xps)} files could not be loaded.&#34;)
-
-    return xps</code></pre>
-</details>
-</dd>
-<dt id="dapper.xp_process.save_xps"><code class="name flex">
-<span>def <span class="ident">save_xps</span></span>(<span>xps, save_as, nDir=100)</span>
-</code></dt>
-<dd>
-<div class="desc"><p>Split xps and save in save_as/i for i in range(nDir).</p>
-<h2 id="example">Example</h2>
-<p>Rename attr n_iter to nIter:</p>
-<pre><code class="language-python-repl">&gt;&gt;&gt; proj_name = &quot;Stein&quot;
-&gt;&gt;&gt; dd = rc.dirs.data / proj_name
-&gt;&gt;&gt; save_as = dd / &quot;run_2020-09-22__19:36:13&quot;
-</code></pre>
-<pre><code class="language-python-repl">&gt;&gt;&gt; for save_as in dd.iterdir():  # doctest: +SKIP
-...     save_as = dd / save_as
-...
-...     xps = load_xps(save_as)
-...     HMM = load_HMM(save_as)
-...
-...     for xp in xps:
-...         if hasattr(xp,&quot;n_iter&quot;):
-...             xp.nIter = xp.n_iter
-...             del xp.n_iter
-...
-...     overwrite_xps(xps, save_as)
-</code></pre></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L82-L114" class="git-link">Browse git</a>
-</summary>
-<pre><code class="python">def save_xps(xps, save_as, nDir=100):
-    &#34;&#34;&#34;Split xps and save in save_as/i for i in range(nDir).
-
-    Example
-    -------
-    Rename attr n_iter to nIter:
-    &gt;&gt;&gt; proj_name = &#34;Stein&#34;
-    &gt;&gt;&gt; dd = rc.dirs.data / proj_name
-    &gt;&gt;&gt; save_as = dd / &#34;run_2020-09-22__19:36:13&#34;
-
-    &gt;&gt;&gt; for save_as in dd.iterdir():  # doctest: +SKIP
-    ...     save_as = dd / save_as
-    ...
-    ...     xps = load_xps(save_as)
-    ...     HMM = load_HMM(save_as)
-    ...
-    ...     for xp in xps:
-    ...         if hasattr(xp,&#34;n_iter&#34;):
-    ...             xp.nIter = xp.n_iter
-    ...             del xp.n_iter
-    ...
-    ...     overwrite_xps(xps, save_as)
-    &#34;&#34;&#34;
-    save_as = Path(save_as).expanduser()
-    save_as.mkdir(parents=False, exist_ok=False)
-
-    splitting = np.array_split(xps, nDir)
-    for i, sub_xps in enumerate(tqdm(splitting, desc=&#34;Saving&#34;)):
-        if len(sub_xps):
-            iDir = save_as / str(i)
-            os.mkdir(iDir)
-            with open(iDir/&#34;xp&#34;, &#34;wb&#34;) as F:
-                dill.dump({&#39;xps&#39;: sub_xps}, F)</code></pre>
-</details>
-</dd>
-<dt id="dapper.xp_process.overwrite_xps"><code class="name flex">
-<span>def <span class="ident">overwrite_xps</span></span>(<span>xps, save_as, nDir=100)</span>
-</code></dt>
-<dd>
-<div class="desc"><p>Save xps in save_as, but safely (by first saving to tmp).</p></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L117-L130" class="git-link">Browse git</a>
-</summary>
-<pre><code class="python">def overwrite_xps(xps, save_as, nDir=100):
-    &#34;&#34;&#34;Save xps in save_as, but safely (by first saving to tmp).&#34;&#34;&#34;
-    save_xps(xps, save_as/&#34;tmp&#34;, nDir)
-
-    # Delete
-    for d in tqdm(uplink.list_job_dirs(save_as),
-                  desc=&#34;Deleting old&#34;):
-        shutil.rmtree(d)
-
-    # Mv up from tmp/ -- goes quick, coz there are not many.
-    for d in os.listdir(save_as/&#34;tmp&#34;):
-        shutil.move(save_as/&#34;tmp&#34;/d, save_as/d)
-
-    shutil.rmtree(save_as/&#34;tmp&#34;)</code></pre>
-</details>
-</dd>
-<dt id="dapper.xp_process.reduce_inodes"><code class="name flex">
-<span>def <span class="ident">reduce_inodes</span></span>(<span>save_as, nDir=100)</span>
-</code></dt>
-<dd>
-<div class="desc"><p>Reduce the number of <code>xp</code> dirs</p>
-<p>by packing multiple <code>xp</code>s into lists (<code>xps</code>).</p>
-<p>This reduces the <strong>number</strong> of files (inodes) on the system,
-which limits storage capacity (along with <strong>size</strong>).</p>
-<p>It also deletes files "xp.var" and "out",
-whose main content tends to be the printed progbar.
-This probably leads to reduced loading time is sometimes reduced.</p></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L133-L145" class="git-link">Browse git</a>
-</summary>
-<pre><code class="python">def reduce_inodes(save_as, nDir=100):
-    &#34;&#34;&#34;Reduce the number of `xp` dirs
-
-    by packing multiple `xp`s into lists (`xps`).
-
-    This reduces the **number** of files (inodes) on the system,
-    which limits storage capacity (along with **size**).
-
-    It also deletes files &#34;xp.var&#34; and &#34;out&#34;,
-    whose main content tends to be the printed progbar.
-    This probably leads to reduced loading time is sometimes reduced.
-    &#34;&#34;&#34;
-    overwrite_xps(load_xps(save_as), save_as, nDir)</code></pre>
-</details>
-</dd>
-</dl>
 </section>
 <section>
 <h2 class="section-title" id="header-classes">Classes</h2>
@@ -1305,7 +978,7 @@ KeyError: (1, 2, 3, 4)
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L148-L431" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L25-L308" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class SparseSpace(dict):
     &#34;&#34;&#34;Subclass of `dict` that enforces key conformity to a given `namedtuple`.
@@ -1608,7 +1281,7 @@ KeyError: (1, 2, 3, 4)
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L201-L203" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L78-L80" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">@property
 def axes(self):
@@ -1628,7 +1301,7 @@ consist of (a single) string, which is not very interesting for SparseSpace.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L221-L234" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L98-L111" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def update(self, items):
     &#34;&#34;&#34;Update dict, using the custom `__setitem__` to ensure key conformity.
@@ -1657,7 +1330,7 @@ for the internal list.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L283-L292" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L160-L169" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def get_for(self, ticks, default=None):
     &#34;&#34;&#34;Almost `[self.get(Coord(x)) for x in ticks]`.
@@ -1683,7 +1356,7 @@ then this can be seen as the inverse of <code>__getitem__</code>. I.e.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L294-L303" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L171-L180" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def coord_from_attrs(self, entry):
     &#34;&#34;&#34;Form a `coord` for this `xpSpace` by extracting attrs. from `obj`.
@@ -1712,7 +1385,7 @@ then this can be seen as the inverse of <code>__getitem__</code>. I.e.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L305-L326" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L182-L203" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def coords_matching(self, **kwargs):
     &#34;&#34;&#34;Get all `coord`s matching kwargs.
@@ -1749,7 +1422,7 @@ each one regrouping the entries with the same (projected) coordinate.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L346-L382" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L223-L259" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def nest(self, inner_axes=None, outer_axes=None):
     &#34;&#34;&#34;Project along `inner_acces` to yield a new `xpSpace` with axes `outer_axes`
@@ -1799,7 +1472,7 @@ each one regrouping the entries with the same (projected) coordinate.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L384-L403" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L261-L280" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def intersect_axes(self, attrs):
     &#34;&#34;&#34;Rm those `a` in `attrs` that are not in `self.axes`.
@@ -1831,7 +1504,7 @@ each one regrouping the entries with the same (projected) coordinate.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L405-L409" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L282-L286" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def append_axis(self, axis):
     self.__init__(self.axes+(axis,))
@@ -1856,7 +1529,7 @@ preventing them from being shown in plot labels and tuning panels.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L411-L431" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L288-L308" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def label_xSection(self, label, *NoneAttrs, **sub_coord):
     &#34;&#34;&#34;Insert duplicate entries for the given cross-section.
@@ -1911,7 +1584,7 @@ both of which call <code><a title="dapper.xp_process.xpSpace.table_tree" href="#
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L437-L990" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L314-L867" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class xpSpace(SparseSpace):
     &#34;&#34;&#34;Functionality to facilitate working with `xps` and their results.
@@ -2483,7 +2156,7 @@ both of which call <code><a title="dapper.xp_process.xpSpace.table_tree" href="#
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L461-L505" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L338-L382" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">@classmethod
 def from_list(cls, xps, ordering=None):
@@ -2543,7 +2216,7 @@ def from_list(cls, xps, ordering=None):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L507-L509" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L384-L386" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def fill(self, xps):
     &#34;&#34;&#34;Mass insertion.&#34;&#34;&#34;
@@ -2558,7 +2231,7 @@ def from_list(cls, xps, ordering=None):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L511-L515" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L388-L392" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def squeeze(self):
     &#34;&#34;&#34;Eliminate unnecessary axes/dimensions.&#34;&#34;&#34;
@@ -2575,7 +2248,7 @@ def from_list(cls, xps, ordering=None):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L517-L532" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L394-L409" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def get_stat(self, statkey=&#34;rmse.a&#34;):
     &#34;&#34;&#34;Make `xpSpace` with identical `keys`, but values `xp.avrgs.statkey`.&#34;&#34;&#34;
@@ -2603,7 +2276,7 @@ def from_list(cls, xps, ordering=None):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L534-L561" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L411-L438" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def mean(self, axes=None):
     # Note: The case `axes=()` should work w/o special treatment.
@@ -2643,7 +2316,7 @@ def from_list(cls, xps, ordering=None):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L563-L592" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L440-L469" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def tune(self, axes=None, costfun=None):
     &#34;&#34;&#34;Get (compile/tabulate) a stat. optimised wrt. tuning params.&#34;&#34;&#34;
@@ -2688,7 +2361,7 @@ Use <code>axis or ()</code> wherever tuples are required.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L594-L625" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L471-L502" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def validate_axes(self, axes):
     &#34;&#34;&#34;Validate axes.
@@ -2748,7 +2421,7 @@ when optimizing over tuning_axes.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L627-L690" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L504-L567" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def table_tree(self, statkey, axes, *, costfun=None):
     &#34;&#34;&#34;Hierarchical nest(): xp_dict&gt;outer&gt;inner&gt;mean&gt;optim.
@@ -2824,7 +2497,7 @@ when optimizing over tuning_axes.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L692-L694" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L569-L571" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def tickz(self, axis_name):
     &#34;&#34;&#34;Axis ticks without None&#34;&#34;&#34;
@@ -2891,7 +2564,7 @@ Caution: <code>get_style</code> will not be able to access the eliminated attrs.
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L696-L846" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L573-L723" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def print(self, statkey=&#34;rmse.a&#34;, axes=AXES_ROLES,  # noqa
           subcols=True, decimals=None, costfun=None,
@@ -3074,7 +2747,7 @@ usually as a function of the object's attributes.</dd>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L848-L990" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L725-L867" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def plot(self, statkey=&#34;rmse.a&#34;, axes=AXES_ROLES, get_style=default_styles,
          fignum=None, figsize=None, panels=None,
@@ -3259,16 +2932,6 @@ data-gaCategoryParameter="dapper.xp_process">
 <li><h3>Super-module</h3>
 <ul>
 <li><code><a title="dapper" href="index.html">dapper</a></code></li>
-</ul>
-</li>
-<li><h3><a href="#header-functions">Functions</a></h3>
-<ul class="two-column">
-<li><code><a title="dapper.xp_process.find_latest_run" href="#dapper.xp_process.find_latest_run">find_latest_run</a></code></li>
-<li><code><a title="dapper.xp_process.load_HMM" href="#dapper.xp_process.load_HMM">load_HMM</a></code></li>
-<li><code><a title="dapper.xp_process.load_xps" href="#dapper.xp_process.load_xps">load_xps</a></code></li>
-<li><code><a title="dapper.xp_process.save_xps" href="#dapper.xp_process.save_xps">save_xps</a></code></li>
-<li><code><a title="dapper.xp_process.overwrite_xps" href="#dapper.xp_process.overwrite_xps">overwrite_xps</a></code></li>
-<li><code><a title="dapper.xp_process.reduce_inodes" href="#dapper.xp_process.reduce_inodes">reduce_inodes</a></code></li>
 </ul>
 </li>
 <li><h3><a href="#header-classes">Classes</a></h3>

@@ -41,7 +41,7 @@ body.gsc-overflow-hidden #sidebar {overflow: visible;}
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L1-L600" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L1-L581" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">&#34;&#34;&#34;Tools (notably `xpList`) for setup and running of experiments (known as `xp`s).
 
@@ -54,7 +54,6 @@ import os
 import re
 import shutil
 import sys
-from datetime import datetime
 from functools import wraps
 from pathlib import Path
 from textwrap import dedent
@@ -68,13 +67,12 @@ from tqdm.auto import tqdm
 
 import dapper.stats
 import dapper.tools.progressbar as pb
-from dapper.dpr_config import rc
+from dapper.tools.datafiles import create_run_dir
 from dapper.tools.remote.uplink import submit_job_GCP
 from dapper.tools.seeding import set_seed
 from dapper.tools.viz import collapse_str
 
 _tabulate.MIN_PADDING = 0
-XP_TIMESTAMP_TEMPLATE = &#34;run_%Y-%m-%d__%H-%M-%S&#34;
 
 
 def seed_and_simulate(HMM, xp):
@@ -464,10 +462,7 @@ class xpList(list):
         &#34;&#34;&#34;Essentially: `for xp in self: run_experiment(xp, ..., **kwargs)`.
 
         See `run_experiment` for documentation on the `kwargs` and `fail_gently`.
-
-        The results are saved in `rc.dirs.data / save_as`,
-        unless `save_as` is `False`/`None`.
-        Note: multiprocessing (locally or in the cloud) requires saving/loading data.
+        See `dapper.tools.datafiles.create_run_dir` for documentation `save_as`.
 
         Depending on `mp`, `run_experiment` is delegated as follows:
 
@@ -509,22 +504,8 @@ class xpList(list):
         # Bundle HMM with kwargs
         kwargs[&#39;HMM&#39;] = HMM
 
-        # Parse save_as
-        if save_as in [None, False]:
-            assert not mp, &#34;Multiprocessing requires saving data.&#34;
-            # Parallelization w/o storing is possible, especially w/ threads.
-            # But it involves more complicated communication set-up.
-            def xpi_dir(*args): return None
-        else:
-            save_as = rc.dirs.data / Path(save_as).stem
-            save_as /= datetime.now().strftime(XP_TIMESTAMP_TEMPLATE)
-            os.makedirs(save_as)
-            print(f&#34;Experiment stored at {save_as}&#34;)
-
-            def xpi_dir(i):
-                path = save_as / str(i)
-                os.mkdir(path)
-                return path
+        # Data path
+        save_as, xpi_dir = create_run_dir(save_as, mp)
 
         # No parallelization
         if not mp:
@@ -686,7 +667,7 @@ which would not provide exact reproducibility.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L35-L64" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L33-L62" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def seed_and_simulate(HMM, xp):
     &#34;&#34;&#34;Default experiment setup (sets seed and simulates truth and obs).
@@ -789,7 +770,7 @@ this xp.</dd>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L67-L152" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L65-L150" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def run_experiment(xp, label, savedir, HMM, setup=seed_and_simulate, free=True,
                    statkeys=False, fail_gently=False, **stat_kwargs):
@@ -902,7 +883,7 @@ then you'll create many more than you intend.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L570-L600" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L551-L581" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def combinator(param_dict, **glob_dict):
     &#34;&#34;&#34;Mass creation of `xp`&#39;s by combining the value lists in the `param_dict`.
@@ -986,7 +967,7 @@ as opposed to this class (<code><a title="dapper.xp_launch.xpList" href="#dapper
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L155-L567" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L153-L548" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class xpList(list):
     &#34;&#34;&#34;Subclass of `list` specialized for experiment (&#34;xp&#34;) objects.
@@ -1255,10 +1236,7 @@ as opposed to this class (<code><a title="dapper.xp_launch.xpList" href="#dapper
         &#34;&#34;&#34;Essentially: `for xp in self: run_experiment(xp, ..., **kwargs)`.
 
         See `run_experiment` for documentation on the `kwargs` and `fail_gently`.
-
-        The results are saved in `rc.dirs.data / save_as`,
-        unless `save_as` is `False`/`None`.
-        Note: multiprocessing (locally or in the cloud) requires saving/loading data.
+        See `dapper.tools.datafiles.create_run_dir` for documentation `save_as`.
 
         Depending on `mp`, `run_experiment` is delegated as follows:
 
@@ -1300,22 +1278,8 @@ as opposed to this class (<code><a title="dapper.xp_launch.xpList" href="#dapper
         # Bundle HMM with kwargs
         kwargs[&#39;HMM&#39;] = HMM
 
-        # Parse save_as
-        if save_as in [None, False]:
-            assert not mp, &#34;Multiprocessing requires saving data.&#34;
-            # Parallelization w/o storing is possible, especially w/ threads.
-            # But it involves more complicated communication set-up.
-            def xpi_dir(*args): return None
-        else:
-            save_as = rc.dirs.data / Path(save_as).stem
-            save_as /= datetime.now().strftime(XP_TIMESTAMP_TEMPLATE)
-            os.makedirs(save_as)
-            print(f&#34;Experiment stored at {save_as}&#34;)
-
-            def xpi_dir(i):
-                path = save_as / str(i)
-                os.mkdir(path)
-                return path
+        # Data path
+        save_as, xpi_dir = create_run_dir(save_as, mp)
 
         # No parallelization
         if not mp:
@@ -1414,7 +1378,7 @@ as opposed to this class (<code><a title="dapper.xp_launch.xpList" href="#dapper
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L235-L238" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L233-L236" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">@property
 def da_methods(self):
@@ -1433,7 +1397,7 @@ def da_methods(self):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L207-L210" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L205-L208" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def append(self, xp):
     &#34;&#34;&#34;Append **if** not `self.unique` &amp; present.&#34;&#34;&#34;
@@ -1451,7 +1415,7 @@ unless the missingval (e.g. <code>None</code>) matches the required value.</p></
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L222-L233" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L220-L231" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def inds(self, strict=True, missingval=&#34;NONSENSE&#34;, **kws):
     &#34;&#34;&#34;Find (all) indices of `xps` whose attributes match kws.
@@ -1493,7 +1457,7 @@ This function also does the heavy lifting for <code>xpSpace.squeeze</code>.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L240-L361" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L238-L359" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def prep_table(self, nomerge=()):
     &#34;&#34;&#34;Classify all attrs. of all `xp`s as `distinct`, `redundant`, or `common`.
@@ -1632,7 +1596,7 @@ This function also does the heavy lifting for <code>xpSpace.squeeze</code>.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L371-L409" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L369-L407" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def gen_names(self, abbrev=6, tab=False):
     &#34;&#34;&#34;Similiar to `self.__repr__()`, but:
@@ -1711,10 +1675,8 @@ This function also does the heavy lifting for <code>xpSpace.squeeze</code>.</p>
 </code></dt>
 <dd>
 <div class="desc"><p>Essentially: <code>for xp in self: run_experiment(xp, ..., **kwargs)</code>.</p>
-<p>See <code><a title="dapper.xp_launch.run_experiment" href="#dapper.xp_launch.run_experiment">run_experiment()</a></code> for documentation on the <code>kwargs</code> and <code>fail_gently</code>.</p>
-<p>The results are saved in <code>rc.dirs.data / save_as</code>,
-unless <code>save_as</code> is <code>False</code>/<code>None</code>.
-Note: multiprocessing (locally or in the cloud) requires saving/loading data.</p>
+<p>See <code><a title="dapper.xp_launch.run_experiment" href="#dapper.xp_launch.run_experiment">run_experiment()</a></code> for documentation on the <code>kwargs</code> and <code>fail_gently</code>.
+See <code><a title="dapper.tools.datafiles.create_run_dir" href="tools/datafiles.html#dapper.tools.datafiles.create_run_dir">create_run_dir()</a></code> for documentation <code>save_as</code>.</p>
 <p>Depending on <code>mp</code>, <code><a title="dapper.xp_launch.run_experiment" href="#dapper.xp_launch.run_experiment">run_experiment()</a></code> is delegated as follows:</p>
 <ul>
 <li><code>False</code>: caller process (no parallelisation)</li>
@@ -1736,16 +1698,13 @@ in <code>sys.path[0]</code> are uploaded.</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L418-L567" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L416-L548" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def launch(self, HMM, save_as=&#34;noname&#34;, mp=False, fail_gently=None, **kwargs):
     &#34;&#34;&#34;Essentially: `for xp in self: run_experiment(xp, ..., **kwargs)`.
 
     See `run_experiment` for documentation on the `kwargs` and `fail_gently`.
-
-    The results are saved in `rc.dirs.data / save_as`,
-    unless `save_as` is `False`/`None`.
-    Note: multiprocessing (locally or in the cloud) requires saving/loading data.
+    See `dapper.tools.datafiles.create_run_dir` for documentation `save_as`.
 
     Depending on `mp`, `run_experiment` is delegated as follows:
 
@@ -1787,22 +1746,8 @@ in <code>sys.path[0]</code> are uploaded.</li>
     # Bundle HMM with kwargs
     kwargs[&#39;HMM&#39;] = HMM
 
-    # Parse save_as
-    if save_as in [None, False]:
-        assert not mp, &#34;Multiprocessing requires saving data.&#34;
-        # Parallelization w/o storing is possible, especially w/ threads.
-        # But it involves more complicated communication set-up.
-        def xpi_dir(*args): return None
-    else:
-        save_as = rc.dirs.data / Path(save_as).stem
-        save_as /= datetime.now().strftime(XP_TIMESTAMP_TEMPLATE)
-        os.makedirs(save_as)
-        print(f&#34;Experiment stored at {save_as}&#34;)
-
-        def xpi_dir(i):
-            path = save_as / str(i)
-            os.mkdir(path)
-            return path
+    # Data path
+    save_as, xpi_dir = create_run_dir(save_as, mp)
 
     # No parallelization
     if not mp:

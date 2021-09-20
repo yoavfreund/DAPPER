@@ -69,6 +69,7 @@ https://nansencenter.github.io/DAPPER/docs/dapper/stats.html
 https://nansencenter.github.io/DAPPER/docs/dapper/tools/
 https://nansencenter.github.io/DAPPER/docs/dapper/tools/chronos.html
 https://nansencenter.github.io/DAPPER/docs/dapper/tools/colors.html
+https://nansencenter.github.io/DAPPER/docs/dapper/tools/datafiles.html
 https://nansencenter.github.io/DAPPER/docs/dapper/tools/linalg.html
 https://nansencenter.github.io/DAPPER/docs/dapper/tools/liveplotting.html
 https://nansencenter.github.io/DAPPER/docs/dapper/tools/localization.html

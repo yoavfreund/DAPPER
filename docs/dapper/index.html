@@ -110,7 +110,7 @@ through the following links, which are also available in the left sidebar.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/__init__.py#L1-L32" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/__init__.py#L1-L33" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">&#34;&#34;&#34;Data Assimilation with Python: a Package for Experimental Research
 
@@ -121,10 +121,11 @@ __version__ = &#34;1.2.3&#34;
 
 # A parsimonious list of imports used in the examples
 from .dpr_config import rc
+from .tools.datafiles import find_latest_run, load_xps
 from .tools.rounding import round2sigfig
 from .tools.seeding import set_seed
 from .xp_launch import combinator, seed_and_simulate, xpList
-from .xp_process import find_latest_run, load_xps, xpSpace
+from .xp_process import xpSpace
 
 
 # Exclude &#34;demo.py&#34; files from documentation.
