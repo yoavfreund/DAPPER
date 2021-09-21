@@ -40,7 +40,7 @@ body.gsc-overflow-hidden #sidebar {overflow: visible;}
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/viz.py#L1-L700" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/viz.py#L1-L673" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">&#34;&#34;&#34;Plot utilities.&#34;&#34;&#34;
 import time
@@ -48,7 +48,6 @@ import warnings
 
 import matplotlib as mpl
 import numpy as np
-from matplotlib import cm
 from matplotlib import pyplot as plt
 from matplotlib import ticker
 from matplotlib.animation import FuncAnimation
@@ -644,59 +643,33 @@ def default_styles(coord, baseline_legends=False):
     return style
 
 
-def rel_index(elem, lst, default=None):
-    &#34;&#34;&#34;`lst.index(elem) / len(lst)` with fallback.&#34;&#34;&#34;
-    try:
-        return lst.index(elem) / len(lst)
-    except ValueError:
-        if default == None:
-            raise
-        return default
-
-
 def discretize_cmap(cmap, N, val0=0, val1=1, name=None):
-    &#34;&#34;&#34;Discretize `cmap` so that it partitions `[0, 1]` into `N` segments.
+    &#34;&#34;&#34;Discretize `cmap` into `N` segments.
 
-    I.e. `cmap(k/N) == cmap(k/N + eps)`.
-
-    Also provide the ScalarMappable `sm`
-    that maps range(N) to the segment centers,
-    as will be reflected by `cb = fig.colorbar(sm)`.
-    You can then re-label the ticks using
-    `cb.set_ticks(np.arange(N)); cb.set_ticklabels([&#34;A&#34;,&#34;B&#34;,&#34;C&#34;,...])`.
+    The segments delimiters are `[k/N for k in range(N)]`.
+    Alternatively, for **integer** `k in range(N)`: `cmap(k) == cmap(k/N)`.
+    Useful for applying colormaps to a set of line plots, especially since it also
+    returns a function to create an accompanying colorbar, given `N` tick labels.
     &#34;&#34;&#34;
-    # cmap(k/N)
+    # LinearSegmentedColormap
     from_list = mpl.colors.LinearSegmentedColormap.from_list
     colors = cmap(np.linspace(val0, val1, N))
     cmap = from_list(name, colors, N)
-    # sm
+    # Scalar mappable.
+    # A cmap in itself is not sufficient to create a colorbar. It must have cbounds.
+    # A ScalarMappable combines cmap and bounds, and is usually implicitly created
+    # by or `matshow` or `coutourf`, getting the bounds from the data.
     cNorm = mpl.colors.Normalize(-.5, -.5+N)
     sm = mpl.cm.ScalarMappable(cNorm, cmap)
-    return cmap, sm
 
-
-def cm_bond(cmap, xp_dict, axis, vmin=0, vmax=0):
-    &#34;&#34;&#34;Map cmap for `coord.axis ∈ [0, len(ticks)]`.&#34;&#34;&#34;
-    def link(coord):
-        &#34;&#34;&#34;Essentially: `cmap(ticks.index(coord.axis))`&#34;&#34;&#34;
-        if hasattr(coord, axis):
-            ticks = xp_dict.ticks[axis]
-            cNorm = mpl.colors.Normalize(vmin, vmax + len(ticks))
-            ScMap = cm.ScalarMappable(cNorm, cmap).to_rgba
-            index = ticks.index(getattr(coord, axis))
-            return ScMap(index)
-        else:
-            return cmap(0.5)
-    return link
-
-
-def in_idx(coord, indices, xp_dict, axis):
-    &#34;&#34;&#34;Essentially: `coord.axis in ticks[indices]`.&#34;&#34;&#34;
-    if hasattr(coord, axis):
-        ticks = np.array(xp_dict.ticks[axis])[indices]
-        return getattr(coord, axis) in ticks
-    else:
-        return True
+    # Set-up convenvience function to label cbar ticks
+    def create_cbar(ax, ticklabels=None, **kwargs):
+        cb = ax.figure.colorbar(sm, ax=ax, **kwargs)
+        if ticklabels:
+            cb.set_ticks(np.arange(len(ticklabels)))
+            cb.set_ticklabels(ticklabels)
+        return cb
+    return sm.cmap, create_cbar
 
 
 def default_fig_adjustments(tables, xticks_from_data=False):
@@ -778,7 +751,7 @@ Default: "+1"</dd>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/viz.py#L22-L65" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/viz.py#L21-L64" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def setup_wrapping(M, periodicity=None):
     &#34;&#34;&#34;Make state indices representative for periodic system.
@@ -858,7 +831,7 @@ Default: "+1"</dd>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/viz.py#L68-L126" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/viz.py#L67-L125" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def amplitude_animation(EE, dt=None, interval=1,
                         periodicity=None, blit=True,
@@ -943,7 +916,7 @@ Default: "+1"</dd>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/viz.py#L129-L147" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/viz.py#L128-L146" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def xtrema(xx, axis=None):
     &#34;&#34;&#34;Get minimum and maximum of a sequence.
@@ -993,7 +966,7 @@ Defaults: False</dd>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/viz.py#L150-L178" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/viz.py#L149-L177" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def stretch(a, b, factor=1, int_=False):
     &#34;&#34;&#34;Stretch distance `a-b` by factor.
@@ -1045,7 +1018,7 @@ Defaults: False</dd>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/viz.py#L181-L199" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/viz.py#L180-L198" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def set_ilim(ax, i, Min=None, Max=None):
     &#34;&#34;&#34;Set bounds on axis i.
@@ -1096,7 +1069,7 @@ Provide sensible fall-backs (better if tseq is supplied).</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/viz.py#L202-L251" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/viz.py#L201-L250" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def estimate_good_plot_length(xx, tseq=None, mult=100):
     &#34;&#34;&#34;Estimate the range of the xx slices for plotting.
@@ -1162,7 +1135,7 @@ For that, use <code>plt.pause</code> or <code>plt.show</code> instead.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/viz.py#L254-L311" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/viz.py#L253-L310" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def plot_pause(interval):
     &#34;&#34;&#34;Like `plt.pause`, but better.
@@ -1239,7 +1212,7 @@ For that, use <code>plt.pause</code> or <code>plt.show</code> instead.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/viz.py#L314-L344" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/viz.py#L313-L343" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def plot_hovmoller(xx, tseq=None, **kwargs):
     &#34;&#34;&#34;Plot Hovmöller diagram.
@@ -1295,7 +1268,7 @@ For that, use <code>plt.pause</code> or <code>plt.show</code> instead.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/viz.py#L347-L366" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/viz.py#L346-L365" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def integer_hist(E, N, centrd=False, weights=None, **kwargs):
     &#34;&#34;&#34;Histogram for integers.
@@ -1336,7 +1309,7 @@ For that, use <code>plt.pause</code> or <code>plt.show</code> instead.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/viz.py#L369-L388" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/viz.py#L368-L387" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def not_available_text(ax, txt=None, fs=20):
     &#34;&#34;&#34;Plot given text on the figure
@@ -1383,7 +1356,7 @@ and because <code>rms(umisf)</code> seems too convoluted for interpretation.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/viz.py#L391-L453" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/viz.py#L390-L452" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def plot_err_components(stats):
     &#34;&#34;&#34;Plot components of the error.
@@ -1463,7 +1436,7 @@ and because <code>rms(umisf)</code> seems too convoluted for interpretation.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/viz.py#L456-L499" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/viz.py#L455-L498" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def plot_rank_histogram(stats):
     &#34;&#34;&#34;Plot rank histogram of ensemble.
@@ -1531,7 +1504,7 @@ and because <code>rms(umisf)</code> seems too convoluted for interpretation.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/viz.py#L502-L532" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/viz.py#L501-L531" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def axis_scale_by_array(ax, arr, axis=&#39;y&#39;, nbins=3):
     &#34;&#34;&#34;Scale axis so that the arr entries appear equidistant.
@@ -1574,7 +1547,7 @@ and because <code>rms(umisf)</code> seems too convoluted for interpretation.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/viz.py#L535-L540" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/viz.py#L534-L539" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def collapse_str(string, length=6):
     &#34;&#34;&#34;Truncate a string (in the middle) to the given `length`&#34;&#34;&#34;
@@ -1592,7 +1565,7 @@ and because <code>rms(umisf)</code> seems too convoluted for interpretation.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/viz.py#L544-L554" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/viz.py#L543-L553" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def make_label(coord, no_key=NO_KEY, exclude=()):  # noqa
     &#34;&#34;&#34;Make label from coord.&#34;&#34;&#34;
@@ -1615,7 +1588,7 @@ and because <code>rms(umisf)</code> seems too convoluted for interpretation.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/viz.py#L564-L600" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/viz.py#L563-L599" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def default_styles(coord, baseline_legends=False):
     &#34;&#34;&#34;Quick and dirty (but somewhat robust) styling.&#34;&#34;&#34;
@@ -1656,105 +1629,47 @@ and because <code>rms(umisf)</code> seems too convoluted for interpretation.</p>
     return style</code></pre>
 </details>
 </dd>
-<dt id="dapper.tools.viz.rel_index"><code class="name flex">
-<span>def <span class="ident">rel_index</span></span>(<span>elem, lst, default=None)</span>
-</code></dt>
-<dd>
-<div class="desc"><p><code>lst.index(elem) / len(lst)</code> with fallback.</p></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/viz.py#L603-L610" class="git-link">Browse git</a>
-</summary>
-<pre><code class="python">def rel_index(elem, lst, default=None):
-    &#34;&#34;&#34;`lst.index(elem) / len(lst)` with fallback.&#34;&#34;&#34;
-    try:
-        return lst.index(elem) / len(lst)
-    except ValueError:
-        if default == None:
-            raise
-        return default</code></pre>
-</details>
-</dd>
 <dt id="dapper.tools.viz.discretize_cmap"><code class="name flex">
 <span>def <span class="ident">discretize_cmap</span></span>(<span>cmap, N, val0=0, val1=1, name=None)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Discretize <code>cmap</code> so that it partitions <code>[0, 1]</code> into <code>N</code> segments.</p>
-<p>I.e. <code>cmap(k/N) == cmap(k/N + eps)</code>.</p>
-<p>Also provide the ScalarMappable <code>sm</code>
-that maps range(N) to the segment centers,
-as will be reflected by <code>cb = fig.colorbar(sm)</code>.
-You can then re-label the ticks using
-<code>cb.set_ticks(np.arange(N)); cb.set_ticklabels(["A","B","C",...])</code>.</p></div>
+<div class="desc"><p>Discretize <code>cmap</code> into <code>N</code> segments.</p>
+<p>The segments delimiters are <code>[k/N for k in range(N)]</code>.
+Alternatively, for <strong>integer</strong> <code>k in range(N)</code>: <code>cmap(k) == cmap(k/N)</code>.
+Useful for applying colormaps to a set of line plots, especially since it also
+returns a function to create an accompanying colorbar, given <code>N</code> tick labels.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/viz.py#L613-L631" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/viz.py#L602-L628" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def discretize_cmap(cmap, N, val0=0, val1=1, name=None):
-    &#34;&#34;&#34;Discretize `cmap` so that it partitions `[0, 1]` into `N` segments.
+    &#34;&#34;&#34;Discretize `cmap` into `N` segments.
 
-    I.e. `cmap(k/N) == cmap(k/N + eps)`.
-
-    Also provide the ScalarMappable `sm`
-    that maps range(N) to the segment centers,
-    as will be reflected by `cb = fig.colorbar(sm)`.
-    You can then re-label the ticks using
-    `cb.set_ticks(np.arange(N)); cb.set_ticklabels([&#34;A&#34;,&#34;B&#34;,&#34;C&#34;,...])`.
+    The segments delimiters are `[k/N for k in range(N)]`.
+    Alternatively, for **integer** `k in range(N)`: `cmap(k) == cmap(k/N)`.
+    Useful for applying colormaps to a set of line plots, especially since it also
+    returns a function to create an accompanying colorbar, given `N` tick labels.
     &#34;&#34;&#34;
-    # cmap(k/N)
+    # LinearSegmentedColormap
     from_list = mpl.colors.LinearSegmentedColormap.from_list
     colors = cmap(np.linspace(val0, val1, N))
     cmap = from_list(name, colors, N)
-    # sm
+    # Scalar mappable.
+    # A cmap in itself is not sufficient to create a colorbar. It must have cbounds.
+    # A ScalarMappable combines cmap and bounds, and is usually implicitly created
+    # by or `matshow` or `coutourf`, getting the bounds from the data.
     cNorm = mpl.colors.Normalize(-.5, -.5+N)
     sm = mpl.cm.ScalarMappable(cNorm, cmap)
-    return cmap, sm</code></pre>
-</details>
-</dd>
-<dt id="dapper.tools.viz.cm_bond"><code class="name flex">
-<span>def <span class="ident">cm_bond</span></span>(<span>cmap, xp_dict, axis, vmin=0, vmax=0)</span>
-</code></dt>
-<dd>
-<div class="desc"><p>Map cmap for <code>coord.axis ∈ [0, len(ticks)]</code>.</p></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/viz.py#L634-L646" class="git-link">Browse git</a>
-</summary>
-<pre><code class="python">def cm_bond(cmap, xp_dict, axis, vmin=0, vmax=0):
-    &#34;&#34;&#34;Map cmap for `coord.axis ∈ [0, len(ticks)]`.&#34;&#34;&#34;
-    def link(coord):
-        &#34;&#34;&#34;Essentially: `cmap(ticks.index(coord.axis))`&#34;&#34;&#34;
-        if hasattr(coord, axis):
-            ticks = xp_dict.ticks[axis]
-            cNorm = mpl.colors.Normalize(vmin, vmax + len(ticks))
-            ScMap = cm.ScalarMappable(cNorm, cmap).to_rgba
-            index = ticks.index(getattr(coord, axis))
-            return ScMap(index)
-        else:
-            return cmap(0.5)
-    return link</code></pre>
-</details>
-</dd>
-<dt id="dapper.tools.viz.in_idx"><code class="name flex">
-<span>def <span class="ident">in_idx</span></span>(<span>coord, indices, xp_dict, axis)</span>
-</code></dt>
-<dd>
-<div class="desc"><p>Essentially: <code>coord.axis in ticks[indices]</code>.</p></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/viz.py#L649-L655" class="git-link">Browse git</a>
-</summary>
-<pre><code class="python">def in_idx(coord, indices, xp_dict, axis):
-    &#34;&#34;&#34;Essentially: `coord.axis in ticks[indices]`.&#34;&#34;&#34;
-    if hasattr(coord, axis):
-        ticks = np.array(xp_dict.ticks[axis])[indices]
-        return getattr(coord, axis) in ticks
-    else:
-        return True</code></pre>
+
+    # Set-up convenvience function to label cbar ticks
+    def create_cbar(ax, ticklabels=None, **kwargs):
+        cb = ax.figure.colorbar(sm, ax=ax, **kwargs)
+        if ticklabels:
+            cb.set_ticks(np.arange(len(ticklabels)))
+            cb.set_ticklabels(ticklabels)
+        return cb
+    return sm.cmap, create_cbar</code></pre>
 </details>
 </dd>
 <dt id="dapper.tools.viz.default_fig_adjustments"><code class="name flex">
@@ -1765,7 +1680,7 @@ You can then re-label the ticks using
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/viz.py#L658-L700" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/viz.py#L631-L673" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def default_fig_adjustments(tables, xticks_from_data=False):
     &#34;&#34;&#34;Beautify. These settings do not generalize well.&#34;&#34;&#34;
@@ -1827,7 +1742,7 @@ You can then re-label the ticks using
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/viz.py#L557-L561" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/viz.py#L556-L560" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class NoneDict(DotDict):
     &#34;&#34;&#34;DotDict with getattr that (silently) falls back to `None`.&#34;&#34;&#34;
@@ -1884,10 +1799,7 @@ data-gaCategoryParameter="dapper.tools.viz">
 <li><code><a title="dapper.tools.viz.collapse_str" href="#dapper.tools.viz.collapse_str">collapse_str</a></code></li>
 <li><code><a title="dapper.tools.viz.make_label" href="#dapper.tools.viz.make_label">make_label</a></code></li>
 <li><code><a title="dapper.tools.viz.default_styles" href="#dapper.tools.viz.default_styles">default_styles</a></code></li>
-<li><code><a title="dapper.tools.viz.rel_index" href="#dapper.tools.viz.rel_index">rel_index</a></code></li>
 <li><code><a title="dapper.tools.viz.discretize_cmap" href="#dapper.tools.viz.discretize_cmap">discretize_cmap</a></code></li>
-<li><code><a title="dapper.tools.viz.cm_bond" href="#dapper.tools.viz.cm_bond">cm_bond</a></code></li>
-<li><code><a title="dapper.tools.viz.in_idx" href="#dapper.tools.viz.in_idx">in_idx</a></code></li>
 <li><code><a title="dapper.tools.viz.default_fig_adjustments" href="#dapper.tools.viz.default_fig_adjustments">default_fig_adjustments</a></code></li>
 </ul>
 </li>
