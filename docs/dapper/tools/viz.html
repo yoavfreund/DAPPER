@@ -40,7 +40,7 @@ body.gsc-overflow-hidden #sidebar {overflow: visible;}
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/viz.py#L1-L648" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/viz.py#L1-L647" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">&#34;&#34;&#34;Plot utilities.&#34;&#34;&#34;
 import time
@@ -652,9 +652,8 @@ def default_fig_adjustments(tables, xticks_from_data=False):
     sensible_f = ticker.FormatStrFormatter(&#39;%g&#39;)
     for ax in axs[0, :]:  # noqa
         for direction in [&#39;y&#39;, &#39;x&#39;]:
-            if axs.shape[1] &lt; 6:
-                eval(f&#34;ax.set_{direction}scale(&#39;log&#39;)&#34;)
-                eval(f&#34;ax.{direction}axis&#34;).set_minor_formatter(sensible_f)
+            eval(f&#34;ax.set_{direction}scale(&#39;log&#39;)&#34;)
+            eval(f&#34;ax.{direction}axis&#34;).set_minor_formatter(sensible_f)
             eval(f&#34;ax.{direction}axis&#34;).set_major_formatter(sensible_f)
 
     # Set xticks
@@ -1612,7 +1611,7 @@ and because <code>rms(umisf)</code> seems too convoluted for interpretation.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/viz.py#L602-L644" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/viz.py#L602-L643" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def default_fig_adjustments(tables, xticks_from_data=False):
     &#34;&#34;&#34;Beautify. These settings do not generalize well.&#34;&#34;&#34;
@@ -1623,9 +1622,8 @@ and because <code>rms(umisf)</code> seems too convoluted for interpretation.</p>
     sensible_f = ticker.FormatStrFormatter(&#39;%g&#39;)
     for ax in axs[0, :]:  # noqa
         for direction in [&#39;y&#39;, &#39;x&#39;]:
-            if axs.shape[1] &lt; 6:
-                eval(f&#34;ax.set_{direction}scale(&#39;log&#39;)&#34;)
-                eval(f&#34;ax.{direction}axis&#34;).set_minor_formatter(sensible_f)
+            eval(f&#34;ax.set_{direction}scale(&#39;log&#39;)&#34;)
+            eval(f&#34;ax.{direction}axis&#34;).set_minor_formatter(sensible_f)
             eval(f&#34;ax.{direction}axis&#34;).set_major_formatter(sensible_f)
 
     # Set xticks

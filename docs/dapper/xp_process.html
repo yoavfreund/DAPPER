@@ -40,7 +40,7 @@ body.gsc-overflow-hidden #sidebar {overflow: visible;}
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L1-L871" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L1-L877" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">&#34;&#34;&#34;Tools (notably `xpSpace`) for processing and presenting experiment data.&#34;&#34;&#34;
 
@@ -495,15 +495,21 @@ class xpSpace(SparseSpace):
 
         nested = self.nest(axes)
         for coord, space in nested.items():
-
-            # Find optimal value and coord within space
+            # Find optimal value (and coord) within space
             MIN = np.inf
+            found_any = False
             for inner_coord, uq in space.items():
                 cost = costfun(uq.val)
                 if cost &lt;= MIN:
+                    found_any          = True
                     MIN                = cost
                     uq_opt             = uq
                     uq_opt.tuned_coord = inner_coord
+
+            if not found_any:
+                uq_opt = uq  # one is as good as another
+                nDim = range(len(space.Coord._fields))
+                uq_opt.tuned_coord = space.Coord(*(None for _ in nDim))
 
             nested[coord] = uq_opt
 
@@ -1588,7 +1594,7 @@ both of which call <code><a title="dapper.xp_process.xpSpace.table_tree" href="#
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L311-L871" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L311-L877" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class xpSpace(SparseSpace):
     &#34;&#34;&#34;Functionality to facilitate working with `xps` and their results.
@@ -1733,15 +1739,21 @@ both of which call <code><a title="dapper.xp_process.xpSpace.table_tree" href="#
 
         nested = self.nest(axes)
         for coord, space in nested.items():
-
-            # Find optimal value and coord within space
+            # Find optimal value (and coord) within space
             MIN = np.inf
+            found_any = False
             for inner_coord, uq in space.items():
                 cost = costfun(uq.val)
                 if cost &lt;= MIN:
+                    found_any          = True
                     MIN                = cost
                     uq_opt             = uq
                     uq_opt.tuned_coord = inner_coord
+
+            if not found_any:
+                uq_opt = uq  # one is as good as another
+                nDim = range(len(space.Coord._fields))
+                uq_opt.tuned_coord = space.Coord(*(None for _ in nDim))
 
             nested[coord] = uq_opt
 
@@ -2327,7 +2339,7 @@ def from_list(cls, xps, ordering=None):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L437-L466" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L437-L472" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def tune(self, axes=None, costfun=None):
     &#34;&#34;&#34;Get (compile/tabulate) a stat. optimised wrt. tuning params.&#34;&#34;&#34;
@@ -2346,15 +2358,21 @@ def from_list(cls, xps, ordering=None):
 
     nested = self.nest(axes)
     for coord, space in nested.items():
-
-        # Find optimal value and coord within space
+        # Find optimal value (and coord) within space
         MIN = np.inf
+        found_any = False
         for inner_coord, uq in space.items():
             cost = costfun(uq.val)
             if cost &lt;= MIN:
+                found_any          = True
                 MIN                = cost
                 uq_opt             = uq
                 uq_opt.tuned_coord = inner_coord
+
+        if not found_any:
+            uq_opt = uq  # one is as good as another
+            nDim = range(len(space.Coord._fields))
+            uq_opt.tuned_coord = space.Coord(*(None for _ in nDim))
 
         nested[coord] = uq_opt
 
@@ -2372,7 +2390,7 @@ Use <code>axis or ()</code> wherever tuples are required.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L468-L499" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L474-L505" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def validate_axes(self, axes):
     &#34;&#34;&#34;Validate axes.
@@ -2432,7 +2450,7 @@ when optimizing over tuning_axes.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L501-L564" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L507-L570" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def table_tree(self, statkey, axes, *, costfun=None):
     &#34;&#34;&#34;Hierarchical nest(): xp_dict&gt;outer&gt;inner&gt;mean&gt;optim.
@@ -2508,7 +2526,7 @@ when optimizing over tuning_axes.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L566-L568" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L572-L574" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def tickz(self, axis_name):
     &#34;&#34;&#34;Axis ticks without None&#34;&#34;&#34;
@@ -2575,7 +2593,7 @@ Caution: <code>get_style</code> will not be able to access the eliminated attrs.
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L570-L720" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L576-L726" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def print(self, statkey=&#34;rmse.a&#34;, axes=AXES_ROLES,  # noqa
           subcols=True, decimals=None, costfun=None,
@@ -2758,7 +2776,7 @@ usually as a function of the object's attributes.</dd>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L722-L871" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L728-L877" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def plot(self, statkey=&#34;rmse.a&#34;, axes=AXES_ROLES, get_style=default_styles,
          fignum=None, figsize=None, panels=None,
