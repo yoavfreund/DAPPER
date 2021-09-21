@@ -40,7 +40,7 @@ body.gsc-overflow-hidden #sidebar {overflow: visible;}
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/viz.py#L1-L673" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/viz.py#L1-L648" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">&#34;&#34;&#34;Plot utilities.&#34;&#34;&#34;
 import time
@@ -354,7 +354,7 @@ def plot_pause(interval):
         _plot_pause(interval, focus_figure=False)
 
 
-def plot_hovmoller(xx, tseq=None, **kwargs):
+def plot_hovmoller(xx, tseq=None):
     &#34;&#34;&#34;Plot Hovmöller diagram.
 
     Parameters
@@ -643,35 +643,6 @@ def default_styles(coord, baseline_legends=False):
     return style
 
 
-def discretize_cmap(cmap, N, val0=0, val1=1, name=None):
-    &#34;&#34;&#34;Discretize `cmap` into `N` segments.
-
-    The segments delimiters are `[k/N for k in range(N)]`.
-    Alternatively, for **integer** `k in range(N)`: `cmap(k) == cmap(k/N)`.
-    Useful for applying colormaps to a set of line plots, especially since it also
-    returns a function to create an accompanying colorbar, given `N` tick labels.
-    &#34;&#34;&#34;
-    # LinearSegmentedColormap
-    from_list = mpl.colors.LinearSegmentedColormap.from_list
-    colors = cmap(np.linspace(val0, val1, N))
-    cmap = from_list(name, colors, N)
-    # Scalar mappable.
-    # A cmap in itself is not sufficient to create a colorbar. It must have cbounds.
-    # A ScalarMappable combines cmap and bounds, and is usually implicitly created
-    # by or `matshow` or `coutourf`, getting the bounds from the data.
-    cNorm = mpl.colors.Normalize(-.5, -.5+N)
-    sm = mpl.cm.ScalarMappable(cNorm, cmap)
-
-    # Set-up convenvience function to label cbar ticks
-    def create_cbar(ax, ticklabels=None, **kwargs):
-        cb = ax.figure.colorbar(sm, ax=ax, **kwargs)
-        if ticklabels:
-            cb.set_ticks(np.arange(len(ticklabels)))
-            cb.set_ticklabels(ticklabels)
-        return cb
-    return sm.cmap, create_cbar
-
-
 def default_fig_adjustments(tables, xticks_from_data=False):
     &#34;&#34;&#34;Beautify. These settings do not generalize well.&#34;&#34;&#34;
     # Get axs as 2d-array
@@ -714,7 +685,11 @@ def default_fig_adjustments(tables, xticks_from_data=False):
     # (throws warning), but still works ok.
     with warnings.catch_warnings():
         warnings.simplefilter(&#34;ignore&#34;, category=UserWarning)
-        axs[0, 0].figure.tight_layout()</code></pre>
+        axs[0, 0].figure.tight_layout()
+
+
+# Shortcut (via this module) for import
+from mpl_tools.sci import discretize_cmap  # noqa</code></pre>
 </details>
 </section>
 <section>
@@ -1198,7 +1173,7 @@ For that, use <code>plt.pause</code> or <code>plt.show</code> instead.</p></div>
 </details>
 </dd>
 <dt id="dapper.tools.viz.plot_hovmoller"><code class="name flex">
-<span>def <span class="ident">plot_hovmoller</span></span>(<span>xx, tseq=None, **kwargs)</span>
+<span>def <span class="ident">plot_hovmoller</span></span>(<span>xx, tseq=None)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Plot Hovmöller diagram.</p>
@@ -1214,7 +1189,7 @@ For that, use <code>plt.pause</code> or <code>plt.show</code> instead.</p></div>
 <span>Expand source code</span>
 <a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/viz.py#L313-L343" class="git-link">Browse git</a>
 </summary>
-<pre><code class="python">def plot_hovmoller(xx, tseq=None, **kwargs):
+<pre><code class="python">def plot_hovmoller(xx, tseq=None):
     &#34;&#34;&#34;Plot Hovmöller diagram.
 
     Parameters
@@ -1629,49 +1604,6 @@ and because <code>rms(umisf)</code> seems too convoluted for interpretation.</p>
     return style</code></pre>
 </details>
 </dd>
-<dt id="dapper.tools.viz.discretize_cmap"><code class="name flex">
-<span>def <span class="ident">discretize_cmap</span></span>(<span>cmap, N, val0=0, val1=1, name=None)</span>
-</code></dt>
-<dd>
-<div class="desc"><p>Discretize <code>cmap</code> into <code>N</code> segments.</p>
-<p>The segments delimiters are <code>[k/N for k in range(N)]</code>.
-Alternatively, for <strong>integer</strong> <code>k in range(N)</code>: <code>cmap(k) == cmap(k/N)</code>.
-Useful for applying colormaps to a set of line plots, especially since it also
-returns a function to create an accompanying colorbar, given <code>N</code> tick labels.</p></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/viz.py#L602-L628" class="git-link">Browse git</a>
-</summary>
-<pre><code class="python">def discretize_cmap(cmap, N, val0=0, val1=1, name=None):
-    &#34;&#34;&#34;Discretize `cmap` into `N` segments.
-
-    The segments delimiters are `[k/N for k in range(N)]`.
-    Alternatively, for **integer** `k in range(N)`: `cmap(k) == cmap(k/N)`.
-    Useful for applying colormaps to a set of line plots, especially since it also
-    returns a function to create an accompanying colorbar, given `N` tick labels.
-    &#34;&#34;&#34;
-    # LinearSegmentedColormap
-    from_list = mpl.colors.LinearSegmentedColormap.from_list
-    colors = cmap(np.linspace(val0, val1, N))
-    cmap = from_list(name, colors, N)
-    # Scalar mappable.
-    # A cmap in itself is not sufficient to create a colorbar. It must have cbounds.
-    # A ScalarMappable combines cmap and bounds, and is usually implicitly created
-    # by or `matshow` or `coutourf`, getting the bounds from the data.
-    cNorm = mpl.colors.Normalize(-.5, -.5+N)
-    sm = mpl.cm.ScalarMappable(cNorm, cmap)
-
-    # Set-up convenvience function to label cbar ticks
-    def create_cbar(ax, ticklabels=None, **kwargs):
-        cb = ax.figure.colorbar(sm, ax=ax, **kwargs)
-        if ticklabels:
-            cb.set_ticks(np.arange(len(ticklabels)))
-            cb.set_ticklabels(ticklabels)
-        return cb
-    return sm.cmap, create_cbar</code></pre>
-</details>
-</dd>
 <dt id="dapper.tools.viz.default_fig_adjustments"><code class="name flex">
 <span>def <span class="ident">default_fig_adjustments</span></span>(<span>tables, xticks_from_data=False)</span>
 </code></dt>
@@ -1680,7 +1612,7 @@ returns a function to create an accompanying colorbar, given <code>N</code> tick
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/viz.py#L631-L673" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/viz.py#L602-L644" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def default_fig_adjustments(tables, xticks_from_data=False):
     &#34;&#34;&#34;Beautify. These settings do not generalize well.&#34;&#34;&#34;
@@ -1799,7 +1731,6 @@ data-gaCategoryParameter="dapper.tools.viz">
 <li><code><a title="dapper.tools.viz.collapse_str" href="#dapper.tools.viz.collapse_str">collapse_str</a></code></li>
 <li><code><a title="dapper.tools.viz.make_label" href="#dapper.tools.viz.make_label">make_label</a></code></li>
 <li><code><a title="dapper.tools.viz.default_styles" href="#dapper.tools.viz.default_styles">default_styles</a></code></li>
-<li><code><a title="dapper.tools.viz.discretize_cmap" href="#dapper.tools.viz.discretize_cmap">discretize_cmap</a></code></li>
 <li><code><a title="dapper.tools.viz.default_fig_adjustments" href="#dapper.tools.viz.default_fig_adjustments">default_fig_adjustments</a></code></li>
 </ul>
 </li>
