@@ -266,8 +266,8 @@ class xpList(list):
     def inds(self, strict=True, missingval=&#34;NONSENSE&#34;, **kws):
         &#34;&#34;&#34;Find (all) indices of `xps` whose attributes match kws.
 
-        If strict, then `xp`s lacking a requested attr will not match,
-        unless the missingval (e.g. `None`) matches the required value.
+        If strict, then `xp`s lacking a requested attr. will not match,
+        unless the `missingval` matches the required value.
         &#34;&#34;&#34;
         def match(xp):
             def missing(v): return missingval if strict else v
@@ -1043,8 +1043,8 @@ as opposed to this class (<code><a title="dapper.xp_launch.xpList" href="#dapper
     def inds(self, strict=True, missingval=&#34;NONSENSE&#34;, **kws):
         &#34;&#34;&#34;Find (all) indices of `xps` whose attributes match kws.
 
-        If strict, then `xp`s lacking a requested attr will not match,
-        unless the missingval (e.g. `None`) matches the required value.
+        If strict, then `xp`s lacking a requested attr. will not match,
+        unless the `missingval` matches the required value.
         &#34;&#34;&#34;
         def match(xp):
             def missing(v): return missingval if strict else v
@@ -1417,8 +1417,8 @@ def da_methods(self):
 </code></dt>
 <dd>
 <div class="desc"><p>Find (all) indices of <code>xps</code> whose attributes match kws.</p>
-<p>If strict, then <code>xp</code>s lacking a requested attr will not match,
-unless the missingval (e.g. <code>None</code>) matches the required value.</p></div>
+<p>If strict, then <code>xp</code>s lacking a requested attr. will not match,
+unless the <code>missingval</code> matches the required value.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
@@ -1427,8 +1427,8 @@ unless the missingval (e.g. <code>None</code>) matches the required value.</p></
 <pre><code class="python">def inds(self, strict=True, missingval=&#34;NONSENSE&#34;, **kws):
     &#34;&#34;&#34;Find (all) indices of `xps` whose attributes match kws.
 
-    If strict, then `xp`s lacking a requested attr will not match,
-    unless the missingval (e.g. `None`) matches the required value.
+    If strict, then `xp`s lacking a requested attr. will not match,
+    unless the `missingval` matches the required value.
     &#34;&#34;&#34;
     def match(xp):
         def missing(v): return missingval if strict else v

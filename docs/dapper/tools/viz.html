@@ -40,7 +40,7 @@ body.gsc-overflow-hidden #sidebar {overflow: visible;}
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/viz.py#L1-L647" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/viz.py#L1-L650" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">&#34;&#34;&#34;Plot utilities.&#34;&#34;&#34;
 import time
@@ -657,17 +657,20 @@ def default_fig_adjustments(tables, xticks_from_data=False):
             eval(f&#34;ax.{direction}axis&#34;).set_major_formatter(sensible_f)
 
     # Set xticks
+    (table0, ) = tables[[0]]
     if xticks_from_data:
-        ax = tables[1].panels[0]
+        ax = table0.panels[0]
         # Log-scale overrules any custom ticks. Restore control
         ax.xaxis.set_major_formatter(ticker.ScalarFormatter())
         ax.xaxis.set_minor_formatter(ticker.NullFormatter())
-        ax.set_xticks(tables.xp_dict.tickz(tables.axes_roles[&#34;inner&#34;][0]))
+        xp_dict = tables.created_with[&#34;xp_dict&#34;]
+        xdim = tables.created_with[&#34;dims&#34;][&#34;inner&#34;]
+        assert len(xdim) == 1, &#34;Only 1-dimensional ticks are supported.&#34;
+        ax.set_xticks(xp_dict.tickz(xdim[0]))
 
     # Tuning panels only
-    table = tables[0]
-    for a, panel in zip(tables.axes_roles[&#34;optim&#34;] or (), table.panels[1:]):
-        yy = tables.xp_dict.tickz(a)
+    for a, panel in zip(tables.created_with[&#34;dims&#34;][&#34;optim&#34;] or (), table0.panels[1:]):
+        yy = tables.created_with[&#34;xp_dict&#34;].tickz(a)
         axis_scale_by_array(panel, yy, &#34;y&#34;)
         # set_ymargin doesn&#39;t work for wonky scales. Do so manually:
         alpha = len(yy)/10
@@ -1611,7 +1614,7 @@ and because <code>rms(umisf)</code> seems too convoluted for interpretation.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/viz.py#L602-L643" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/viz.py#L602-L646" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def default_fig_adjustments(tables, xticks_from_data=False):
     &#34;&#34;&#34;Beautify. These settings do not generalize well.&#34;&#34;&#34;
@@ -1627,17 +1630,20 @@ and because <code>rms(umisf)</code> seems too convoluted for interpretation.</p>
             eval(f&#34;ax.{direction}axis&#34;).set_major_formatter(sensible_f)
 
     # Set xticks
+    (table0, ) = tables[[0]]
     if xticks_from_data:
-        ax = tables[1].panels[0]
+        ax = table0.panels[0]
         # Log-scale overrules any custom ticks. Restore control
         ax.xaxis.set_major_formatter(ticker.ScalarFormatter())
         ax.xaxis.set_minor_formatter(ticker.NullFormatter())
-        ax.set_xticks(tables.xp_dict.tickz(tables.axes_roles[&#34;inner&#34;][0]))
+        xp_dict = tables.created_with[&#34;xp_dict&#34;]
+        xdim = tables.created_with[&#34;dims&#34;][&#34;inner&#34;]
+        assert len(xdim) == 1, &#34;Only 1-dimensional ticks are supported.&#34;
+        ax.set_xticks(xp_dict.tickz(xdim[0]))
 
     # Tuning panels only
-    table = tables[0]
-    for a, panel in zip(tables.axes_roles[&#34;optim&#34;] or (), table.panels[1:]):
-        yy = tables.xp_dict.tickz(a)
+    for a, panel in zip(tables.created_with[&#34;dims&#34;][&#34;optim&#34;] or (), table0.panels[1:]):
+        yy = tables.created_with[&#34;xp_dict&#34;].tickz(a)
         axis_scale_by_array(panel, yy, &#34;y&#34;)
         # set_ymargin doesn&#39;t work for wonky scales. Do so manually:
         alpha = len(yy)/10
