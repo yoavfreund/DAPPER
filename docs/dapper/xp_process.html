@@ -40,7 +40,7 @@ body.gsc-overflow-hidden #sidebar {overflow: visible;}
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L1-L872" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L1-L875" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">&#34;&#34;&#34;Tools (notably `xpSpace`) for processing and presenting experiment data.&#34;&#34;&#34;
 
@@ -50,10 +50,9 @@ import warnings
 
 import colorama
 import numpy as np
-import struct_tools
 from mpl_tools import place
 from patlib.std import nonchalance
-from struct_tools import complement as complm
+from struct_tools import AlignedDict, complement, intersect, transps
 from tabulate import tabulate
 
 from dapper.dpr_config import rc
@@ -207,7 +206,7 @@ class SparseSpace(dict):
         # inner = outer[outer.Coord(**kwargs)]        # discard all but 1
 
         coords = self.coords_matching(**kwargs)
-        inner = self.__class__(complm(self.dims, kwargs))
+        inner = self.__class__(complement(self.dims, kwargs))
         for coord in coords:
             inner[inner.coord_from_attrs(coord)] = self[coord]
 
@@ -243,7 +242,7 @@ class SparseSpace(dict):
         txt  = f&#34;&lt;{self.__class__.__name__}&gt;&#34;
         txt += &#34; with Coord/dims: &#34;
         try:
-            txt += &#34;(and ticks): &#34; + str(struct_tools.AlignedDict(self.ticks))
+            txt += &#34;(and ticks): &#34; + str(AlignedDict(self.ticks))
         except AttributeError:
             txt += str(self.dims) + &#34;\n&#34;
 
@@ -273,10 +272,10 @@ class SparseSpace(dict):
         # Validate dims
         if inner_dims is None:
             assert outer_dims is not None
-            inner_dims = complm(self.dims, outer_dims)
+            inner_dims = complement(self.dims, outer_dims)
         else:
             assert outer_dims is None
-            outer_dims = complm(self.dims, inner_dims)
+            outer_dims = complement(self.dims, inner_dims)
 
         # Fill spaces
         outer_space = self.__class__(outer_dims)
@@ -300,7 +299,7 @@ class SparseSpace(dict):
 
         This enables sloppy `dims` allotment, for ease-of-use.
         &#34;&#34;&#34;
-        absent = complm(attrs, self.dims)
+        absent = complement(attrs, self.dims)
         if absent:
             print(color_text(&#34;Warning:&#34;, colorama.Fore.RED),
                   &#34;The requested attributes&#34;,
@@ -313,7 +312,7 @@ class SparseSpace(dict):
                    &#34; However, if it is caused by confusion or mis-spelling,&#34;
                    &#34; then it is likely to cause mis-interpretation&#34;
                    &#34; of the shown results.&#34;))
-            attrs = complm(attrs, absent)
+            attrs = complement(attrs, absent)
         return attrs
 
     def append_dim(self, dim):
@@ -523,7 +522,7 @@ class xpSpace(SparseSpace):
                     # Ensure unique
                     if dim in roles:
                         raise TypeError(
-                            f&#34;An dim (here {dim!r}) cannot be assigned to 2&#34;
+                            f&#34;A dim (here {dim!r}) cannot be assigned to 2&#34;
                             f&#34; roles (here {role!r} and {roles[dim]!r}).&#34;)
                     else:
                         roles[dim] = role
@@ -566,7 +565,7 @@ class xpSpace(SparseSpace):
         #    without extraction by coord_from_attrs() from (e.g.) row[0].
         #  - Don&#39;t need to propagate mean&amp;optim dims down to the row level.
         #    which would require defining rows by the nesting:
-        #    rows = table.nest(outer_dims=complm(table.dims,
+        #    rows = table.nest(outer_dims=complement(table.dims,
         #        *(dims[&#39;inner&#39;] or ()),
         #        *(dims[&#39;mean&#39;]  or ()),
         #        *(dims[&#39;optim&#39;] or ()) ))
@@ -597,7 +596,7 @@ class xpSpace(SparseSpace):
         &#34;&#34;&#34;Dimension (axis) ticks without None&#34;&#34;&#34;
         return [x for x in self.ticks[dim_name] if x is not None]
 
-    def print(self, statkey=&#34;rmse.a&#34;, dims=DIM_ROLES,  # noqa
+    def print(self, statkey, dims,  # noqa (shadowing builtin)
               subcols=True, decimals=None, costfun=None,
               squeeze_labels=True, colorize=True):
         &#34;&#34;&#34;Print tables of results.
@@ -625,7 +624,7 @@ class xpSpace(SparseSpace):
                      optim=(&#39;infl&#39;,&#39;loc_rad&#39;))
 
             Equivalently, use `mean=(&#34;seed&#34;,)`.
-            It is acceptible to leave this empty, `mean=()` or `mean=None`.
+            It is acceptible to leave this empty: `mean=()` or `mean=None`.
         subcols: bool
             If `True`, then subcolumns are added to indicate
 
@@ -677,7 +676,7 @@ class xpSpace(SparseSpace):
                             col[key] = align_col(subcolmn, just=aligns.get(key, &#34;&gt;&#34;))
                         else:
                             del col[key]
-                    col = [templ.format(**row) for row in struct_tools.transps(col)]
+                    col = [templ.format(**row) for row in transps(col)]
                 else:
                     col = align_col([statkey] + col[&#34;val&#34;])
                 return col
@@ -743,7 +742,7 @@ class xpSpace(SparseSpace):
 
         return tables
 
-    def plot(self, statkey=&#34;rmse.a&#34;, dims=DIM_ROLES, get_style=default_styles,
+    def plot(self, statkey, dims, get_style=default_styles,
              fignum=None, figsize=None, panels=None, costfun=None,
              title1=None, title2=None, unique_labels=True, squeeze_labels=True):
         &#34;&#34;&#34;Plot (tables of) results.
@@ -782,10 +781,11 @@ class xpSpace(SparseSpace):
             Involves: Sort, insert None&#39;s, handle constant lines.
             &#34;&#34;&#34;
             # Make a full row (yy) of vals, whether is_constant or not.
-            # row.is_constant = (len(row)==1 and next(iter(row))==row.Coord(None))
-            row.is_constant = all(x == row.Coord(None) for x in row)
-            if row.is_constant:
-                yy = [row[None, ] for x in xticks]
+            # is_constant = (len(row)==1 and next(iter(row))==row.Coord(None))
+            is_constant = all(x == row.Coord(None) for x in row)
+            if is_constant:
+                yy = [row[None, ] for _ in xticks]
+                style.marker = None
             else:
                 yy = [row.get(row.Coord(x), None) for x in xticks]
 
@@ -807,19 +807,27 @@ class xpSpace(SparseSpace):
                 if not all(y == None for y in yy):
                     row.handles[a] = panel.plot(xticks, yy, **style)
 
-        def label_management():
-            def manager(style):
+        def label_management(table):
+            def pruner(style):
                 label = style.get(&#34;label&#34;, None)
                 if unique_labels:
                     if label in register:
                         del style[&#34;label&#34;]
-                    else:
+                    elif label:
                         register.add(style[&#34;label&#34;])
-                        manager.has_labels = True
+                        pruner.has_labels = True
                 elif label:
-                    manager.has_labels = True
-            manager.has_labels = False
-            return manager
+                    pruner.has_labels = True
+            pruner.has_labels = False
+
+            def squeezer(coord):
+                return intersect(coord._asdict(), label_attrs)
+            if squeeze_labels:
+                label_attrs = xpList(table.keys()).prep_table()[0]
+            else:
+                label_attrs = table.dims
+
+            return pruner, squeezer
         register = set()
 
         def beautify(panels, title, has_labels):
@@ -860,7 +868,7 @@ class xpSpace(SparseSpace):
             self.make_ticks(xpList(self).prep_table()[0])
         xticks = self.tickz(dims[&#34;inner&#34;][0])
 
-        # Create figure panels
+        # Create figure axes
         if panels is None:
             nrows   = len(dims[&#39;optim&#39;] or ()) + 1
             ncols   = len(tables)
@@ -894,23 +902,18 @@ class xpSpace(SparseSpace):
         fig.suptitle(fig_title)
 
         # Loop outer
-        for table_panels, (table_coord, table) in zip(panels.T, tables.items()):
-            table.panels = table_panels
-
-            label_manager = label_management()
-            aa = xpList(table.keys()).prep_table()[0] if squeeze_labels else table.dims
-
-            # Plot
+        for ax_column, (table_coord, table) in zip(panels.T, tables.items()):
+            table.panels = ax_column
+            label_prune, label_squeeze = label_management(table)
             for coord, row in table.items():
-                coord = NoneDict(struct_tools.intersect(coord._asdict(), aa))
-                style = get_style(coord)
-                label_manager(style)
+                style = get_style(NoneDict(label_squeeze(coord)))
+                label_prune(style)
                 plot1(table.panels, row, style)
 
             beautify(table.panels,
                      title=(&#34;&#34; if dims[&#34;outer&#34;] is None else
                             table_coord.repr2(True).strip(&#34;()&#34;)),
-                     has_labels=label_manager.has_labels)
+                     has_labels=label_prune.has_labels)
 
         tables.fig = fig  # add reference to fig
         return tables</code></pre>
@@ -985,7 +988,7 @@ KeyError: (1, 2, 3, 4)
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L23-L302" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L22-L301" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class SparseSpace(dict):
     &#34;&#34;&#34;Subclass of `dict` that enforces key conformity to a given `namedtuple`.
@@ -1130,7 +1133,7 @@ KeyError: (1, 2, 3, 4)
         # inner = outer[outer.Coord(**kwargs)]        # discard all but 1
 
         coords = self.coords_matching(**kwargs)
-        inner = self.__class__(complm(self.dims, kwargs))
+        inner = self.__class__(complement(self.dims, kwargs))
         for coord in coords:
             inner[inner.coord_from_attrs(coord)] = self[coord]
 
@@ -1166,7 +1169,7 @@ KeyError: (1, 2, 3, 4)
         txt  = f&#34;&lt;{self.__class__.__name__}&gt;&#34;
         txt += &#34; with Coord/dims: &#34;
         try:
-            txt += &#34;(and ticks): &#34; + str(struct_tools.AlignedDict(self.ticks))
+            txt += &#34;(and ticks): &#34; + str(AlignedDict(self.ticks))
         except AttributeError:
             txt += str(self.dims) + &#34;\n&#34;
 
@@ -1196,10 +1199,10 @@ KeyError: (1, 2, 3, 4)
         # Validate dims
         if inner_dims is None:
             assert outer_dims is not None
-            inner_dims = complm(self.dims, outer_dims)
+            inner_dims = complement(self.dims, outer_dims)
         else:
             assert outer_dims is None
-            outer_dims = complm(self.dims, inner_dims)
+            outer_dims = complement(self.dims, inner_dims)
 
         # Fill spaces
         outer_space = self.__class__(outer_dims)
@@ -1223,7 +1226,7 @@ KeyError: (1, 2, 3, 4)
 
         This enables sloppy `dims` allotment, for ease-of-use.
         &#34;&#34;&#34;
-        absent = complm(attrs, self.dims)
+        absent = complement(attrs, self.dims)
         if absent:
             print(color_text(&#34;Warning:&#34;, colorama.Fore.RED),
                   &#34;The requested attributes&#34;,
@@ -1236,7 +1239,7 @@ KeyError: (1, 2, 3, 4)
                    &#34; However, if it is caused by confusion or mis-spelling,&#34;
                    &#34; then it is likely to cause mis-interpretation&#34;
                    &#34; of the shown results.&#34;))
-            attrs = complm(attrs, absent)
+            attrs = complement(attrs, absent)
         return attrs
 
     def append_dim(self, dim):
@@ -1284,7 +1287,7 @@ KeyError: (1, 2, 3, 4)
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L79-L81" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L78-L80" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">@property
 def dims(self):
@@ -1304,7 +1307,7 @@ consist of (a single) string, which is not very interesting for SparseSpace.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L103-L116" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L102-L115" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def update(self, items):
     &#34;&#34;&#34;Update dict, using the custom `__setitem__` to ensure key conformity.
@@ -1335,7 +1338,7 @@ then you should consider using <code><a title="dapper.xp_process.SparseSpace.nes
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L151-L170" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L150-L169" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def subspace(self, **kwargs):
     &#34;&#34;&#34;Get an affine subspace.
@@ -1352,7 +1355,7 @@ then you should consider using <code><a title="dapper.xp_process.SparseSpace.nes
     # inner = outer[outer.Coord(**kwargs)]        # discard all but 1
 
     coords = self.coords_matching(**kwargs)
-    inner = self.__class__(complm(self.dims, kwargs))
+    inner = self.__class__(complement(self.dims, kwargs))
     for coord in coords:
         inner[inner.coord_from_attrs(coord)] = self[coord]
 
@@ -1371,7 +1374,7 @@ since each coordinate is complete.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L172-L184" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L171-L183" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def coords_matching(self, **kwargs):
     &#34;&#34;&#34;Get all `coord`s matching kwargs.
@@ -1399,7 +1402,7 @@ since each coordinate is complete.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L186-L196" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L185-L195" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def coord_from_attrs(self, obj):
     &#34;&#34;&#34;Form a `coord` for this `xpSpace` by extracting attrs. from `obj`.
@@ -1425,7 +1428,7 @@ each one regrouping the entries with the same (projected) coordinate.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L216-L252" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L215-L251" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def nest(self, inner_dims=None, outer_dims=None):
     &#34;&#34;&#34;Project along `inner_acces` to yield a new `xpSpace` with dims `outer_dims`
@@ -1443,10 +1446,10 @@ each one regrouping the entries with the same (projected) coordinate.</p>
     # Validate dims
     if inner_dims is None:
         assert outer_dims is not None
-        inner_dims = complm(self.dims, outer_dims)
+        inner_dims = complement(self.dims, outer_dims)
     else:
         assert outer_dims is None
-        outer_dims = complm(self.dims, inner_dims)
+        outer_dims = complement(self.dims, inner_dims)
 
     # Fill spaces
     outer_space = self.__class__(outer_dims)
@@ -1475,14 +1478,14 @@ each one regrouping the entries with the same (projected) coordinate.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L254-L273" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L253-L272" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def intersect_dims(self, attrs):
     &#34;&#34;&#34;Rm those `a` in `attrs` that are not in `self.dims`.
 
     This enables sloppy `dims` allotment, for ease-of-use.
     &#34;&#34;&#34;
-    absent = complm(attrs, self.dims)
+    absent = complement(attrs, self.dims)
     if absent:
         print(color_text(&#34;Warning:&#34;, colorama.Fore.RED),
               &#34;The requested attributes&#34;,
@@ -1495,7 +1498,7 @@ each one regrouping the entries with the same (projected) coordinate.</p>
                &#34; However, if it is caused by confusion or mis-spelling,&#34;
                &#34; then it is likely to cause mis-interpretation&#34;
                &#34; of the shown results.&#34;))
-        attrs = complm(attrs, absent)
+        attrs = complement(attrs, absent)
     return attrs</code></pre>
 </details>
 </dd>
@@ -1507,7 +1510,7 @@ each one regrouping the entries with the same (projected) coordinate.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L275-L280" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L274-L279" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def append_dim(self, dim):
     &#34;&#34;&#34;Expand `self.Coord` by `dim`. For each item, insert `None` in new dim.&#34;&#34;&#34;
@@ -1533,7 +1536,7 @@ preventing them from being shown in plot labels and tuning panels.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L282-L302" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L281-L301" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def label_xSection(self, label, *NoneAttrs, **sub_coord):
     &#34;&#34;&#34;Insert duplicate entries for the given cross-section.
@@ -1575,7 +1578,7 @@ preventing them from being shown in plot labels and tuning panels.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L308-L872" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L307-L875" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class xpSpace(SparseSpace):
     &#34;&#34;&#34;Functionality to facilitate working with `xps` and their results.&#34;&#34;&#34;
@@ -1751,7 +1754,7 @@ preventing them from being shown in plot labels and tuning panels.</p></div>
                     # Ensure unique
                     if dim in roles:
                         raise TypeError(
-                            f&#34;An dim (here {dim!r}) cannot be assigned to 2&#34;
+                            f&#34;A dim (here {dim!r}) cannot be assigned to 2&#34;
                             f&#34; roles (here {role!r} and {roles[dim]!r}).&#34;)
                     else:
                         roles[dim] = role
@@ -1794,7 +1797,7 @@ preventing them from being shown in plot labels and tuning panels.</p></div>
         #    without extraction by coord_from_attrs() from (e.g.) row[0].
         #  - Don&#39;t need to propagate mean&amp;optim dims down to the row level.
         #    which would require defining rows by the nesting:
-        #    rows = table.nest(outer_dims=complm(table.dims,
+        #    rows = table.nest(outer_dims=complement(table.dims,
         #        *(dims[&#39;inner&#39;] or ()),
         #        *(dims[&#39;mean&#39;]  or ()),
         #        *(dims[&#39;optim&#39;] or ()) ))
@@ -1825,7 +1828,7 @@ preventing them from being shown in plot labels and tuning panels.</p></div>
         &#34;&#34;&#34;Dimension (axis) ticks without None&#34;&#34;&#34;
         return [x for x in self.ticks[dim_name] if x is not None]
 
-    def print(self, statkey=&#34;rmse.a&#34;, dims=DIM_ROLES,  # noqa
+    def print(self, statkey, dims,  # noqa (shadowing builtin)
               subcols=True, decimals=None, costfun=None,
               squeeze_labels=True, colorize=True):
         &#34;&#34;&#34;Print tables of results.
@@ -1853,7 +1856,7 @@ preventing them from being shown in plot labels and tuning panels.</p></div>
                      optim=(&#39;infl&#39;,&#39;loc_rad&#39;))
 
             Equivalently, use `mean=(&#34;seed&#34;,)`.
-            It is acceptible to leave this empty, `mean=()` or `mean=None`.
+            It is acceptible to leave this empty: `mean=()` or `mean=None`.
         subcols: bool
             If `True`, then subcolumns are added to indicate
 
@@ -1905,7 +1908,7 @@ preventing them from being shown in plot labels and tuning panels.</p></div>
                             col[key] = align_col(subcolmn, just=aligns.get(key, &#34;&gt;&#34;))
                         else:
                             del col[key]
-                    col = [templ.format(**row) for row in struct_tools.transps(col)]
+                    col = [templ.format(**row) for row in transps(col)]
                 else:
                     col = align_col([statkey] + col[&#34;val&#34;])
                 return col
@@ -1971,7 +1974,7 @@ preventing them from being shown in plot labels and tuning panels.</p></div>
 
         return tables
 
-    def plot(self, statkey=&#34;rmse.a&#34;, dims=DIM_ROLES, get_style=default_styles,
+    def plot(self, statkey, dims, get_style=default_styles,
              fignum=None, figsize=None, panels=None, costfun=None,
              title1=None, title2=None, unique_labels=True, squeeze_labels=True):
         &#34;&#34;&#34;Plot (tables of) results.
@@ -2010,10 +2013,11 @@ preventing them from being shown in plot labels and tuning panels.</p></div>
             Involves: Sort, insert None&#39;s, handle constant lines.
             &#34;&#34;&#34;
             # Make a full row (yy) of vals, whether is_constant or not.
-            # row.is_constant = (len(row)==1 and next(iter(row))==row.Coord(None))
-            row.is_constant = all(x == row.Coord(None) for x in row)
-            if row.is_constant:
-                yy = [row[None, ] for x in xticks]
+            # is_constant = (len(row)==1 and next(iter(row))==row.Coord(None))
+            is_constant = all(x == row.Coord(None) for x in row)
+            if is_constant:
+                yy = [row[None, ] for _ in xticks]
+                style.marker = None
             else:
                 yy = [row.get(row.Coord(x), None) for x in xticks]
 
@@ -2035,19 +2039,27 @@ preventing them from being shown in plot labels and tuning panels.</p></div>
                 if not all(y == None for y in yy):
                     row.handles[a] = panel.plot(xticks, yy, **style)
 
-        def label_management():
-            def manager(style):
+        def label_management(table):
+            def pruner(style):
                 label = style.get(&#34;label&#34;, None)
                 if unique_labels:
                     if label in register:
                         del style[&#34;label&#34;]
-                    else:
+                    elif label:
                         register.add(style[&#34;label&#34;])
-                        manager.has_labels = True
+                        pruner.has_labels = True
                 elif label:
-                    manager.has_labels = True
-            manager.has_labels = False
-            return manager
+                    pruner.has_labels = True
+            pruner.has_labels = False
+
+            def squeezer(coord):
+                return intersect(coord._asdict(), label_attrs)
+            if squeeze_labels:
+                label_attrs = xpList(table.keys()).prep_table()[0]
+            else:
+                label_attrs = table.dims
+
+            return pruner, squeezer
         register = set()
 
         def beautify(panels, title, has_labels):
@@ -2088,7 +2100,7 @@ preventing them from being shown in plot labels and tuning panels.</p></div>
             self.make_ticks(xpList(self).prep_table()[0])
         xticks = self.tickz(dims[&#34;inner&#34;][0])
 
-        # Create figure panels
+        # Create figure axes
         if panels is None:
             nrows   = len(dims[&#39;optim&#39;] or ()) + 1
             ncols   = len(tables)
@@ -2122,23 +2134,18 @@ preventing them from being shown in plot labels and tuning panels.</p></div>
         fig.suptitle(fig_title)
 
         # Loop outer
-        for table_panels, (table_coord, table) in zip(panels.T, tables.items()):
-            table.panels = table_panels
-
-            label_manager = label_management()
-            aa = xpList(table.keys()).prep_table()[0] if squeeze_labels else table.dims
-
-            # Plot
+        for ax_column, (table_coord, table) in zip(panels.T, tables.items()):
+            table.panels = ax_column
+            label_prune, label_squeeze = label_management(table)
             for coord, row in table.items():
-                coord = NoneDict(struct_tools.intersect(coord._asdict(), aa))
-                style = get_style(coord)
-                label_manager(style)
+                style = get_style(NoneDict(label_squeeze(coord)))
+                label_prune(style)
                 plot1(table.panels, row, style)
 
             beautify(table.panels,
                      title=(&#34;&#34; if dims[&#34;outer&#34;] is None else
                             table_coord.repr2(True).strip(&#34;()&#34;)),
-                     has_labels=label_manager.has_labels)
+                     has_labels=label_prune.has_labels)
 
         tables.fig = fig  # add reference to fig
         return tables</code></pre>
@@ -2166,7 +2173,7 @@ by <code><a title="dapper.xp_process.xpSpace.table_tree" href="#dapper.xp_proces
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L311-L328" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L310-L327" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">@classmethod
 def from_list(cls, xps, tick_ordering=None):
@@ -2200,7 +2207,7 @@ def from_list(cls, xps, tick_ordering=None):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L330-L360" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L329-L359" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def make_ticks(self, dct, ordering=None):
     &#34;&#34;&#34;Unique &amp; sort, for each individual &#34;dim&#34; in `dct`. Assign to `self.ticks`.
@@ -2243,7 +2250,7 @@ def from_list(cls, xps, tick_ordering=None):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L362-L364" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L361-L363" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def fill(self, xps):
     &#34;&#34;&#34;Mass insertion.&#34;&#34;&#34;
@@ -2258,7 +2265,7 @@ def from_list(cls, xps, tick_ordering=None):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L366-L370" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L365-L369" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def squeeze(self):
     &#34;&#34;&#34;Eliminate unnecessary dimensions.&#34;&#34;&#34;
@@ -2275,7 +2282,7 @@ def from_list(cls, xps, tick_ordering=None):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L372-L387" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L371-L386" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def get_stat(self, statkey=&#34;rmse.a&#34;):
     &#34;&#34;&#34;Make `xpSpace` with same `Coord` as `self`, but values `xp.avrgs.statkey`.&#34;&#34;&#34;
@@ -2303,7 +2310,7 @@ def from_list(cls, xps, tick_ordering=None):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L389-L418" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L388-L417" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def mean(self, dims=None):
     &#34;&#34;&#34;Compute mean over `dims` (a list). Returns `xpSpace` without those `dims`.&#34;&#34;&#34;
@@ -2345,7 +2352,7 @@ def from_list(cls, xps, tick_ordering=None):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L420-L455" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L419-L454" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def tune(self, dims=None, costfun=None):
     &#34;&#34;&#34;Get (compile/tabulate) a stat. optimised wrt. tuning params (`dims`).&#34;&#34;&#34;
@@ -2395,7 +2402,7 @@ Use <code>()</code> if tuples are required.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L457-L487" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L456-L486" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def validate_dims(self, dims):
     &#34;&#34;&#34;Validate dims.
@@ -2422,7 +2429,7 @@ Use <code>()</code> if tuples are required.</p></div>
                 # Ensure unique
                 if dim in roles:
                     raise TypeError(
-                        f&#34;An dim (here {dim!r}) cannot be assigned to 2&#34;
+                        f&#34;A dim (here {dim!r}) cannot be assigned to 2&#34;
                         f&#34; roles (here {role!r} and {roles[dim]!r}).&#34;)
                 else:
                     roles[dim] = role
@@ -2447,7 +2454,7 @@ when optimizing over <code>dims['optim']</code>.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L489-L550" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L488-L549" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def table_tree(self, statkey, dims, *, costfun=None):
     &#34;&#34;&#34;Make hierarchy `outer &gt; inner &gt; mean &gt; optim` using `SparseSpace.nest`.
@@ -2485,7 +2492,7 @@ when optimizing over <code>dims['optim']</code>.</p>
     #    without extraction by coord_from_attrs() from (e.g.) row[0].
     #  - Don&#39;t need to propagate mean&amp;optim dims down to the row level.
     #    which would require defining rows by the nesting:
-    #    rows = table.nest(outer_dims=complm(table.dims,
+    #    rows = table.nest(outer_dims=complement(table.dims,
     #        *(dims[&#39;inner&#39;] or ()),
     #        *(dims[&#39;mean&#39;]  or ()),
     #        *(dims[&#39;optim&#39;] or ()) ))
@@ -2521,7 +2528,7 @@ when optimizing over <code>dims['optim']</code>.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L552-L554" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L551-L553" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def tickz(self, dim_name):
     &#34;&#34;&#34;Dimension (axis) ticks without None&#34;&#34;&#34;
@@ -2529,7 +2536,7 @@ when optimizing over <code>dims['optim']</code>.</p>
 </details>
 </dd>
 <dt id="dapper.xp_process.xpSpace.print"><code class="name flex">
-<span>def <span class="ident">print</span></span>(<span>self, statkey='rmse.a', dims={'outer': None, 'inner': None, 'mean': None, 'optim': None}, subcols=True, decimals=None, costfun=None, squeeze_labels=True, colorize=True)</span>
+<span>def <span class="ident">print</span></span>(<span>self, statkey, dims, subcols=True, decimals=None, costfun=None, squeeze_labels=True, colorize=True)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Print tables of results.</p>
@@ -2556,7 +2563,7 @@ is searched for (after taking the mean).</li>
      optim=('infl','loc_rad'))
 </code></pre>
 <p>Equivalently, use <code>mean=("seed",)</code>.
-It is acceptible to leave this empty, <code>mean=()</code> or <code>mean=None</code>.</p>
+It is acceptible to leave this empty: <code>mean=()</code> or <code>mean=None</code>.</p>
 </dd>
 <dt><strong><code>subcols</code></strong> :&ensp;<code>bool</code></dt>
 <dd>
@@ -2587,9 +2594,9 @@ Caution: <code>get_style</code> will not be able to access the eliminated attrs.
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L556-L700" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L555-L699" class="git-link">Browse git</a>
 </summary>
-<pre><code class="python">def print(self, statkey=&#34;rmse.a&#34;, dims=DIM_ROLES,  # noqa
+<pre><code class="python">def print(self, statkey, dims,  # noqa (shadowing builtin)
           subcols=True, decimals=None, costfun=None,
           squeeze_labels=True, colorize=True):
     &#34;&#34;&#34;Print tables of results.
@@ -2617,7 +2624,7 @@ Caution: <code>get_style</code> will not be able to access the eliminated attrs.
                  optim=(&#39;infl&#39;,&#39;loc_rad&#39;))
 
         Equivalently, use `mean=(&#34;seed&#34;,)`.
-        It is acceptible to leave this empty, `mean=()` or `mean=None`.
+        It is acceptible to leave this empty: `mean=()` or `mean=None`.
     subcols: bool
         If `True`, then subcolumns are added to indicate
 
@@ -2669,7 +2676,7 @@ Caution: <code>get_style</code> will not be able to access the eliminated attrs.
                         col[key] = align_col(subcolmn, just=aligns.get(key, &#34;&gt;&#34;))
                     else:
                         del col[key]
-                col = [templ.format(**row) for row in struct_tools.transps(col)]
+                col = [templ.format(**row) for row in transps(col)]
             else:
                 col = align_col([statkey] + col[&#34;val&#34;])
             return col
@@ -2737,7 +2744,7 @@ Caution: <code>get_style</code> will not be able to access the eliminated attrs.
 </details>
 </dd>
 <dt id="dapper.xp_process.xpSpace.plot"><code class="name flex">
-<span>def <span class="ident">plot</span></span>(<span>self, statkey='rmse.a', dims={'outer': None, 'inner': None, 'mean': None, 'optim': None}, get_style=&lt;function default_styles&gt;, fignum=None, figsize=None, panels=None, costfun=None, title1=None, title2=None, unique_labels=True, squeeze_labels=True)</span>
+<span>def <span class="ident">plot</span></span>(<span>self, statkey, dims, get_style=&lt;function default_styles&gt;, fignum=None, figsize=None, panels=None, costfun=None, title1=None, title2=None, unique_labels=True, squeeze_labels=True)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Plot (tables of) results.</p>
@@ -2768,9 +2775,9 @@ Don't include redundant attributes in the labels.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L702-L872" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L701-L875" class="git-link">Browse git</a>
 </summary>
-<pre><code class="python">def plot(self, statkey=&#34;rmse.a&#34;, dims=DIM_ROLES, get_style=default_styles,
+<pre><code class="python">def plot(self, statkey, dims, get_style=default_styles,
          fignum=None, figsize=None, panels=None, costfun=None,
          title1=None, title2=None, unique_labels=True, squeeze_labels=True):
     &#34;&#34;&#34;Plot (tables of) results.
@@ -2809,10 +2816,11 @@ Don't include redundant attributes in the labels.</p></div>
         Involves: Sort, insert None&#39;s, handle constant lines.
         &#34;&#34;&#34;
         # Make a full row (yy) of vals, whether is_constant or not.
-        # row.is_constant = (len(row)==1 and next(iter(row))==row.Coord(None))
-        row.is_constant = all(x == row.Coord(None) for x in row)
-        if row.is_constant:
-            yy = [row[None, ] for x in xticks]
+        # is_constant = (len(row)==1 and next(iter(row))==row.Coord(None))
+        is_constant = all(x == row.Coord(None) for x in row)
+        if is_constant:
+            yy = [row[None, ] for _ in xticks]
+            style.marker = None
         else:
             yy = [row.get(row.Coord(x), None) for x in xticks]
 
@@ -2834,19 +2842,27 @@ Don't include redundant attributes in the labels.</p></div>
             if not all(y == None for y in yy):
                 row.handles[a] = panel.plot(xticks, yy, **style)
 
-    def label_management():
-        def manager(style):
+    def label_management(table):
+        def pruner(style):
             label = style.get(&#34;label&#34;, None)
             if unique_labels:
                 if label in register:
                     del style[&#34;label&#34;]
-                else:
+                elif label:
                     register.add(style[&#34;label&#34;])
-                    manager.has_labels = True
+                    pruner.has_labels = True
             elif label:
-                manager.has_labels = True
-        manager.has_labels = False
-        return manager
+                pruner.has_labels = True
+        pruner.has_labels = False
+
+        def squeezer(coord):
+            return intersect(coord._asdict(), label_attrs)
+        if squeeze_labels:
+            label_attrs = xpList(table.keys()).prep_table()[0]
+        else:
+            label_attrs = table.dims
+
+        return pruner, squeezer
     register = set()
 
     def beautify(panels, title, has_labels):
@@ -2887,7 +2903,7 @@ Don't include redundant attributes in the labels.</p></div>
         self.make_ticks(xpList(self).prep_table()[0])
     xticks = self.tickz(dims[&#34;inner&#34;][0])
 
-    # Create figure panels
+    # Create figure axes
     if panels is None:
         nrows   = len(dims[&#39;optim&#39;] or ()) + 1
         ncols   = len(tables)
@@ -2921,23 +2937,18 @@ Don't include redundant attributes in the labels.</p></div>
     fig.suptitle(fig_title)
 
     # Loop outer
-    for table_panels, (table_coord, table) in zip(panels.T, tables.items()):
-        table.panels = table_panels
-
-        label_manager = label_management()
-        aa = xpList(table.keys()).prep_table()[0] if squeeze_labels else table.dims
-
-        # Plot
+    for ax_column, (table_coord, table) in zip(panels.T, tables.items()):
+        table.panels = ax_column
+        label_prune, label_squeeze = label_management(table)
         for coord, row in table.items():
-            coord = NoneDict(struct_tools.intersect(coord._asdict(), aa))
-            style = get_style(coord)
-            label_manager(style)
+            style = get_style(NoneDict(label_squeeze(coord)))
+            label_prune(style)
             plot1(table.panels, row, style)
 
         beautify(table.panels,
                  title=(&#34;&#34; if dims[&#34;outer&#34;] is None else
                         table_coord.repr2(True).strip(&#34;()&#34;)),
-                 has_labels=label_manager.has_labels)
+                 has_labels=label_prune.has_labels)
 
     tables.fig = fig  # add reference to fig
     return tables</code></pre>
