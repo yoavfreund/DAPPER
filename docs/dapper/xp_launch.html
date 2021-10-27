@@ -41,7 +41,7 @@ body.gsc-overflow-hidden #sidebar {overflow: visible;}
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L1-L585" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L1-L591" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">&#34;&#34;&#34;Tools (notably `xpList`) for setup and running of experiments (known as `xp`s).
 
@@ -88,15 +88,14 @@ def seed_and_simulate(HMM, xp):
     xp: object
         Type: a `dapper.da_methods.da_method`-decorated class.
 
-        .. note:: `xp.seed` should be an integer. Otherwise:
-            If there is no `xp.seed` then then the seed is not set.
-            Although different `xp`s will then use different seeds
-            (unless you do some funky hacking),
-            reproducibility for your script as a whole would still be obtained
-            by setting the seed at the outset (i.e. in the script).
-            On the other hand, if `xp.seed in [None, &#34;clock&#34;]`
-            then the seed is from the clock (for each xp),
-            which would not provide exact reproducibility.
+        .. caution:: `xp.seed` should be set (and `int`).
+
+            Without `xp.seed` the seed does not get set,
+            and different `xp`s will use different seeds
+            (unless you do some funky hacking).
+            Reproducibility for a script as a whole can still be achieved
+            by setting the seed at the outset of the script.
+            To avoid even that, set `xp.seed to `None` or `&#34;clock&#34;`.
 
     Returns
     -------
@@ -549,11 +548,12 @@ class xpList(list):
             # mkdir extra_files
             extra_files = save_as / &#34;extra_files&#34;
             os.mkdir(extra_files)
-            # Default files: .py files in sys.path[0] (main script&#39;s path)
+            # Default extra_files: .py files in sys.path[0] (main script&#39;s path)
             if not mp.get(&#34;files&#34;, []):
                 ff = os.listdir(sys.path[0])
                 mp[&#34;files&#34;] = [f for f in ff if f.endswith(&#34;.py&#34;)]
-            # Copy files into extra_files
+
+            # Copy into extra_files
             for f in mp[&#34;files&#34;]:
                 if isinstance(f, (str, Path)):
                     # Example: f = &#34;A.py&#34;
@@ -584,7 +584,13 @@ class xpList(list):
                 %s
 
                 # Run
-                result = run_experiment(var[&#39;xp&#39;], None, &#34;.&#34;, **com)
+                try:
+                    result = run_experiment(var[&#39;xp&#39;], None, &#34;.&#34;, **com)
+                except SystemError as err:
+                    if err.args and &#34;opcode&#34; in err.args[0]:
+                        err.args += (&#34;It seems your local python version&#34;
+                                     &#34; is incompatible with that of the cluster.&#34;,)
+                    raise
                 &#34;&#34;&#34;) % dedent(mp[&#34;code&#34;]))
 
             with open(extra_files/&#34;dpr_config.yaml&#34;, &#34;w&#34;) as f:
@@ -650,16 +656,14 @@ def combinator(param_dict, **glob_dict):
 <dt><strong><code>xp</code></strong> :&ensp;<code>object</code></dt>
 <dd>
 <p>Type: a <code><a title="dapper.da_methods.da_method" href="da_methods/index.html#dapper.da_methods.da_method">da_method()</a></code>-decorated class.</p>
-<div class="admonition note">
-<p class="admonition-title">Note:&ensp;<code>xp.seed</code> should be an integer. Otherwise:</p>
-<p>If there is no <code>xp.seed</code> then then the seed is not set.
-Although different <code>xp</code>s will then use different seeds
-(unless you do some funky hacking),
-reproducibility for your script as a whole would still be obtained
-by setting the seed at the outset (i.e. in the script).
-On the other hand, if <code>xp.seed in [None, "clock"]</code>
-then the seed is from the clock (for each xp),
-which would not provide exact reproducibility.</p>
+<div class="admonition caution">
+<p class="admonition-title">Caution:&ensp;<code>xp.seed</code> should be set (and <code>int</code>).</p>
+<p>Without <code>xp.seed</code> the seed does not get set,
+and different <code>xp</code>s will use different seeds
+(unless you do some funky hacking).
+Reproducibility for a script as a whole can still be achieved
+by setting the seed at the outset of the script.
+To avoid even that, set <code>xp.seed to </code>None<code> or </code>"clock"`.</p>
 </div>
 </dd>
 </dl>
@@ -671,7 +675,7 @@ which would not provide exact reproducibility.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L34-L63" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L34-L62" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def seed_and_simulate(HMM, xp):
     &#34;&#34;&#34;Default experiment setup (sets seed and simulates truth and obs).
@@ -685,15 +689,14 @@ which would not provide exact reproducibility.</p>
     xp: object
         Type: a `dapper.da_methods.da_method`-decorated class.
 
-        .. note:: `xp.seed` should be an integer. Otherwise:
-            If there is no `xp.seed` then then the seed is not set.
-            Although different `xp`s will then use different seeds
-            (unless you do some funky hacking),
-            reproducibility for your script as a whole would still be obtained
-            by setting the seed at the outset (i.e. in the script).
-            On the other hand, if `xp.seed in [None, &#34;clock&#34;]`
-            then the seed is from the clock (for each xp),
-            which would not provide exact reproducibility.
+        .. caution:: `xp.seed` should be set (and `int`).
+
+            Without `xp.seed` the seed does not get set,
+            and different `xp`s will use different seeds
+            (unless you do some funky hacking).
+            Reproducibility for a script as a whole can still be achieved
+            by setting the seed at the outset of the script.
+            To avoid even that, set `xp.seed to `None` or `&#34;clock&#34;`.
 
     Returns
     -------
@@ -774,7 +777,7 @@ this xp.</dd>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L66-L151" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L65-L150" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def run_experiment(xp, label, savedir, HMM, setup=seed_and_simulate, free=True,
                    statkeys=False, fail_gently=False, **stat_kwargs):
@@ -887,7 +890,7 @@ then you'll create many more than you intend.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L555-L585" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L561-L591" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def combinator(param_dict, **glob_dict):
     &#34;&#34;&#34;Mass creation of `xp`&#39;s by combining the value lists in the `param_dict`.
@@ -971,7 +974,7 @@ as opposed to this class (<code><a title="dapper.xp_launch.xpList" href="#dapper
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L154-L552" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L153-L558" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class xpList(list):
     &#34;&#34;&#34;Subclass of `list` specialized for experiment (&#34;xp&#34;) objects.
@@ -1326,11 +1329,12 @@ as opposed to this class (<code><a title="dapper.xp_launch.xpList" href="#dapper
             # mkdir extra_files
             extra_files = save_as / &#34;extra_files&#34;
             os.mkdir(extra_files)
-            # Default files: .py files in sys.path[0] (main script&#39;s path)
+            # Default extra_files: .py files in sys.path[0] (main script&#39;s path)
             if not mp.get(&#34;files&#34;, []):
                 ff = os.listdir(sys.path[0])
                 mp[&#34;files&#34;] = [f for f in ff if f.endswith(&#34;.py&#34;)]
-            # Copy files into extra_files
+
+            # Copy into extra_files
             for f in mp[&#34;files&#34;]:
                 if isinstance(f, (str, Path)):
                     # Example: f = &#34;A.py&#34;
@@ -1361,7 +1365,13 @@ as opposed to this class (<code><a title="dapper.xp_launch.xpList" href="#dapper
                 %s
 
                 # Run
-                result = run_experiment(var[&#39;xp&#39;], None, &#34;.&#34;, **com)
+                try:
+                    result = run_experiment(var[&#39;xp&#39;], None, &#34;.&#34;, **com)
+                except SystemError as err:
+                    if err.args and &#34;opcode&#34; in err.args[0]:
+                        err.args += (&#34;It seems your local python version&#34;
+                                     &#34; is incompatible with that of the cluster.&#34;,)
+                    raise
                 &#34;&#34;&#34;) % dedent(mp[&#34;code&#34;]))
 
             with open(extra_files/&#34;dpr_config.yaml&#34;, &#34;w&#34;) as f:
@@ -1385,7 +1395,7 @@ as opposed to this class (<code><a title="dapper.xp_launch.xpList" href="#dapper
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L234-L237" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L233-L236" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">@property
 def da_methods(self):
@@ -1404,7 +1414,7 @@ def da_methods(self):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L206-L209" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L205-L208" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def append(self, xp):
     &#34;&#34;&#34;Append **if** not `self.unique` &amp; present.&#34;&#34;&#34;
@@ -1422,7 +1432,7 @@ unless the <code>missingval</code> matches the required value.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L221-L232" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L220-L231" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def inds(self, strict=True, missingval=&#34;NONSENSE&#34;, **kws):
     &#34;&#34;&#34;Find (all) indices of `xps` whose attributes match kws.
@@ -1464,7 +1474,7 @@ This function also does the heavy lifting for <code>xpSpace.squeeze</code>.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L239-L360" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L238-L359" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def prep_table(self, nomerge=()):
     &#34;&#34;&#34;Classify all attrs. of all `xp`s as `distinct`, `redundant`, or `common`.
@@ -1603,7 +1613,7 @@ This function also does the heavy lifting for <code>xpSpace.squeeze</code>.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L370-L408" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L369-L407" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def gen_names(self, abbrev=6, tab=False):
     &#34;&#34;&#34;Similiar to `self.__repr__()`, but:
@@ -1654,7 +1664,7 @@ This function also does the heavy lifting for <code>xpSpace.squeeze</code>.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L658-L676" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L661-L679" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def tabulate_avrgs(avrgs_list, statkeys=(), decimals=None):
     &#34;&#34;&#34;Tabulate avrgs (val±prec).&#34;&#34;&#34;
@@ -1705,7 +1715,7 @@ in <code>sys.path[0]</code> are uploaded.</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L420-L552" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_launch.py#L419-L558" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def launch(self, HMM, save_as=&#34;noname&#34;, mp=False, fail_gently=None, **kwargs):
     &#34;&#34;&#34;Essentially: `for xp in self: run_experiment(xp, ..., **kwargs)`.
@@ -1794,11 +1804,12 @@ in <code>sys.path[0]</code> are uploaded.</li>
         # mkdir extra_files
         extra_files = save_as / &#34;extra_files&#34;
         os.mkdir(extra_files)
-        # Default files: .py files in sys.path[0] (main script&#39;s path)
+        # Default extra_files: .py files in sys.path[0] (main script&#39;s path)
         if not mp.get(&#34;files&#34;, []):
             ff = os.listdir(sys.path[0])
             mp[&#34;files&#34;] = [f for f in ff if f.endswith(&#34;.py&#34;)]
-        # Copy files into extra_files
+
+        # Copy into extra_files
         for f in mp[&#34;files&#34;]:
             if isinstance(f, (str, Path)):
                 # Example: f = &#34;A.py&#34;
@@ -1829,7 +1840,13 @@ in <code>sys.path[0]</code> are uploaded.</li>
             %s
 
             # Run
-            result = run_experiment(var[&#39;xp&#39;], None, &#34;.&#34;, **com)
+            try:
+                result = run_experiment(var[&#39;xp&#39;], None, &#34;.&#34;, **com)
+            except SystemError as err:
+                if err.args and &#34;opcode&#34; in err.args[0]:
+                    err.args += (&#34;It seems your local python version&#34;
+                                 &#34; is incompatible with that of the cluster.&#34;,)
+                raise
             &#34;&#34;&#34;) % dedent(mp[&#34;code&#34;]))
 
         with open(extra_files/&#34;dpr_config.yaml&#34;, &#34;w&#34;) as f:

@@ -40,7 +40,7 @@ body.gsc-overflow-hidden #sidebar {overflow: visible;}
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/datafiles.py#L1-L161" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/datafiles.py#L1-L164" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">&#34;&#34;&#34;Manage the data files created by DAPPER.&#34;&#34;&#34;
 
@@ -109,6 +109,8 @@ def load_xps(save_as):
     &#34;&#34;&#34;Load `xps` (as a `list`) from given dir.&#34;&#34;&#34;
     save_as = Path(save_as).expanduser()
     files = [d/&#34;xp&#34; for d in uplink.list_job_dirs(save_as)]
+    if not files:
+        raise FileNotFoundError(f&#34;No results found at {save_as}.&#34;)
 
     def load_any(filepath):
         &#34;&#34;&#34;Load any/all `xp&#39;s` from `filepath`.&#34;&#34;&#34;
@@ -130,7 +132,8 @@ def load_xps(save_as):
         xps.extend(load_any(f))
 
     if len(xps) &lt; len(files):
-        print(f&#34;{len(files)-len(xps)} files could not be loaded.&#34;)
+        print(len(files)-len(xps), &#34;files could not be loaded,&#34;,
+              &#34;presumably because their respective jobs crashed.&#34;)
 
     return xps
 
@@ -299,12 +302,14 @@ def reduce_inodes(save_as, nDir=100):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/datafiles.py#L64-L91" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/datafiles.py#L64-L94" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def load_xps(save_as):
     &#34;&#34;&#34;Load `xps` (as a `list`) from given dir.&#34;&#34;&#34;
     save_as = Path(save_as).expanduser()
     files = [d/&#34;xp&#34; for d in uplink.list_job_dirs(save_as)]
+    if not files:
+        raise FileNotFoundError(f&#34;No results found at {save_as}.&#34;)
 
     def load_any(filepath):
         &#34;&#34;&#34;Load any/all `xp&#39;s` from `filepath`.&#34;&#34;&#34;
@@ -326,7 +331,8 @@ def reduce_inodes(save_as, nDir=100):
         xps.extend(load_any(f))
 
     if len(xps) &lt; len(files):
-        print(f&#34;{len(files)-len(xps)} files could not be loaded.&#34;)
+        print(len(files)-len(xps), &#34;files could not be loaded,&#34;,
+              &#34;presumably because their respective jobs crashed.&#34;)
 
     return xps</code></pre>
 </details>
@@ -358,7 +364,7 @@ for save_as in dd.iterdir():
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/datafiles.py#L94-L130" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/datafiles.py#L97-L133" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def save_xps(xps, save_as, nDir=100):
     &#34;&#34;&#34;Save `xps` (list of `xp`s) in `nDir` subfolders: `save_as/i`.
@@ -407,7 +413,7 @@ for save_as in dd.iterdir():
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/datafiles.py#L133-L146" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/datafiles.py#L136-L149" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def overwrite_xps(xps, save_as, nDir=100):
     &#34;&#34;&#34;Save xps in save_as, but safely (by first saving to tmp).&#34;&#34;&#34;
@@ -439,7 +445,7 @@ This probably leads to reduced loading time is sometimes reduced.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/datafiles.py#L149-L161" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/datafiles.py#L152-L164" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def reduce_inodes(save_as, nDir=100):
     &#34;&#34;&#34;Reduce the number of `xp` dirs

@@ -40,7 +40,7 @@ body.gsc-overflow-hidden #sidebar {overflow: visible;}
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/ensemble.py#L1-L969" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/ensemble.py#L1-L974" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">&#34;&#34;&#34;The EnKF and other ensemble-based methods.&#34;&#34;&#34;
 
@@ -671,7 +671,7 @@ class LETKF:
                         T      = (V * d**(-0.5)) @ V.T * sqrt(za)
                     else:
                         # EVD version
-                        d, V   = sla.eigh(Y_jj@Y_jj.T + za*eye(N))
+                        d, V  = sla.eigh(Y_jj@Y_jj.T + za*eye(N))
                         T     = V@diag(d**(-0.5))@V.T * sqrt(za)
                         Pw    = V@diag(d**(-1.0))@V.T
                     AT  = T @ A[:, ii]
@@ -768,8 +768,12 @@ def Newton_m(fun, deriv, x0, is_inverted=False,
 
     This is a simple (and pretty fast) implementation of Newton&#39;s method.
     &#34;&#34;&#34;
-    itr, dx, Jx = 0, np.inf, fun(x0)
-    def norm(x): return sqrt(np.sum(x**2))
+    itr = 0
+    dx = np.inf
+    Jx = fun(x0)
+
+    def norm(x):
+        return sqrt(np.sum(x**2))
     while ytol &lt; norm(Jx) and xtol &lt; norm(dx) and itr &lt; itermax:
         Dx  = deriv(x0)
         if is_inverted:
@@ -781,6 +785,7 @@ def Newton_m(fun, deriv, x0, is_inverted=False,
         dx *= conf
         x0 -= dx
         Jx  = fun(x0)
+        itr += 1
     return x0
 
 
@@ -1454,7 +1459,7 @@ this should have been inside :func:<code><a title="dapper.da_methods.ensemble.En
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/ensemble.py#L721-L740" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/ensemble.py#L721-L745" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def Newton_m(fun, deriv, x0, is_inverted=False,
              conf=1.0, xtol=1e-4, ytol=1e-7, itermax=10**2):
@@ -1462,8 +1467,12 @@ this should have been inside :func:<code><a title="dapper.da_methods.ensemble.En
 
     This is a simple (and pretty fast) implementation of Newton&#39;s method.
     &#34;&#34;&#34;
-    itr, dx, Jx = 0, np.inf, fun(x0)
-    def norm(x): return sqrt(np.sum(x**2))
+    itr = 0
+    dx = np.inf
+    Jx = fun(x0)
+
+    def norm(x):
+        return sqrt(np.sum(x**2))
     while ytol &lt; norm(Jx) and xtol &lt; norm(dx) and itr &lt; itermax:
         Dx  = deriv(x0)
         if is_inverted:
@@ -1475,6 +1484,7 @@ this should have been inside :func:<code><a title="dapper.da_methods.ensemble.En
         dx *= conf
         x0 -= dx
         Jx  = fun(x0)
+        itr += 1
     return x0</code></pre>
 </details>
 </dd>
@@ -1526,7 +1536,7 @@ as if N were smaller than it truly is.</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/ensemble.py#L743-L803" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/ensemble.py#L748-L808" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def hyperprior_coeffs(s, N, xN=1, g=0):
     r&#34;&#34;&#34;Set EnKF-N inflation hyperparams.
@@ -1603,7 +1613,7 @@ the distinction between the primal and dual EnKF-N.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/ensemble.py#L806-L818" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/ensemble.py#L811-L823" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def zeta_a(eN, cL, w):
     &#34;&#34;&#34;EnKF-N inflation estimation via w.
@@ -2389,7 +2399,7 @@ even with <code>batch_size=(1,)</code>. But for <code><a title="dapper.mods.QG" 
                         T      = (V * d**(-0.5)) @ V.T * sqrt(za)
                     else:
                         # EVD version
-                        d, V   = sla.eigh(Y_jj@Y_jj.T + za*eye(N))
+                        d, V  = sla.eigh(Y_jj@Y_jj.T + za*eye(N))
                         T     = V@diag(d**(-0.5))@V.T * sqrt(za)
                         Pw    = V@diag(d**(-1.0))@V.T
                     AT  = T @ A[:, ii]
@@ -2529,7 +2539,7 @@ even with <code>batch_size=(1,)</code>. But for <code><a title="dapper.mods.QG" 
                     T      = (V * d**(-0.5)) @ V.T * sqrt(za)
                 else:
                     # EVD version
-                    d, V   = sla.eigh(Y_jj@Y_jj.T + za*eye(N))
+                    d, V  = sla.eigh(Y_jj@Y_jj.T + za*eye(N))
                     T     = V@diag(d**(-0.5))@V.T * sqrt(za)
                     Pw    = V@diag(d**(-1.0))@V.T
                 AT  = T @ A[:, ii]
@@ -2592,7 +2602,7 @@ Further description in hyperprior_coeffs().</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/ensemble.py#L822-L969" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/ensemble.py#L827-L974" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class EnKF_N:
     &#34;&#34;&#34;Finite-size EnKF (EnKF-N).
@@ -2792,7 +2802,7 @@ Further description in hyperprior_coeffs().</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/ensemble.py#L855-L969" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/ensemble.py#L860-L974" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def assimilate(self, HMM, xx, yy):
     R, N, N1 = HMM.Obs.noise.C, self.N, self.N-1

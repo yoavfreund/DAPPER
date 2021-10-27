@@ -41,7 +41,7 @@ body.gsc-overflow-hidden #sidebar {overflow: visible;}
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/remote/uplink.py#L1-L370" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/remote/uplink.py#L1-L373" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">&#34;&#34;&#34;Tools related to running experimentes remotely
 
@@ -153,7 +153,6 @@ def submit_job_GCP(xps_path, **kwargs):
     &#34;&#34;&#34;GCP/HTCondor launcher&#34;&#34;&#34;
     sc = SubmissionConnection(xps_path, **kwargs)
     _sync_job(sc)
-
     _submit_job(sc)
 
     # Prepare download command
@@ -184,6 +183,19 @@ def submit_job_GCP(xps_path, **kwargs):
                   &#34;Shut down the compute nodes yourself using:\n    &#34;
                   &#34;gcloud compute instance-groups managed &#34;
                   &#34;resize condor-compute-pvm-igm --size 0&#34;)
+
+        # Check for errors among jobs
+        nHeld = _get_job_status(sc)[&#34;held&#34;]
+        if nHeld:
+            if nHeld == sc.nJobs:
+                print(&#34;NB: All jobs failed&#34;)
+            else:
+                print(&#34;NB: There were %d failed jobs&#34; % nHeld)
+            # Print path of error messages for a (the first found) failed job
+            for d in list_job_dirs(sc.xps_path):
+                if (d / &#34;xp&#34;).stat().st_size == 0:
+                    print(f&#34;View error message at {d / &#39;out&#39;}&#34;)
+                    break
 
 
 def _detect_autoscaler(self, minutes=10):
@@ -242,10 +254,7 @@ def _sync_job(self):
 
 
 def _sync_DAPPER(self):
-    &#34;&#34;&#34;Sync DAPPER (as it currently exists, not a specific version)
-
-    to compute-nodes, which don&#39;t have external IP addresses.
-    &#34;&#34;&#34;
+    &#34;&#34;&#34;Sync DAPPER (as on work-tree, not a specific version) to GCP.&#34;&#34;&#34;
     # Get list of files: whatever mentioned by .git
     repo  = f&#34;--git-dir={rc.dirs.DAPPER}/.git&#34;
     files = sub_run(f&#34;git {repo} ls-tree -r --name-only HEAD&#34;, shell=True).split()
@@ -264,14 +273,13 @@ def _sync_DAPPER(self):
             f&#34;~/{self.xps_path.name}/DAPPER&#34;,
             &#34;--files-from=&#34;+synclist.name)
     except subprocess.SubprocessError as error:
-        # Suggest common source of error in the message.
-        msg = error.args[0] + \
-            &#34;\nDid you mv/rm files (and not registering it with .git)?&#34;
-        raise subprocess.SubprocessError(msg) from error
+        print(error.stderr)
+        print(&#34;Did you mv/rm files (and not register it with `git`)?&#34;)
+        raise
 
 
 def print_condor_status(self):
-    status = &#34;&#34;&#34;condor_status -total&#34;&#34;&#34;
+    status = &#34;&#34;&#34;`condor_status` -total&#34;&#34;&#34;
     status = self.remote_cmd(status)
     if status:
         print(status, &#34;:&#34;)
@@ -282,7 +290,7 @@ def print_condor_status(self):
 
 
 def _clear_queue(self):
-    &#34;&#34;&#34;Use condor_rm to clear the job queue of the submission.&#34;&#34;&#34;
+    &#34;&#34;&#34;Use `condor_rm` to clear the job queue of the submission.&#34;&#34;&#34;
     try:
         batch = f&#34;&#34;&#34;-constraint &#39;JobBatchName == &#34;{self.xps_path.name}&#34;&#39;&#34;&#34;&#34;
         self.remote_cmd(f&#34;&#34;&#34;condor_rm {batch}&#34;&#34;&#34;)
@@ -297,7 +305,7 @@ def _clear_queue(self):
 
 
 def _get_job_status(self):
-    &#34;&#34;&#34;Parse condor_q to get number idle, held, etc, jobs&#34;&#34;&#34;
+    &#34;&#34;&#34;Parse `condor_q` to get number idle, held, etc, jobs&#34;&#34;&#34;
     # The autoscaler.py script from Google uses
     # &#39;condor_q -totals -format &#34;%d &#34; Jobs -format &#34;%d &#34; Idle -format &#34;%d &#34; Held&#39;
     # But in both condor versions I&#39;ve tried, -totals does not mix well with -format,
@@ -342,15 +350,10 @@ def _monitor_progress(self):
             time.sleep(1)  # dont clog the ssh connection
     except (KeyboardInterrupt, Exception):
         print(&#34;Some kind of exception occured,&#34;
-              &#34; while %d jobs did not run at all.&#34; % unfinished)
+              &#34; while %d jobs have not even run.&#34; % unfinished)
         raise
-    else:
-        print(&#34;All jobs finished without failure.&#34;)
     finally:
         pbar.close()
-        if job_status[&#34;held&#34;]:
-            print(&#34;NB: There were %d failed jobs&#34; % job_status[&#34;held&#34;])
-            print(f&#34;View errors at {self.xps_path}/JOBNUMBER/out&#34;)
 
 
 def list_job_dirs(xps_path):
@@ -390,14 +393,11 @@ def get_ip(instance):
 
 
 def sub_run(*args, check=True, capture_output=True, text=True, **kwargs):
-    r&#34;&#34;&#34;Run `subprocess.run`, with other defaults, and return stdout.
+    r&#34;&#34;&#34;Do `subprocess.run`, with responsive defaults.
 
-    Example:
-    &gt;&gt;&gt; gitfiles = sub_run([&#34;git&#34;, &#34;ls-tree&#34;, &#34;-r&#34;, &#34;--name-only&#34;, &#34;HEAD&#34;])
-    &gt;&gt;&gt; # Alternatively:
+    Examples:
+    &gt;&gt;&gt; gitfiles = sub_run([&#34;git&#34;, &#34;ls-tree&#34;, &#34;-r&#34;, &#34;--name-only&#34;, &#34;HEAD&#34;])  # or:
     &gt;&gt;&gt; # gitfiles = sub_run(&#34;git ls-tree -r --name-only HEAD&#34;, shell=True)
-    &gt;&gt;&gt; # Only .py files:
-    &gt;&gt;&gt; gitfiles = [f for f in gitfiles.split(&#34;\n&#34;) if f.endswith(&#34;.py&#34;)]
     &#34;&#34;&#34;
     try:
         x = subprocess.run(
@@ -405,11 +405,14 @@ def sub_run(*args, check=True, capture_output=True, text=True, **kwargs):
             check=check, capture_output=capture_output, text=text)
 
     except subprocess.CalledProcessError as error:
-        # CalledProcessError doesnt print its .stderr,
-        # so we raise it this way:
-        raise subprocess.SubprocessError(
-            f&#34;Command {error.cmd} returned non-zero exit status, &#34;
-            f&#34;with stderr:\n{error.stderr}&#34;) from error
+        if capture_output:
+            # error.args += (f&#34;The stderr is: \n\n{error.stderr}&#34;,)
+            # The above won&#39;t get printed because CalledProcessError.__str__
+            # is non-standard. Instead, print stdout (on top of stack trace):
+            print(error.stderr)
+        else:
+            pass  # w/o capture_output, error is automatically printed.
+        raise
 
     if capture_output:
         return x.stdout</code></pre>
@@ -430,13 +433,12 @@ def sub_run(*args, check=True, capture_output=True, text=True, **kwargs):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/remote/uplink.py#L107-L141" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/remote/uplink.py#L107-L153" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def submit_job_GCP(xps_path, **kwargs):
     &#34;&#34;&#34;GCP/HTCondor launcher&#34;&#34;&#34;
     sc = SubmissionConnection(xps_path, **kwargs)
     _sync_job(sc)
-
     _submit_job(sc)
 
     # Prepare download command
@@ -466,7 +468,20 @@ def sub_run(*args, check=True, capture_output=True, text=True, **kwargs):
             print(&#34;Warning: autoscaler.py NOT detected!\n    &#34;
                   &#34;Shut down the compute nodes yourself using:\n    &#34;
                   &#34;gcloud compute instance-groups managed &#34;
-                  &#34;resize condor-compute-pvm-igm --size 0&#34;)</code></pre>
+                  &#34;resize condor-compute-pvm-igm --size 0&#34;)
+
+        # Check for errors among jobs
+        nHeld = _get_job_status(sc)[&#34;held&#34;]
+        if nHeld:
+            if nHeld == sc.nJobs:
+                print(&#34;NB: All jobs failed&#34;)
+            else:
+                print(&#34;NB: There were %d failed jobs&#34; % nHeld)
+            # Print path of error messages for a (the first found) failed job
+            for d in list_job_dirs(sc.xps_path):
+                if (d / &#34;xp&#34;).stat().st_size == 0:
+                    print(f&#34;View error message at {d / &#39;out&#39;}&#34;)
+                    break</code></pre>
 </details>
 </dd>
 <dt id="dapper.tools.remote.uplink.print_condor_status"><code class="name flex">
@@ -477,10 +492,10 @@ def sub_run(*args, check=True, capture_output=True, text=True, **kwargs):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/remote/uplink.py#L228-L236" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/remote/uplink.py#L236-L244" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def print_condor_status(self):
-    status = &#34;&#34;&#34;condor_status -total&#34;&#34;&#34;
+    status = &#34;&#34;&#34;`condor_status` -total&#34;&#34;&#34;
     status = self.remote_cmd(status)
     if status:
         print(status, &#34;:&#34;)
@@ -498,7 +513,7 @@ def sub_run(*args, check=True, capture_output=True, text=True, **kwargs):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/remote/uplink.py#L311-L315" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/remote/uplink.py#L314-L318" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def list_job_dirs(xps_path):
     dirs = sorted_human(os.listdir(xps_path))
@@ -521,7 +536,7 @@ and that you've already logged into the instance once using (eg)
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/remote/uplink.py#L318-L344" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/remote/uplink.py#L321-L347" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def get_ip(instance):
     &#34;&#34;&#34;Get ip-address of instance.
@@ -556,28 +571,22 @@ and that you've already logged into the instance once using (eg)
 <span>def <span class="ident">sub_run</span></span>(<span>*args, check=True, capture_output=True, text=True, **kwargs)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Run <code>subprocess.run</code>, with other defaults, and return stdout.</p>
-<p>Example:</p>
-<pre><code class="language-python-repl">&gt;&gt;&gt; gitfiles = sub_run([&quot;git&quot;, &quot;ls-tree&quot;, &quot;-r&quot;, &quot;--name-only&quot;, &quot;HEAD&quot;])
-&gt;&gt;&gt; # Alternatively:
+<div class="desc"><p>Do <code>subprocess.run</code>, with responsive defaults.</p>
+<p>Examples:</p>
+<pre><code class="language-python-repl">&gt;&gt;&gt; gitfiles = sub_run([&quot;git&quot;, &quot;ls-tree&quot;, &quot;-r&quot;, &quot;--name-only&quot;, &quot;HEAD&quot;])  # or:
 &gt;&gt;&gt; # gitfiles = sub_run(&quot;git ls-tree -r --name-only HEAD&quot;, shell=True)
-&gt;&gt;&gt; # Only .py files:
-&gt;&gt;&gt; gitfiles = [f for f in gitfiles.split(&quot;\n&quot;) if f.endswith(&quot;.py&quot;)]
 </code></pre></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/remote/uplink.py#L347-L370" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/remote/uplink.py#L350-L373" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def sub_run(*args, check=True, capture_output=True, text=True, **kwargs):
-    r&#34;&#34;&#34;Run `subprocess.run`, with other defaults, and return stdout.
+    r&#34;&#34;&#34;Do `subprocess.run`, with responsive defaults.
 
-    Example:
-    &gt;&gt;&gt; gitfiles = sub_run([&#34;git&#34;, &#34;ls-tree&#34;, &#34;-r&#34;, &#34;--name-only&#34;, &#34;HEAD&#34;])
-    &gt;&gt;&gt; # Alternatively:
+    Examples:
+    &gt;&gt;&gt; gitfiles = sub_run([&#34;git&#34;, &#34;ls-tree&#34;, &#34;-r&#34;, &#34;--name-only&#34;, &#34;HEAD&#34;])  # or:
     &gt;&gt;&gt; # gitfiles = sub_run(&#34;git ls-tree -r --name-only HEAD&#34;, shell=True)
-    &gt;&gt;&gt; # Only .py files:
-    &gt;&gt;&gt; gitfiles = [f for f in gitfiles.split(&#34;\n&#34;) if f.endswith(&#34;.py&#34;)]
     &#34;&#34;&#34;
     try:
         x = subprocess.run(
@@ -585,11 +594,14 @@ and that you've already logged into the instance once using (eg)
             check=check, capture_output=capture_output, text=text)
 
     except subprocess.CalledProcessError as error:
-        # CalledProcessError doesnt print its .stderr,
-        # so we raise it this way:
-        raise subprocess.SubprocessError(
-            f&#34;Command {error.cmd} returned non-zero exit status, &#34;
-            f&#34;with stderr:\n{error.stderr}&#34;) from error
+        if capture_output:
+            # error.args += (f&#34;The stderr is: \n\n{error.stderr}&#34;,)
+            # The above won&#39;t get printed because CalledProcessError.__str__
+            # is non-standard. Instead, print stdout (on top of stack trace):
+            print(error.stderr)
+        else:
+            pass  # w/o capture_output, error is automatically printed.
+        raise
 
     if capture_output:
         return x.stdout</code></pre>

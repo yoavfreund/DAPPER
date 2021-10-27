@@ -103,7 +103,7 @@ must be "registered":</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L1-L804" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L1-L807" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">&#34;&#34;&#34;Statistics for the assessment of DA methods.
 
@@ -329,11 +329,7 @@ class Stats(series.StatPrint):
                 self.derivative_stats(stats_now)
                 self.summarize_marginals(stats_now)
 
-            # Write current stats to series
-            for name, val in stats_now.items():
-                stat = struct_tools.deep_getattr(self, name)
-                isFaust = isinstance(stat, series.FAUSt)
-                stat[(k, ko, sub) if isFaust else ko] = val
+            self.write(stats_now, k, ko, sub)
 
             # LivePlot -- Both init and update must come after the assessment.
             try:
@@ -342,8 +338,15 @@ class Stats(series.StatPrint):
                 self.LP_instance = liveplotting.LivePlot(
                     self, self.liveplots, (k, ko, sub), E, Cov)
 
+    def write(self, stat_dict, k, ko, sub):
+        &#34;&#34;&#34;Write `stat_dict` to series at `(k, ko, sub)`.&#34;&#34;&#34;
+        for name, val in stat_dict.items():
+            stat = struct_tools.deep_getattr(self, name)
+            isFaust = isinstance(stat, series.FAUSt)
+            stat[(k, ko, sub) if isFaust else ko] = val
+
     def summarize_marginals(self, now):
-        &#34;&#34;&#34;Compute Mean-field and RMS values&#34;&#34;&#34;
+        &#34;&#34;&#34;Compute Mean-field and RMS values.&#34;&#34;&#34;
         formulae = {**self.field_summaries, **self.sector_summaries}
 
         with np.errstate(divide=&#39;ignore&#39;, invalid=&#39;ignore&#39;):
@@ -927,7 +930,7 @@ def unbias_var(w=None, N_eff=None, avoid_pathological=False):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L471-L479" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L474-L482" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def register_stat(self, name, value):
     &#34;&#34;&#34;Do `self.name = value` and register `name` as in self&#39;s `stat_register`.
@@ -961,7 +964,7 @@ Default: <code>None</code>. In this case, the formatting is left to the <code>uq
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L601-L655" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L604-L658" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def unpack_uqs(uq_list, decimals=None):
     &#34;&#34;&#34;Convert list of `uq`s into dict of lists (of equal-length) of attributes.
@@ -1028,7 +1031,7 @@ Default: <code>None</code>. In this case, the formatting is left to the <code>uq
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L658-L676" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L661-L679" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def tabulate_avrgs(avrgs_list, statkeys=(), decimals=None):
     &#34;&#34;&#34;Tabulate avrgs (val±prec).&#34;&#34;&#34;
@@ -1078,7 +1081,7 @@ where N is the ensemble size. Default: False</dd>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L679-L714" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L682-L717" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def center(E, axis=0, rescale=False):
     r&#34;&#34;&#34;Center ensemble.
@@ -1128,7 +1131,7 @@ when used to center observation perturbations.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L717-L723" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L720-L726" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def mean0(E, axis=0, rescale=True):
     &#34;&#34;&#34;Like `center`, but only return the anomalies (not the mean).
@@ -1159,7 +1162,7 @@ when used to center observation perturbations.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L726-L746" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L729-L749" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def inflate_ens(E, factor):
     &#34;&#34;&#34;Inflate the ensemble (center, inflate, re-combine).
@@ -1206,7 +1209,7 @@ should be nearly one since sum(w) = 1</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L749-L768" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L752-L771" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def weight_degeneracy(w, prec=1e-10):
     &#34;&#34;&#34;Check if the weights are degenerate.
@@ -1257,7 +1260,7 @@ The unbiasing factor is <span><span class="MathJax_Preview"> N_{eff} / (N_{eff} 
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L771-L804" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L774-L807" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def unbias_var(w=None, N_eff=None, avoid_pathological=False):
     &#34;&#34;&#34;Compute unbias-ing factor for variance estimation.
@@ -1310,7 +1313,7 @@ The unbiasing factor is <span><span class="MathJax_Preview"> N_{eff} / (N_{eff} 
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L33-L468" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L33-L471" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Stats(series.StatPrint):
     &#34;&#34;&#34;Contains and computes statistics of the DA methods.&#34;&#34;&#34;
@@ -1504,11 +1507,7 @@ The unbiasing factor is <span><span class="MathJax_Preview"> N_{eff} / (N_{eff} 
                 self.derivative_stats(stats_now)
                 self.summarize_marginals(stats_now)
 
-            # Write current stats to series
-            for name, val in stats_now.items():
-                stat = struct_tools.deep_getattr(self, name)
-                isFaust = isinstance(stat, series.FAUSt)
-                stat[(k, ko, sub) if isFaust else ko] = val
+            self.write(stats_now, k, ko, sub)
 
             # LivePlot -- Both init and update must come after the assessment.
             try:
@@ -1517,8 +1516,15 @@ The unbiasing factor is <span><span class="MathJax_Preview"> N_{eff} / (N_{eff} 
                 self.LP_instance = liveplotting.LivePlot(
                     self, self.liveplots, (k, ko, sub), E, Cov)
 
+    def write(self, stat_dict, k, ko, sub):
+        &#34;&#34;&#34;Write `stat_dict` to series at `(k, ko, sub)`.&#34;&#34;&#34;
+        for name, val in stat_dict.items():
+            stat = struct_tools.deep_getattr(self, name)
+            isFaust = isinstance(stat, series.FAUSt)
+            stat[(k, ko, sub) if isFaust else ko] = val
+
     def summarize_marginals(self, now):
-        &#34;&#34;&#34;Compute Mean-field and RMS values&#34;&#34;&#34;
+        &#34;&#34;&#34;Compute Mean-field and RMS values.&#34;&#34;&#34;
         formulae = {**self.field_summaries, **self.sector_summaries}
 
         with np.errstate(divide=&#39;ignore&#39;, invalid=&#39;ignore&#39;):
@@ -1845,7 +1851,7 @@ Default: <code>'u' if ko is None else 'au' ('a' and 'u')</code>.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L172-L236" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L172-L232" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def assess(self, k, ko=None, faus=None,
            E=None, w=None, mu=None, Cov=None):
@@ -1900,11 +1906,7 @@ Default: <code>'u' if ko is None else 'au' ('a' and 'u')</code>.</p></div>
             self.derivative_stats(stats_now)
             self.summarize_marginals(stats_now)
 
-        # Write current stats to series
-        for name, val in stats_now.items():
-            stat = struct_tools.deep_getattr(self, name)
-            isFaust = isinstance(stat, series.FAUSt)
-            stat[(k, ko, sub) if isFaust else ko] = val
+        self.write(stats_now, k, ko, sub)
 
         # LivePlot -- Both init and update must come after the assessment.
         try:
@@ -1914,18 +1916,36 @@ Default: <code>'u' if ko is None else 'au' ('a' and 'u')</code>.</p></div>
                 self, self.liveplots, (k, ko, sub), E, Cov)</code></pre>
 </details>
 </dd>
+<dt id="dapper.stats.Stats.write"><code class="name flex">
+<span>def <span class="ident">write</span></span>(<span>self, stat_dict, k, ko, sub)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Write <code>stat_dict</code> to series at <code>(k, ko, sub)</code>.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L234-L239" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def write(self, stat_dict, k, ko, sub):
+    &#34;&#34;&#34;Write `stat_dict` to series at `(k, ko, sub)`.&#34;&#34;&#34;
+    for name, val in stat_dict.items():
+        stat = struct_tools.deep_getattr(self, name)
+        isFaust = isinstance(stat, series.FAUSt)
+        stat[(k, ko, sub) if isFaust else ko] = val</code></pre>
+</details>
+</dd>
 <dt id="dapper.stats.Stats.summarize_marginals"><code class="name flex">
 <span>def <span class="ident">summarize_marginals</span></span>(<span>self, now)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Compute Mean-field and RMS values</p></div>
+<div class="desc"><p>Compute Mean-field and RMS values.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L238-L248" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L241-L251" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def summarize_marginals(self, now):
-    &#34;&#34;&#34;Compute Mean-field and RMS values&#34;&#34;&#34;
+    &#34;&#34;&#34;Compute Mean-field and RMS values.&#34;&#34;&#34;
     formulae = {**self.field_summaries, **self.sector_summaries}
 
     with np.errstate(divide=&#39;ignore&#39;, invalid=&#39;ignore&#39;):
@@ -1945,7 +1965,7 @@ Default: <code>'u' if ko is None else 'au' ('a' and 'u')</code>.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L250-L256" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L253-L259" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def derivative_stats(self, now):
     &#34;&#34;&#34;Stats that derive from others, and are not specific for `_ens` or `_ext`).&#34;&#34;&#34;
@@ -1964,7 +1984,7 @@ Default: <code>'u' if ko is None else 'au' ('a' and 'u')</code>.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L258-L329" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L261-L332" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def assess_ens(self, now, x, E, w):
     &#34;&#34;&#34;Ensemble and Particle filter (weighted/importance) assessment.&#34;&#34;&#34;
@@ -2048,7 +2068,7 @@ Default: <code>'u' if ko is None else 'au' ('a' and 'u')</code>.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L331-L356" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L334-L359" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def assess_ext(self, now, x, mu, P):
     &#34;&#34;&#34;Kalman filter (Gaussian) assessment.&#34;&#34;&#34;
@@ -2091,7 +2111,7 @@ time inds for averaging</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L358-L418" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L361-L421" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def average_in_time(self, kk=None, kko=None, free=False):
     &#34;&#34;&#34;Avarage all univariate (scalar) time series.
@@ -2176,7 +2196,7 @@ time inds for averaging</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L420-L468" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L423-L471" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def replay(self, figlist=&#34;default&#34;, speed=np.inf, t1=0, t2=None, **kwargs):
     &#34;&#34;&#34;Replay LivePlot with what&#39;s been stored in &#39;self&#39;.
@@ -2247,7 +2267,7 @@ time inds for averaging</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L482-L507" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L485-L510" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Avrgs(series.StatPrint, struct_tools.DotDict):
     &#34;&#34;&#34;A `dict` specialized for the averages of statistics.
@@ -2301,7 +2321,7 @@ time inds for averaging</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L492-L494" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L495-L497" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def tabulate(self, statkeys=(), decimals=None):
     columns = tabulate_avrgs([self], statkeys, decimals=decimals)
@@ -2361,6 +2381,7 @@ data-gaCategoryParameter="dapper.stats">
 <ul class="two-column">
 <li><code><a title="dapper.stats.Stats.new_series" href="#dapper.stats.Stats.new_series">new_series</a></code></li>
 <li><code><a title="dapper.stats.Stats.assess" href="#dapper.stats.Stats.assess">assess</a></code></li>
+<li><code><a title="dapper.stats.Stats.write" href="#dapper.stats.Stats.write">write</a></code></li>
 <li><code><a title="dapper.stats.Stats.summarize_marginals" href="#dapper.stats.Stats.summarize_marginals">summarize_marginals</a></code></li>
 <li><code><a title="dapper.stats.Stats.derivative_stats" href="#dapper.stats.Stats.derivative_stats">derivative_stats</a></code></li>
 <li><code><a title="dapper.stats.Stats.assess_ens" href="#dapper.stats.Stats.assess_ens">assess_ens</a></code></li>

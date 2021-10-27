@@ -207,7 +207,7 @@ def da_method(*default_dataclasses):
                 else:
                     # Don&#39;t use _print_cropped_traceback here -- It would
                     # crop out errors in the DAPPER infrastructure itself.
-                    raise ERR
+                    raise
             self.stat(&#34;duration&#34;, time.time()-time0)
 
         # Overwrite the assimilate method with the new one
@@ -496,7 +496,7 @@ experiments (see <code><a title="dapper.xp_launch.run_experiment" href="../xp_la
                 else:
                     # Don&#39;t use _print_cropped_traceback here -- It would
                     # crop out errors in the DAPPER infrastructure itself.
-                    raise ERR
+                    raise
             self.stat(&#34;duration&#34;, time.time()-time0)
 
         # Overwrite the assimilate method with the new one

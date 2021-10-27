@@ -40,7 +40,7 @@ body.gsc-overflow-hidden #sidebar {overflow: visible;}
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L1-L875" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L1-L882" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">&#34;&#34;&#34;Tools (notably `xpSpace`) for processing and presenting experiment data.&#34;&#34;&#34;
 
@@ -84,6 +84,8 @@ class SparseSpace(dict):
 
     The most important method is `nest`,
     which is used (by `xpSpace.table_tree`) to print and plot results.
+    This is essentially a &#34;groupby&#34; operation, and indeed the case could
+    be made that this class should be replaced by `pandas.DataFrame`.
 
     In addition, `__getitem__` is quite flexible, allowing accessing by:
 
@@ -262,7 +264,8 @@ class SparseSpace(dict):
         The entries of this `xpSpace` are themselves `xpSpace`s, with dims `inner_dims`,
         each one regrouping the entries with the same (projected) coordinate.
 
-        Note: is also called by `__getitem__(key)` if `key` is dict.
+        Note: this method could also be called `groupby`.
+        Note: this method is also called by `__getitem__(key)` if `key` is dict.
         &#34;&#34;&#34;
         # Default: a singleton outer space,
         # with everything contained in the inner (projection) space.
@@ -304,14 +307,11 @@ class SparseSpace(dict):
             print(color_text(&#34;Warning:&#34;, colorama.Fore.RED),
                   &#34;The requested attributes&#34;,
                   color_text(str(absent), colorama.Fore.RED),
-                  (&#34;were not found among the&#34;
-                   &#34; xpSpace dims (attrs. used as coordinates&#34;
-                   &#34; for the set of experiments).&#34;
-                   &#34; This may be no problem if the attr. is redundant&#34;
-                   &#34; for the coord-sys.&#34;
-                   &#34; However, if it is caused by confusion or mis-spelling,&#34;
-                   &#34; then it is likely to cause mis-interpretation&#34;
-                   &#34; of the shown results.&#34;))
+                  (&#34;were not found among the xpSpace dims&#34;
+                   &#34; (attrs. used as coordinates for the set of experiments).&#34;
+                   &#34; This may be no prob. if the attrs are redundant for the coord-sys.&#34;
+                   &#34; However, if due to confusion or mis-spelling, then it is likely&#34;
+                   &#34; to cause mis-interpretation of the shown results.&#34;))
             attrs = complement(attrs, absent)
         return attrs
 
@@ -412,20 +412,24 @@ class xpSpace(SparseSpace):
         squeezed.fill(self)
         return squeezed
 
-    def get_stat(self, statkey=&#34;rmse.a&#34;):
+    def get_stat(self, statkey):
         &#34;&#34;&#34;Make `xpSpace` with same `Coord` as `self`, but values `xp.avrgs.statkey`.&#34;&#34;&#34;
         # Init a new xpDict to hold stat
         avrgs = self.__class__(self.dims)
 
-        found_anything = False
+        not_found = set()
         for coord, xp in self.items():
-            val = getattr(xp.avrgs, statkey, None)
-            avrgs[coord] = val
-            found_anything = found_anything or (val is not None)
+            try:
+                avrgs[coord] = getattr(xp.avrgs, statkey)
+            except AttributeError:
+                not_found.add(coord)
 
-        if not found_anything:
+        if len(not_found) == len(self):
             raise AttributeError(
-                f&#34;The stat.&#39;{statkey}&#39; was not found among any of the xp&#39;s.&#34;)
+                f&#34;The stat. &#39;{statkey}&#39; was not found among **any** of the xp&#39;s.&#34;)
+        elif not_found:
+            print(color_text(&#34;Warning:&#34;, &#34;RED&#34;), f&#34;no stat. &#39;{statkey}&#39; found for&#34;)
+            print(*not_found, sep=&#34;\n&#34;)
 
         return avrgs
 
@@ -497,38 +501,6 @@ class xpSpace(SparseSpace):
 
         return nested
 
-    def validate_dims(self, dims):
-        &#34;&#34;&#34;Validate dims.
-
-        Note: This does not convert None to (), allowing None to remain special.
-              Use `()` if tuples are required.
-        &#34;&#34;&#34;
-        roles = {}  # &#34;inv&#34;
-        for role in set(dims) | set(DIM_ROLES):
-            assert role in DIM_ROLES, f&#34;Invalid role {role!r}&#34;
-            dd = dims.get(role, DIM_ROLES[role])
-
-            if dd is None:
-                pass  # Purposely special
-            else:
-                # Ensure iterable
-                if isinstance(dd, str) or not hasattr(dd, &#34;__iter__&#34;):
-                    dd = (dd,)
-
-                dd = self.intersect_dims(dd)
-
-                for dim in dd:
-
-                    # Ensure unique
-                    if dim in roles:
-                        raise TypeError(
-                            f&#34;A dim (here {dim!r}) cannot be assigned to 2&#34;
-                            f&#34; roles (here {role!r} and {roles[dim]!r}).&#34;)
-                    else:
-                        roles[dim] = role
-            dims[role] = dd
-        return dims
-
     def table_tree(self, statkey, dims, *, costfun=None):
         &#34;&#34;&#34;Make hierarchy `outer &gt; inner &gt; mean &gt; optim` using `SparseSpace.nest`.
 
@@ -541,7 +513,36 @@ class xpSpace(SparseSpace):
             cannot support multiple `statkey`s because it&#39;s not (obviously) meaningful
             when optimizing over `dims[&#39;optim&#39;]`.
         &#34;&#34;&#34;
-        dims = self.validate_dims(dims)
+        def validate_dims(dims):
+            &#34;&#34;&#34;Validate dims.&#34;&#34;&#34;
+            role_register = {}
+            new = {}
+            for role in set(dims) | set(DIM_ROLES):
+                assert role in DIM_ROLES, f&#34;Invalid role {role!r}&#34;
+                dd = dims.get(role, DIM_ROLES[role])
+
+                if dd is None:
+                    # Don&#39;t convert None to (), allowing None to remain special.
+                    pass
+
+                else:
+                    # Ensure iterable
+                    if isinstance(dd, str) or not hasattr(dd, &#34;__iter__&#34;):
+                        dd = (dd,)
+
+                    # Keep relevant only
+                    dd = self.intersect_dims(dd)
+
+                    # Ensure each dim plays a single-role
+                    for dim in dd:
+                        if dim in role_register:
+                            raise TypeError(
+                                f&#34;A dim (here {dim!r}) cannot be assigned to 2&#34;
+                                f&#34; roles (here {role!r} and {role_register[dim]!r}).&#34;)
+                        else:
+                            role_register[dim] = role
+                new[role] = dd
+            return new
 
         def mean_tune(xp_dict):
             &#34;&#34;&#34;Take mean, then tune.
@@ -557,6 +558,7 @@ class xpSpace(SparseSpace):
             uq_dict = uq_dict.tune(dims[&#39;optim&#39;], costfun)
             return uq_dict
 
+        dims = validate_dims(dims)
         self2 = mean_tune(self)
         # Prefer calling mean_tune() [also see its docstring]
         # before doing outer/inner nesting. This is because then the dims of
@@ -605,6 +607,7 @@ class xpSpace(SparseSpace):
         ----------
         statkey: str
             The statistic to extract from the `xp.avrgs` for each `xp`.
+            Examples: `&#34;rmse.a&#34;` (i.e. `&#34;err.rms.a&#34;`), `&#34;rmse.ocean.a&#34;`, `&#34;duration&#34;`.
         dims: dict
             Allots (maps) the dims of `xpSpace` to different roles in the tables.
 
@@ -661,24 +664,28 @@ class xpSpace(SparseSpace):
             if subcols:
                 templ = &#34;{val} ±{prec}&#34;
                 templ += &#34;&#34; if dims[&#39;optim&#39;] is None else &#34; *{tuned_coord}&#34;
-                templ += &#34;&#34; if  dims[&#39;mean&#39;] is None else &#34; {nFail} {nSuccess}&#34;  # noqa
+                templ += &#34;&#34; if dims[&#39;mean&#39; ] is None else &#34; {nFail} {nSuccess}&#34;
                 aligns = dict(prec=&#34;&lt;&#34;, tuned_coord=&#34;&lt;&#34;)
-                labels = dict(val=statkey, prec=&#34;1σ&#34;,
-                              tuned_coord=dims[&#34;optim&#34;],
-                              nFail=&#34;☠&#34;, nSuccess=&#34;✓&#34;)
 
-            def align(column):
+            def align(column, idx):
+                if idx == 0:
+                    headers = dict(val=statkey, prec=&#34;1σ&#34;, tuned_coord=dims[&#34;optim&#34;])
+                else:
+                    headers = dict(val=&#34;&#34;, prec=&#34;1σ&#34;, tuned_coord=&#34;&#34;)
+                headers.update(nFail=&#34;☠&#34;, nSuccess=&#34;✓&#34;)
+
                 col = unpack_uqs(column, decimals)
+
                 if subcols:
                     for key in list(col):
                         if key in templ:
-                            subcolmn = [labels.get(key, key)] + col[key]
+                            subcolmn = [headers.get(key, key)] + col[key]
                             col[key] = align_col(subcolmn, just=aligns.get(key, &#34;&gt;&#34;))
                         else:
                             del col[key]
                     col = [templ.format(**row) for row in transps(col)]
                 else:
-                    col = align_col([statkey] + col[&#34;val&#34;])
+                    col = align_col([headers[&#34;val&#34;]] + col[&#34;val&#34;])
                 return col
 
             def super_header(col_coord, idx, col):
@@ -692,7 +699,7 @@ class xpSpace(SparseSpace):
 
             # Format column
             for j, (col_coord, column) in enumerate(zip(cc, columns)):
-                col = align(column)
+                col = align(column, j)
                 if h2:
                     col = super_header(col_coord, j, col)
                 columns[j] = col
@@ -797,7 +804,7 @@ class xpSpace(SparseSpace):
             # Plot tuning params
             row.tuned_coords = {}  # Store ordered, &#34;transposed&#34; argmins
             argmins = [getattr(y, &#39;tuned_coord&#39;, None) for y in yy]
-            for a, panel in zip(dims[&#34;optim&#34;], panelcol[1:]):
+            for a, panel in zip(dims[&#34;optim&#34;] or (), panelcol[1:]):
                 yy = [getattr(coord, a, None) for coord in argmins]
                 row.tuned_coords[a] = yy
 
@@ -850,8 +857,8 @@ class xpSpace(SparseSpace):
                     panel.set_ylabel(f&#34;Optim.\n{a}&#34;)
 
         # Nest dims through table_tree()
-        assert len(dims[&#34;inner&#34;]) == 1, &#34;You must chose the abscissa.&#34;
         dims, tables = self.table_tree(statkey, dims, costfun=costfun)
+        assert len(dims[&#34;inner&#34;]) == 1, &#34;You must chose a valid attr. for the abscissa.&#34;
 
         if not hasattr(self, &#34;ticks&#34;):
             # TODO 6: this is probationary.
@@ -947,7 +954,9 @@ Indeed, as a data format for nd-arrays, it may be called
 such as optimization or averaging, should be carried out by iterating
 &ndash; not over the <code>dims</code> &ndash; but over the the list of items.</p>
 <p>The most important method is <code>nest</code>,
-which is used (by <code><a title="dapper.xp_process.xpSpace.table_tree" href="#dapper.xp_process.xpSpace.table_tree">xpSpace.table_tree()</a></code>) to print and plot results.</p>
+which is used (by <code><a title="dapper.xp_process.xpSpace.table_tree" href="#dapper.xp_process.xpSpace.table_tree">xpSpace.table_tree()</a></code>) to print and plot results.
+This is essentially a "groupby" operation, and indeed the case could
+be made that this class should be replaced by <code>pandas.DataFrame</code>.</p>
 <p>In addition, <code>__getitem__</code> is quite flexible, allowing accessing by:</p>
 <ul>
 <li>The actual key, a <code>self.Coord</code> object, or a standard tuple. Returns single item.</li>
@@ -1011,6 +1020,8 @@ KeyError: (1, 2, 3, 4)
 
     The most important method is `nest`,
     which is used (by `xpSpace.table_tree`) to print and plot results.
+    This is essentially a &#34;groupby&#34; operation, and indeed the case could
+    be made that this class should be replaced by `pandas.DataFrame`.
 
     In addition, `__getitem__` is quite flexible, allowing accessing by:
 
@@ -1189,7 +1200,8 @@ KeyError: (1, 2, 3, 4)
         The entries of this `xpSpace` are themselves `xpSpace`s, with dims `inner_dims`,
         each one regrouping the entries with the same (projected) coordinate.
 
-        Note: is also called by `__getitem__(key)` if `key` is dict.
+        Note: this method could also be called `groupby`.
+        Note: this method is also called by `__getitem__(key)` if `key` is dict.
         &#34;&#34;&#34;
         # Default: a singleton outer space,
         # with everything contained in the inner (projection) space.
@@ -1231,14 +1243,11 @@ KeyError: (1, 2, 3, 4)
             print(color_text(&#34;Warning:&#34;, colorama.Fore.RED),
                   &#34;The requested attributes&#34;,
                   color_text(str(absent), colorama.Fore.RED),
-                  (&#34;were not found among the&#34;
-                   &#34; xpSpace dims (attrs. used as coordinates&#34;
-                   &#34; for the set of experiments).&#34;
-                   &#34; This may be no problem if the attr. is redundant&#34;
-                   &#34; for the coord-sys.&#34;
-                   &#34; However, if it is caused by confusion or mis-spelling,&#34;
-                   &#34; then it is likely to cause mis-interpretation&#34;
-                   &#34; of the shown results.&#34;))
+                  (&#34;were not found among the xpSpace dims&#34;
+                   &#34; (attrs. used as coordinates for the set of experiments).&#34;
+                   &#34; This may be no prob. if the attrs are redundant for the coord-sys.&#34;
+                   &#34; However, if due to confusion or mis-spelling, then it is likely&#34;
+                   &#34; to cause mis-interpretation of the shown results.&#34;))
             attrs = complement(attrs, absent)
         return attrs
 
@@ -1287,7 +1296,7 @@ KeyError: (1, 2, 3, 4)
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L78-L80" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L80-L82" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">@property
 def dims(self):
@@ -1307,7 +1316,7 @@ consist of (a single) string, which is not very interesting for SparseSpace.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L102-L115" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L104-L117" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def update(self, items):
     &#34;&#34;&#34;Update dict, using the custom `__setitem__` to ensure key conformity.
@@ -1338,7 +1347,7 @@ then you should consider using <code><a title="dapper.xp_process.SparseSpace.nes
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L150-L169" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L152-L171" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def subspace(self, **kwargs):
     &#34;&#34;&#34;Get an affine subspace.
@@ -1374,7 +1383,7 @@ since each coordinate is complete.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L171-L183" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L173-L185" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def coords_matching(self, **kwargs):
     &#34;&#34;&#34;Get all `coord`s matching kwargs.
@@ -1402,7 +1411,7 @@ since each coordinate is complete.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L185-L195" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L187-L197" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def coord_from_attrs(self, obj):
     &#34;&#34;&#34;Form a `coord` for this `xpSpace` by extracting attrs. from `obj`.
@@ -1424,11 +1433,12 @@ since each coordinate is complete.</p></div>
 <div class="desc"><p>Project along <code>inner_acces</code> to yield a new <code><a title="dapper.xp_process.xpSpace" href="#dapper.xp_process.xpSpace">xpSpace</a></code> with dims <code>outer_dims</code></p>
 <p>The entries of this <code><a title="dapper.xp_process.xpSpace" href="#dapper.xp_process.xpSpace">xpSpace</a></code> are themselves <code><a title="dapper.xp_process.xpSpace" href="#dapper.xp_process.xpSpace">xpSpace</a></code>s, with dims <code>inner_dims</code>,
 each one regrouping the entries with the same (projected) coordinate.</p>
-<p>Note: is also called by <code>__getitem__(key)</code> if <code>key</code> is dict.</p></div>
+<p>Note: this method could also be called <code>groupby</code>.
+Note: this method is also called by <code>__getitem__(key)</code> if <code>key</code> is dict.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L215-L251" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L217-L254" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def nest(self, inner_dims=None, outer_dims=None):
     &#34;&#34;&#34;Project along `inner_acces` to yield a new `xpSpace` with dims `outer_dims`
@@ -1436,7 +1446,8 @@ each one regrouping the entries with the same (projected) coordinate.</p>
     The entries of this `xpSpace` are themselves `xpSpace`s, with dims `inner_dims`,
     each one regrouping the entries with the same (projected) coordinate.
 
-    Note: is also called by `__getitem__(key)` if `key` is dict.
+    Note: this method could also be called `groupby`.
+    Note: this method is also called by `__getitem__(key)` if `key` is dict.
     &#34;&#34;&#34;
     # Default: a singleton outer space,
     # with everything contained in the inner (projection) space.
@@ -1478,7 +1489,7 @@ each one regrouping the entries with the same (projected) coordinate.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L253-L272" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L256-L272" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def intersect_dims(self, attrs):
     &#34;&#34;&#34;Rm those `a` in `attrs` that are not in `self.dims`.
@@ -1490,14 +1501,11 @@ each one regrouping the entries with the same (projected) coordinate.</p>
         print(color_text(&#34;Warning:&#34;, colorama.Fore.RED),
               &#34;The requested attributes&#34;,
               color_text(str(absent), colorama.Fore.RED),
-              (&#34;were not found among the&#34;
-               &#34; xpSpace dims (attrs. used as coordinates&#34;
-               &#34; for the set of experiments).&#34;
-               &#34; This may be no problem if the attr. is redundant&#34;
-               &#34; for the coord-sys.&#34;
-               &#34; However, if it is caused by confusion or mis-spelling,&#34;
-               &#34; then it is likely to cause mis-interpretation&#34;
-               &#34; of the shown results.&#34;))
+              (&#34;were not found among the xpSpace dims&#34;
+               &#34; (attrs. used as coordinates for the set of experiments).&#34;
+               &#34; This may be no prob. if the attrs are redundant for the coord-sys.&#34;
+               &#34; However, if due to confusion or mis-spelling, then it is likely&#34;
+               &#34; to cause mis-interpretation of the shown results.&#34;))
         attrs = complement(attrs, absent)
     return attrs</code></pre>
 </details>
@@ -1578,7 +1586,7 @@ preventing them from being shown in plot labels and tuning panels.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L307-L875" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L307-L882" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class xpSpace(SparseSpace):
     &#34;&#34;&#34;Functionality to facilitate working with `xps` and their results.&#34;&#34;&#34;
@@ -1644,20 +1652,24 @@ preventing them from being shown in plot labels and tuning panels.</p></div>
         squeezed.fill(self)
         return squeezed
 
-    def get_stat(self, statkey=&#34;rmse.a&#34;):
+    def get_stat(self, statkey):
         &#34;&#34;&#34;Make `xpSpace` with same `Coord` as `self`, but values `xp.avrgs.statkey`.&#34;&#34;&#34;
         # Init a new xpDict to hold stat
         avrgs = self.__class__(self.dims)
 
-        found_anything = False
+        not_found = set()
         for coord, xp in self.items():
-            val = getattr(xp.avrgs, statkey, None)
-            avrgs[coord] = val
-            found_anything = found_anything or (val is not None)
+            try:
+                avrgs[coord] = getattr(xp.avrgs, statkey)
+            except AttributeError:
+                not_found.add(coord)
 
-        if not found_anything:
+        if len(not_found) == len(self):
             raise AttributeError(
-                f&#34;The stat.&#39;{statkey}&#39; was not found among any of the xp&#39;s.&#34;)
+                f&#34;The stat. &#39;{statkey}&#39; was not found among **any** of the xp&#39;s.&#34;)
+        elif not_found:
+            print(color_text(&#34;Warning:&#34;, &#34;RED&#34;), f&#34;no stat. &#39;{statkey}&#39; found for&#34;)
+            print(*not_found, sep=&#34;\n&#34;)
 
         return avrgs
 
@@ -1729,38 +1741,6 @@ preventing them from being shown in plot labels and tuning panels.</p></div>
 
         return nested
 
-    def validate_dims(self, dims):
-        &#34;&#34;&#34;Validate dims.
-
-        Note: This does not convert None to (), allowing None to remain special.
-              Use `()` if tuples are required.
-        &#34;&#34;&#34;
-        roles = {}  # &#34;inv&#34;
-        for role in set(dims) | set(DIM_ROLES):
-            assert role in DIM_ROLES, f&#34;Invalid role {role!r}&#34;
-            dd = dims.get(role, DIM_ROLES[role])
-
-            if dd is None:
-                pass  # Purposely special
-            else:
-                # Ensure iterable
-                if isinstance(dd, str) or not hasattr(dd, &#34;__iter__&#34;):
-                    dd = (dd,)
-
-                dd = self.intersect_dims(dd)
-
-                for dim in dd:
-
-                    # Ensure unique
-                    if dim in roles:
-                        raise TypeError(
-                            f&#34;A dim (here {dim!r}) cannot be assigned to 2&#34;
-                            f&#34; roles (here {role!r} and {roles[dim]!r}).&#34;)
-                    else:
-                        roles[dim] = role
-            dims[role] = dd
-        return dims
-
     def table_tree(self, statkey, dims, *, costfun=None):
         &#34;&#34;&#34;Make hierarchy `outer &gt; inner &gt; mean &gt; optim` using `SparseSpace.nest`.
 
@@ -1773,7 +1753,36 @@ preventing them from being shown in plot labels and tuning panels.</p></div>
             cannot support multiple `statkey`s because it&#39;s not (obviously) meaningful
             when optimizing over `dims[&#39;optim&#39;]`.
         &#34;&#34;&#34;
-        dims = self.validate_dims(dims)
+        def validate_dims(dims):
+            &#34;&#34;&#34;Validate dims.&#34;&#34;&#34;
+            role_register = {}
+            new = {}
+            for role in set(dims) | set(DIM_ROLES):
+                assert role in DIM_ROLES, f&#34;Invalid role {role!r}&#34;
+                dd = dims.get(role, DIM_ROLES[role])
+
+                if dd is None:
+                    # Don&#39;t convert None to (), allowing None to remain special.
+                    pass
+
+                else:
+                    # Ensure iterable
+                    if isinstance(dd, str) or not hasattr(dd, &#34;__iter__&#34;):
+                        dd = (dd,)
+
+                    # Keep relevant only
+                    dd = self.intersect_dims(dd)
+
+                    # Ensure each dim plays a single-role
+                    for dim in dd:
+                        if dim in role_register:
+                            raise TypeError(
+                                f&#34;A dim (here {dim!r}) cannot be assigned to 2&#34;
+                                f&#34; roles (here {role!r} and {role_register[dim]!r}).&#34;)
+                        else:
+                            role_register[dim] = role
+                new[role] = dd
+            return new
 
         def mean_tune(xp_dict):
             &#34;&#34;&#34;Take mean, then tune.
@@ -1789,6 +1798,7 @@ preventing them from being shown in plot labels and tuning panels.</p></div>
             uq_dict = uq_dict.tune(dims[&#39;optim&#39;], costfun)
             return uq_dict
 
+        dims = validate_dims(dims)
         self2 = mean_tune(self)
         # Prefer calling mean_tune() [also see its docstring]
         # before doing outer/inner nesting. This is because then the dims of
@@ -1837,6 +1847,7 @@ preventing them from being shown in plot labels and tuning panels.</p></div>
         ----------
         statkey: str
             The statistic to extract from the `xp.avrgs` for each `xp`.
+            Examples: `&#34;rmse.a&#34;` (i.e. `&#34;err.rms.a&#34;`), `&#34;rmse.ocean.a&#34;`, `&#34;duration&#34;`.
         dims: dict
             Allots (maps) the dims of `xpSpace` to different roles in the tables.
 
@@ -1893,24 +1904,28 @@ preventing them from being shown in plot labels and tuning panels.</p></div>
             if subcols:
                 templ = &#34;{val} ±{prec}&#34;
                 templ += &#34;&#34; if dims[&#39;optim&#39;] is None else &#34; *{tuned_coord}&#34;
-                templ += &#34;&#34; if  dims[&#39;mean&#39;] is None else &#34; {nFail} {nSuccess}&#34;  # noqa
+                templ += &#34;&#34; if dims[&#39;mean&#39; ] is None else &#34; {nFail} {nSuccess}&#34;
                 aligns = dict(prec=&#34;&lt;&#34;, tuned_coord=&#34;&lt;&#34;)
-                labels = dict(val=statkey, prec=&#34;1σ&#34;,
-                              tuned_coord=dims[&#34;optim&#34;],
-                              nFail=&#34;☠&#34;, nSuccess=&#34;✓&#34;)
 
-            def align(column):
+            def align(column, idx):
+                if idx == 0:
+                    headers = dict(val=statkey, prec=&#34;1σ&#34;, tuned_coord=dims[&#34;optim&#34;])
+                else:
+                    headers = dict(val=&#34;&#34;, prec=&#34;1σ&#34;, tuned_coord=&#34;&#34;)
+                headers.update(nFail=&#34;☠&#34;, nSuccess=&#34;✓&#34;)
+
                 col = unpack_uqs(column, decimals)
+
                 if subcols:
                     for key in list(col):
                         if key in templ:
-                            subcolmn = [labels.get(key, key)] + col[key]
+                            subcolmn = [headers.get(key, key)] + col[key]
                             col[key] = align_col(subcolmn, just=aligns.get(key, &#34;&gt;&#34;))
                         else:
                             del col[key]
                     col = [templ.format(**row) for row in transps(col)]
                 else:
-                    col = align_col([statkey] + col[&#34;val&#34;])
+                    col = align_col([headers[&#34;val&#34;]] + col[&#34;val&#34;])
                 return col
 
             def super_header(col_coord, idx, col):
@@ -1924,7 +1939,7 @@ preventing them from being shown in plot labels and tuning panels.</p></div>
 
             # Format column
             for j, (col_coord, column) in enumerate(zip(cc, columns)):
-                col = align(column)
+                col = align(column, j)
                 if h2:
                     col = super_header(col_coord, j, col)
                 columns[j] = col
@@ -2029,7 +2044,7 @@ preventing them from being shown in plot labels and tuning panels.</p></div>
             # Plot tuning params
             row.tuned_coords = {}  # Store ordered, &#34;transposed&#34; argmins
             argmins = [getattr(y, &#39;tuned_coord&#39;, None) for y in yy]
-            for a, panel in zip(dims[&#34;optim&#34;], panelcol[1:]):
+            for a, panel in zip(dims[&#34;optim&#34;] or (), panelcol[1:]):
                 yy = [getattr(coord, a, None) for coord in argmins]
                 row.tuned_coords[a] = yy
 
@@ -2082,8 +2097,8 @@ preventing them from being shown in plot labels and tuning panels.</p></div>
                     panel.set_ylabel(f&#34;Optim.\n{a}&#34;)
 
         # Nest dims through table_tree()
-        assert len(dims[&#34;inner&#34;]) == 1, &#34;You must chose the abscissa.&#34;
         dims, tables = self.table_tree(statkey, dims, costfun=costfun)
+        assert len(dims[&#34;inner&#34;]) == 1, &#34;You must chose a valid attr. for the abscissa.&#34;
 
         if not hasattr(self, &#34;ticks&#34;):
             # TODO 6: this is probationary.
@@ -2275,29 +2290,33 @@ def from_list(cls, xps, tick_ordering=None):
 </details>
 </dd>
 <dt id="dapper.xp_process.xpSpace.get_stat"><code class="name flex">
-<span>def <span class="ident">get_stat</span></span>(<span>self, statkey='rmse.a')</span>
+<span>def <span class="ident">get_stat</span></span>(<span>self, statkey)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Make <code><a title="dapper.xp_process.xpSpace" href="#dapper.xp_process.xpSpace">xpSpace</a></code> with same <code>Coord</code> as <code>self</code>, but values <code>xp.avrgs.statkey</code>.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L371-L386" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L371-L390" class="git-link">Browse git</a>
 </summary>
-<pre><code class="python">def get_stat(self, statkey=&#34;rmse.a&#34;):
+<pre><code class="python">def get_stat(self, statkey):
     &#34;&#34;&#34;Make `xpSpace` with same `Coord` as `self`, but values `xp.avrgs.statkey`.&#34;&#34;&#34;
     # Init a new xpDict to hold stat
     avrgs = self.__class__(self.dims)
 
-    found_anything = False
+    not_found = set()
     for coord, xp in self.items():
-        val = getattr(xp.avrgs, statkey, None)
-        avrgs[coord] = val
-        found_anything = found_anything or (val is not None)
+        try:
+            avrgs[coord] = getattr(xp.avrgs, statkey)
+        except AttributeError:
+            not_found.add(coord)
 
-    if not found_anything:
+    if len(not_found) == len(self):
         raise AttributeError(
-            f&#34;The stat.&#39;{statkey}&#39; was not found among any of the xp&#39;s.&#34;)
+            f&#34;The stat. &#39;{statkey}&#39; was not found among **any** of the xp&#39;s.&#34;)
+    elif not_found:
+        print(color_text(&#34;Warning:&#34;, &#34;RED&#34;), f&#34;no stat. &#39;{statkey}&#39; found for&#34;)
+        print(*not_found, sep=&#34;\n&#34;)
 
     return avrgs</code></pre>
 </details>
@@ -2310,7 +2329,7 @@ def from_list(cls, xps, tick_ordering=None):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L388-L417" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L392-L421" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def mean(self, dims=None):
     &#34;&#34;&#34;Compute mean over `dims` (a list). Returns `xpSpace` without those `dims`.&#34;&#34;&#34;
@@ -2352,7 +2371,7 @@ def from_list(cls, xps, tick_ordering=None):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L419-L454" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L423-L458" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def tune(self, dims=None, costfun=None):
     &#34;&#34;&#34;Get (compile/tabulate) a stat. optimised wrt. tuning params (`dims`).&#34;&#34;&#34;
@@ -2392,51 +2411,6 @@ def from_list(cls, xps, tick_ordering=None):
     return nested</code></pre>
 </details>
 </dd>
-<dt id="dapper.xp_process.xpSpace.validate_dims"><code class="name flex">
-<span>def <span class="ident">validate_dims</span></span>(<span>self, dims)</span>
-</code></dt>
-<dd>
-<div class="desc"><p>Validate dims.</p>
-<p>Note: This does not convert None to (), allowing None to remain special.
-Use <code>()</code> if tuples are required.</p></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L456-L486" class="git-link">Browse git</a>
-</summary>
-<pre><code class="python">def validate_dims(self, dims):
-    &#34;&#34;&#34;Validate dims.
-
-    Note: This does not convert None to (), allowing None to remain special.
-          Use `()` if tuples are required.
-    &#34;&#34;&#34;
-    roles = {}  # &#34;inv&#34;
-    for role in set(dims) | set(DIM_ROLES):
-        assert role in DIM_ROLES, f&#34;Invalid role {role!r}&#34;
-        dd = dims.get(role, DIM_ROLES[role])
-
-        if dd is None:
-            pass  # Purposely special
-        else:
-            # Ensure iterable
-            if isinstance(dd, str) or not hasattr(dd, &#34;__iter__&#34;):
-                dd = (dd,)
-
-            dd = self.intersect_dims(dd)
-
-            for dim in dd:
-
-                # Ensure unique
-                if dim in roles:
-                    raise TypeError(
-                        f&#34;A dim (here {dim!r}) cannot be assigned to 2&#34;
-                        f&#34; roles (here {role!r} and {roles[dim]!r}).&#34;)
-                else:
-                    roles[dim] = role
-        dims[role] = dd
-    return dims</code></pre>
-</details>
-</dd>
 <dt id="dapper.xp_process.xpSpace.table_tree"><code class="name flex">
 <span>def <span class="ident">table_tree</span></span>(<span>self, statkey, dims, *, costfun=None)</span>
 </code></dt>
@@ -2454,7 +2428,7 @@ when optimizing over <code>dims['optim']</code>.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L488-L549" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L460-L551" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def table_tree(self, statkey, dims, *, costfun=None):
     &#34;&#34;&#34;Make hierarchy `outer &gt; inner &gt; mean &gt; optim` using `SparseSpace.nest`.
@@ -2468,7 +2442,36 @@ when optimizing over <code>dims['optim']</code>.</p>
         cannot support multiple `statkey`s because it&#39;s not (obviously) meaningful
         when optimizing over `dims[&#39;optim&#39;]`.
     &#34;&#34;&#34;
-    dims = self.validate_dims(dims)
+    def validate_dims(dims):
+        &#34;&#34;&#34;Validate dims.&#34;&#34;&#34;
+        role_register = {}
+        new = {}
+        for role in set(dims) | set(DIM_ROLES):
+            assert role in DIM_ROLES, f&#34;Invalid role {role!r}&#34;
+            dd = dims.get(role, DIM_ROLES[role])
+
+            if dd is None:
+                # Don&#39;t convert None to (), allowing None to remain special.
+                pass
+
+            else:
+                # Ensure iterable
+                if isinstance(dd, str) or not hasattr(dd, &#34;__iter__&#34;):
+                    dd = (dd,)
+
+                # Keep relevant only
+                dd = self.intersect_dims(dd)
+
+                # Ensure each dim plays a single-role
+                for dim in dd:
+                    if dim in role_register:
+                        raise TypeError(
+                            f&#34;A dim (here {dim!r}) cannot be assigned to 2&#34;
+                            f&#34; roles (here {role!r} and {role_register[dim]!r}).&#34;)
+                    else:
+                        role_register[dim] = role
+            new[role] = dd
+        return new
 
     def mean_tune(xp_dict):
         &#34;&#34;&#34;Take mean, then tune.
@@ -2484,6 +2487,7 @@ when optimizing over <code>dims['optim']</code>.</p>
         uq_dict = uq_dict.tune(dims[&#39;optim&#39;], costfun)
         return uq_dict
 
+    dims = validate_dims(dims)
     self2 = mean_tune(self)
     # Prefer calling mean_tune() [also see its docstring]
     # before doing outer/inner nesting. This is because then the dims of
@@ -2528,7 +2532,7 @@ when optimizing over <code>dims['optim']</code>.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L551-L553" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L553-L555" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def tickz(self, dim_name):
     &#34;&#34;&#34;Dimension (axis) ticks without None&#34;&#34;&#34;
@@ -2543,7 +2547,8 @@ when optimizing over <code>dims['optim']</code>.</p>
 <h2 id="parameters">Parameters</h2>
 <dl>
 <dt><strong><code>statkey</code></strong> :&ensp;<code>str</code></dt>
-<dd>The statistic to extract from the <code>xp.avrgs</code> for each <code>xp</code>.</dd>
+<dd>The statistic to extract from the <code>xp.avrgs</code> for each <code>xp</code>.
+Examples: <code>"rmse.a"</code> (i.e. <code>"err.rms.a"</code>), <code>"rmse.ocean.a"</code>, <code>"duration"</code>.</dd>
 <dt><strong><code>dims</code></strong> :&ensp;<code>dict</code></dt>
 <dd>
 <p>Allots (maps) the dims of <code><a title="dapper.xp_process.xpSpace" href="#dapper.xp_process.xpSpace">xpSpace</a></code> to different roles in the tables.</p>
@@ -2594,7 +2599,7 @@ Caution: <code>get_style</code> will not be able to access the eliminated attrs.
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L555-L699" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L557-L706" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def print(self, statkey, dims,  # noqa (shadowing builtin)
           subcols=True, decimals=None, costfun=None,
@@ -2605,6 +2610,7 @@ Caution: <code>get_style</code> will not be able to access the eliminated attrs.
     ----------
     statkey: str
         The statistic to extract from the `xp.avrgs` for each `xp`.
+        Examples: `&#34;rmse.a&#34;` (i.e. `&#34;err.rms.a&#34;`), `&#34;rmse.ocean.a&#34;`, `&#34;duration&#34;`.
     dims: dict
         Allots (maps) the dims of `xpSpace` to different roles in the tables.
 
@@ -2661,24 +2667,28 @@ Caution: <code>get_style</code> will not be able to access the eliminated attrs.
         if subcols:
             templ = &#34;{val} ±{prec}&#34;
             templ += &#34;&#34; if dims[&#39;optim&#39;] is None else &#34; *{tuned_coord}&#34;
-            templ += &#34;&#34; if  dims[&#39;mean&#39;] is None else &#34; {nFail} {nSuccess}&#34;  # noqa
+            templ += &#34;&#34; if dims[&#39;mean&#39; ] is None else &#34; {nFail} {nSuccess}&#34;
             aligns = dict(prec=&#34;&lt;&#34;, tuned_coord=&#34;&lt;&#34;)
-            labels = dict(val=statkey, prec=&#34;1σ&#34;,
-                          tuned_coord=dims[&#34;optim&#34;],
-                          nFail=&#34;☠&#34;, nSuccess=&#34;✓&#34;)
 
-        def align(column):
+        def align(column, idx):
+            if idx == 0:
+                headers = dict(val=statkey, prec=&#34;1σ&#34;, tuned_coord=dims[&#34;optim&#34;])
+            else:
+                headers = dict(val=&#34;&#34;, prec=&#34;1σ&#34;, tuned_coord=&#34;&#34;)
+            headers.update(nFail=&#34;☠&#34;, nSuccess=&#34;✓&#34;)
+
             col = unpack_uqs(column, decimals)
+
             if subcols:
                 for key in list(col):
                     if key in templ:
-                        subcolmn = [labels.get(key, key)] + col[key]
+                        subcolmn = [headers.get(key, key)] + col[key]
                         col[key] = align_col(subcolmn, just=aligns.get(key, &#34;&gt;&#34;))
                     else:
                         del col[key]
                 col = [templ.format(**row) for row in transps(col)]
             else:
-                col = align_col([statkey] + col[&#34;val&#34;])
+                col = align_col([headers[&#34;val&#34;]] + col[&#34;val&#34;])
             return col
 
         def super_header(col_coord, idx, col):
@@ -2692,7 +2702,7 @@ Caution: <code>get_style</code> will not be able to access the eliminated attrs.
 
         # Format column
         for j, (col_coord, column) in enumerate(zip(cc, columns)):
-            col = align(column)
+            col = align(column, j)
             if h2:
                 col = super_header(col_coord, j, col)
             columns[j] = col
@@ -2775,7 +2785,7 @@ Don't include redundant attributes in the labels.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L701-L875" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L708-L882" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def plot(self, statkey, dims, get_style=default_styles,
          fignum=None, figsize=None, panels=None, costfun=None,
@@ -2832,7 +2842,7 @@ Don't include redundant attributes in the labels.</p></div>
         # Plot tuning params
         row.tuned_coords = {}  # Store ordered, &#34;transposed&#34; argmins
         argmins = [getattr(y, &#39;tuned_coord&#39;, None) for y in yy]
-        for a, panel in zip(dims[&#34;optim&#34;], panelcol[1:]):
+        for a, panel in zip(dims[&#34;optim&#34;] or (), panelcol[1:]):
             yy = [getattr(coord, a, None) for coord in argmins]
             row.tuned_coords[a] = yy
 
@@ -2885,8 +2895,8 @@ Don't include redundant attributes in the labels.</p></div>
                 panel.set_ylabel(f&#34;Optim.\n{a}&#34;)
 
     # Nest dims through table_tree()
-    assert len(dims[&#34;inner&#34;]) == 1, &#34;You must chose the abscissa.&#34;
     dims, tables = self.table_tree(statkey, dims, costfun=costfun)
+    assert len(dims[&#34;inner&#34;]) == 1, &#34;You must chose a valid attr. for the abscissa.&#34;
 
     if not hasattr(self, &#34;ticks&#34;):
         # TODO 6: this is probationary.
@@ -3021,7 +3031,6 @@ data-gaCategoryParameter="dapper.xp_process">
 <li><code><a title="dapper.xp_process.xpSpace.get_stat" href="#dapper.xp_process.xpSpace.get_stat">get_stat</a></code></li>
 <li><code><a title="dapper.xp_process.xpSpace.mean" href="#dapper.xp_process.xpSpace.mean">mean</a></code></li>
 <li><code><a title="dapper.xp_process.xpSpace.tune" href="#dapper.xp_process.xpSpace.tune">tune</a></code></li>
-<li><code><a title="dapper.xp_process.xpSpace.validate_dims" href="#dapper.xp_process.xpSpace.validate_dims">validate_dims</a></code></li>
 <li><code><a title="dapper.xp_process.xpSpace.table_tree" href="#dapper.xp_process.xpSpace.table_tree">table_tree</a></code></li>
 <li><code><a title="dapper.xp_process.xpSpace.tickz" href="#dapper.xp_process.xpSpace.tickz">tickz</a></code></li>
 <li><code><a title="dapper.xp_process.xpSpace.print" href="#dapper.xp_process.xpSpace.print">print</a></code></li>
