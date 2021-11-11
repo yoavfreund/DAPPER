@@ -39,7 +39,7 @@ body.gsc-overflow-hidden #sidebar {overflow: visible;}
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/Lorenz05/settings01.py#L1-L25" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/Lorenz05/settings01.py#L1-L26" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">import numpy as np
 
@@ -56,6 +56,7 @@ Dyn = {
     &#39;M&#39;: model.M,
     &#39;model&#39;: model.step,
     &#39;noise&#39;: 0,
+    &#39;object&#39;: model,
 }
 
 X0 = modelling.GaussRV(mu=model.x0, C=0.001)

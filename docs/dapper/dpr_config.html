@@ -118,10 +118,10 @@ if LP and not is_using_interactive_backend():
     # Note: plot_pause could maybe be adapted to also work for
     # &#34;inline&#34; backend (which is not striclty interactive), but I think
     # this would be buggy, and is incompatible with a &#34;stop&#34; button.
-    print(&#34;\nWarning: You have not disableed interactive/live plotting&#34;
-          &#34; in your dpr_config.py,&#34;
-          &#34; but this is not supported by the current matplotlib backend:&#34;
-          f&#34; {mpl.get_backend()}. To enable it, try using another backend.\n&#34;)
+    print(&#34;\nWarning: You have not disableed interactive/live plotting&#34;,
+          &#34;in your dpr_config.yaml,&#34;,
+          &#34;but this is not supported by the current matplotlib backend:&#34;,
+          f&#34;{mpl.get_backend()}. To enable it, try using another backend.\n&#34;)
     LP = False
 rc.liveplotting = LP</code></pre>
 </details>

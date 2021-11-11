@@ -40,7 +40,7 @@ body.gsc-overflow-hidden #sidebar {overflow: visible;}
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L1-L882" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L1-L887" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">&#34;&#34;&#34;Tools (notably `xpSpace`) for processing and presenting experiment data.&#34;&#34;&#34;
 
@@ -231,11 +231,9 @@ class SparseSpace(dict):
     def coord_from_attrs(self, obj):
         &#34;&#34;&#34;Form a `coord` for this `xpSpace` by extracting attrs. from `obj`.
 
-        For instances of `self.Coord`, this is the identity opeartor.
+        For instances of `self.Coord`, this is the identity opeartor, i.e.
 
-        ```py
-        self.coord_from_attrs(coord) == coord
-        ```
+            self.coord_from_attrs(coord) == coord
         &#34;&#34;&#34;
         coord = (getattr(obj, a, None) for a in self.dims)
         return self.Coord(*coord)
@@ -600,7 +598,7 @@ class xpSpace(SparseSpace):
 
     def print(self, statkey, dims,  # noqa (shadowing builtin)
               subcols=True, decimals=None, costfun=None,
-              squeeze_labels=True, colorize=True):
+              squeeze_labels=True, colorize=True, title=None):
         &#34;&#34;&#34;Print tables of results.
 
         Parameters
@@ -651,6 +649,12 @@ class xpSpace(SparseSpace):
         colorize: bool
             Add color to tables for readability.
         &#34;&#34;&#34;
+        # Title
+        if colorize:
+            clrs = colorama.Back.LIGHTBLUE_EX, colorama.Fore.BLACK
+            title = color_text(str(title), *clrs)
+        print(&#34;\n&#34; + title)
+
         # Inform dims[&#34;mean&#34;]
         if dims.get(&#39;mean&#39;, None):
             print(f&#34;Averages (in time and) over {dims[&#39;mean&#39;]}.&#34;)
@@ -812,6 +816,7 @@ class xpSpace(SparseSpace):
                 # which can cause trouble if the axes units were actually supposed
                 # to be categorical (eg upd_a), but this is only revealed later.
                 if not all(y == None for y in yy):
+                    style[&#34;alpha&#34;] = 0.2
                     row.handles[a] = panel.plot(xticks, yy, **style)
 
         def label_management(table):
@@ -997,7 +1002,7 @@ KeyError: (1, 2, 3, 4)
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L22-L301" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L22-L299" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class SparseSpace(dict):
     &#34;&#34;&#34;Subclass of `dict` that enforces key conformity to a given `namedtuple`.
@@ -1167,11 +1172,9 @@ KeyError: (1, 2, 3, 4)
     def coord_from_attrs(self, obj):
         &#34;&#34;&#34;Form a `coord` for this `xpSpace` by extracting attrs. from `obj`.
 
-        For instances of `self.Coord`, this is the identity opeartor.
+        For instances of `self.Coord`, this is the identity opeartor, i.e.
 
-        ```py
-        self.coord_from_attrs(coord) == coord
-        ```
+            self.coord_from_attrs(coord) == coord
         &#34;&#34;&#34;
         coord = (getattr(obj, a, None) for a in self.dims)
         return self.Coord(*coord)
@@ -1405,22 +1408,20 @@ since each coordinate is complete.</p></div>
 </code></dt>
 <dd>
 <div class="desc"><p>Form a <code>coord</code> for this <code><a title="dapper.xp_process.xpSpace" href="#dapper.xp_process.xpSpace">xpSpace</a></code> by extracting attrs. from <code>obj</code>.</p>
-<p>For instances of <code>self.Coord</code>, this is the identity opeartor.</p>
-<pre><code class="language-py">self.coord_from_attrs(coord) == coord
+<p>For instances of <code>self.Coord</code>, this is the identity opeartor, i.e.</p>
+<pre><code>self.coord_from_attrs(coord) == coord
 </code></pre></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L187-L197" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L187-L195" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def coord_from_attrs(self, obj):
     &#34;&#34;&#34;Form a `coord` for this `xpSpace` by extracting attrs. from `obj`.
 
-    For instances of `self.Coord`, this is the identity opeartor.
+    For instances of `self.Coord`, this is the identity opeartor, i.e.
 
-    ```py
-    self.coord_from_attrs(coord) == coord
-    ```
+        self.coord_from_attrs(coord) == coord
     &#34;&#34;&#34;
     coord = (getattr(obj, a, None) for a in self.dims)
     return self.Coord(*coord)</code></pre>
@@ -1438,7 +1439,7 @@ Note: this method is also called by <code>__getitem__(key)</code> if <code>key</
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L217-L254" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L215-L252" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def nest(self, inner_dims=None, outer_dims=None):
     &#34;&#34;&#34;Project along `inner_acces` to yield a new `xpSpace` with dims `outer_dims`
@@ -1489,7 +1490,7 @@ Note: this method is also called by <code>__getitem__(key)</code> if <code>key</
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L256-L272" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L254-L270" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def intersect_dims(self, attrs):
     &#34;&#34;&#34;Rm those `a` in `attrs` that are not in `self.dims`.
@@ -1518,7 +1519,7 @@ Note: this method is also called by <code>__getitem__(key)</code> if <code>key</
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L274-L279" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L272-L277" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def append_dim(self, dim):
     &#34;&#34;&#34;Expand `self.Coord` by `dim`. For each item, insert `None` in new dim.&#34;&#34;&#34;
@@ -1544,7 +1545,7 @@ preventing them from being shown in plot labels and tuning panels.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L281-L301" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L279-L299" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def label_xSection(self, label, *NoneAttrs, **sub_coord):
     &#34;&#34;&#34;Insert duplicate entries for the given cross-section.
@@ -1586,7 +1587,7 @@ preventing them from being shown in plot labels and tuning panels.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L307-L882" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L305-L887" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class xpSpace(SparseSpace):
     &#34;&#34;&#34;Functionality to facilitate working with `xps` and their results.&#34;&#34;&#34;
@@ -1840,7 +1841,7 @@ preventing them from being shown in plot labels and tuning panels.</p></div>
 
     def print(self, statkey, dims,  # noqa (shadowing builtin)
               subcols=True, decimals=None, costfun=None,
-              squeeze_labels=True, colorize=True):
+              squeeze_labels=True, colorize=True, title=None):
         &#34;&#34;&#34;Print tables of results.
 
         Parameters
@@ -1891,6 +1892,12 @@ preventing them from being shown in plot labels and tuning panels.</p></div>
         colorize: bool
             Add color to tables for readability.
         &#34;&#34;&#34;
+        # Title
+        if colorize:
+            clrs = colorama.Back.LIGHTBLUE_EX, colorama.Fore.BLACK
+            title = color_text(str(title), *clrs)
+        print(&#34;\n&#34; + title)
+
         # Inform dims[&#34;mean&#34;]
         if dims.get(&#39;mean&#39;, None):
             print(f&#34;Averages (in time and) over {dims[&#39;mean&#39;]}.&#34;)
@@ -2052,6 +2059,7 @@ preventing them from being shown in plot labels and tuning panels.</p></div>
                 # which can cause trouble if the axes units were actually supposed
                 # to be categorical (eg upd_a), but this is only revealed later.
                 if not all(y == None for y in yy):
+                    style[&#34;alpha&#34;] = 0.2
                     row.handles[a] = panel.plot(xticks, yy, **style)
 
         def label_management(table):
@@ -2188,7 +2196,7 @@ by <code><a title="dapper.xp_process.xpSpace.table_tree" href="#dapper.xp_proces
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L310-L327" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L308-L325" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">@classmethod
 def from_list(cls, xps, tick_ordering=None):
@@ -2222,7 +2230,7 @@ def from_list(cls, xps, tick_ordering=None):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L329-L359" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L327-L357" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def make_ticks(self, dct, ordering=None):
     &#34;&#34;&#34;Unique &amp; sort, for each individual &#34;dim&#34; in `dct`. Assign to `self.ticks`.
@@ -2265,7 +2273,7 @@ def from_list(cls, xps, tick_ordering=None):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L361-L363" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L359-L361" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def fill(self, xps):
     &#34;&#34;&#34;Mass insertion.&#34;&#34;&#34;
@@ -2280,7 +2288,7 @@ def from_list(cls, xps, tick_ordering=None):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L365-L369" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L363-L367" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def squeeze(self):
     &#34;&#34;&#34;Eliminate unnecessary dimensions.&#34;&#34;&#34;
@@ -2297,7 +2305,7 @@ def from_list(cls, xps, tick_ordering=None):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L371-L390" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L369-L388" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def get_stat(self, statkey):
     &#34;&#34;&#34;Make `xpSpace` with same `Coord` as `self`, but values `xp.avrgs.statkey`.&#34;&#34;&#34;
@@ -2329,7 +2337,7 @@ def from_list(cls, xps, tick_ordering=None):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L392-L421" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L390-L419" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def mean(self, dims=None):
     &#34;&#34;&#34;Compute mean over `dims` (a list). Returns `xpSpace` without those `dims`.&#34;&#34;&#34;
@@ -2371,7 +2379,7 @@ def from_list(cls, xps, tick_ordering=None):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L423-L458" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L421-L456" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def tune(self, dims=None, costfun=None):
     &#34;&#34;&#34;Get (compile/tabulate) a stat. optimised wrt. tuning params (`dims`).&#34;&#34;&#34;
@@ -2428,7 +2436,7 @@ when optimizing over <code>dims['optim']</code>.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L460-L551" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L458-L549" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def table_tree(self, statkey, dims, *, costfun=None):
     &#34;&#34;&#34;Make hierarchy `outer &gt; inner &gt; mean &gt; optim` using `SparseSpace.nest`.
@@ -2532,7 +2540,7 @@ when optimizing over <code>dims['optim']</code>.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L553-L555" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L551-L553" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def tickz(self, dim_name):
     &#34;&#34;&#34;Dimension (axis) ticks without None&#34;&#34;&#34;
@@ -2540,7 +2548,7 @@ when optimizing over <code>dims['optim']</code>.</p>
 </details>
 </dd>
 <dt id="dapper.xp_process.xpSpace.print"><code class="name flex">
-<span>def <span class="ident">print</span></span>(<span>self, statkey, dims, subcols=True, decimals=None, costfun=None, squeeze_labels=True, colorize=True)</span>
+<span>def <span class="ident">print</span></span>(<span>self, statkey, dims, subcols=True, decimals=None, costfun=None, squeeze_labels=True, colorize=True, title=None)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Print tables of results.</p>
@@ -2599,11 +2607,11 @@ Caution: <code>get_style</code> will not be able to access the eliminated attrs.
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L557-L706" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L555-L710" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def print(self, statkey, dims,  # noqa (shadowing builtin)
           subcols=True, decimals=None, costfun=None,
-          squeeze_labels=True, colorize=True):
+          squeeze_labels=True, colorize=True, title=None):
     &#34;&#34;&#34;Print tables of results.
 
     Parameters
@@ -2654,6 +2662,12 @@ Caution: <code>get_style</code> will not be able to access the eliminated attrs.
     colorize: bool
         Add color to tables for readability.
     &#34;&#34;&#34;
+    # Title
+    if colorize:
+        clrs = colorama.Back.LIGHTBLUE_EX, colorama.Fore.BLACK
+        title = color_text(str(title), *clrs)
+    print(&#34;\n&#34; + title)
+
     # Inform dims[&#34;mean&#34;]
     if dims.get(&#39;mean&#39;, None):
         print(f&#34;Averages (in time and) over {dims[&#39;mean&#39;]}.&#34;)
@@ -2785,7 +2799,7 @@ Don't include redundant attributes in the labels.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L708-L882" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L712-L887" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def plot(self, statkey, dims, get_style=default_styles,
          fignum=None, figsize=None, panels=None, costfun=None,
@@ -2850,6 +2864,7 @@ Don't include redundant attributes in the labels.</p></div>
             # which can cause trouble if the axes units were actually supposed
             # to be categorical (eg upd_a), but this is only revealed later.
             if not all(y == None for y in yy):
+                style[&#34;alpha&#34;] = 0.2
                 row.handles[a] = panel.plot(xticks, yy, **style)
 
     def label_management(table):

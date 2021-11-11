@@ -240,7 +240,7 @@ def no_localization(Nx, Ny):
 
         Used to validate local DA methods, eg. `LETKF&lt;==&gt;EnKF(&#39;Sqrt&#39;)`.
         &#34;&#34;&#34;
-        assert radius == np.inf, &#34;Localization functions not specified&#34;
+        assert radius in [None, np.inf], &#34;Localizer not specified, but radius &lt; infty.&#34;
 
         if direction == &#39;x2y&#39;:
             return [np.arange(Nx)], obs_taperer
@@ -640,7 +640,7 @@ array([[0.]])
 
         Used to validate local DA methods, eg. `LETKF&lt;==&gt;EnKF(&#39;Sqrt&#39;)`.
         &#34;&#34;&#34;
-        assert radius == np.inf, &#34;Localization functions not specified&#34;
+        assert radius in [None, np.inf], &#34;Localizer not specified, but radius &lt; infty.&#34;
 
         if direction == &#39;x2y&#39;:
             return [np.arange(Nx)], obs_taperer

@@ -40,7 +40,7 @@ body.gsc-overflow-hidden #sidebar {overflow: visible;}
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/datafiles.py#L1-L164" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/datafiles.py#L1-L167" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">&#34;&#34;&#34;Manage the data files created by DAPPER.&#34;&#34;&#34;
 
@@ -131,7 +131,9 @@ def load_xps(save_as):
     for f in tqdm(files, desc=&#34;Loading&#34;):
         xps.extend(load_any(f))
 
-    if len(xps) &lt; len(files):
+    if len(xps) == 0:
+        raise RuntimeError(&#34;No completed experiments found.&#34;)
+    elif len(xps) &lt; len(files):
         print(len(files)-len(xps), &#34;files could not be loaded,&#34;,
               &#34;presumably because their respective jobs crashed.&#34;)
 
@@ -194,16 +196,17 @@ def overwrite_xps(xps, save_as, nDir=100):
 
 
 def reduce_inodes(save_as, nDir=100):
-    &#34;&#34;&#34;Reduce the number of `xp` dirs
+    &#34;&#34;&#34;Reduce the number of `xp` dirs.
 
-    by packing multiple `xp`s into lists (`xps`).
-
-    This reduces the **number** of files (inodes) on the system,
-    which limits storage capacity (along with **size**).
+    Done by packing multiple `xp`s into lists (`xps`).
+    This reduces the **number** of files (inodes) on the system, which is limited.
 
     It also deletes files &#34;xp.var&#34; and &#34;out&#34;,
     whose main content tends to be the printed progbar.
-    This probably leads to reduced loading time is sometimes reduced.
+    This probably leads to some reduced loading time.
+
+    FAQ: Why isn&#39;t the default for `nDir` simply 1?
+    So that we can get a progressbar when loading.
     &#34;&#34;&#34;
     overwrite_xps(load_xps(save_as), save_as, nDir)</code></pre>
 </details>
@@ -302,7 +305,7 @@ def reduce_inodes(save_as, nDir=100):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/datafiles.py#L64-L94" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/datafiles.py#L64-L96" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def load_xps(save_as):
     &#34;&#34;&#34;Load `xps` (as a `list`) from given dir.&#34;&#34;&#34;
@@ -330,7 +333,9 @@ def reduce_inodes(save_as, nDir=100):
     for f in tqdm(files, desc=&#34;Loading&#34;):
         xps.extend(load_any(f))
 
-    if len(xps) &lt; len(files):
+    if len(xps) == 0:
+        raise RuntimeError(&#34;No completed experiments found.&#34;)
+    elif len(xps) &lt; len(files):
         print(len(files)-len(xps), &#34;files could not be loaded,&#34;,
               &#34;presumably because their respective jobs crashed.&#34;)
 
@@ -364,7 +369,7 @@ for save_as in dd.iterdir():
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/datafiles.py#L97-L133" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/datafiles.py#L99-L135" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def save_xps(xps, save_as, nDir=100):
     &#34;&#34;&#34;Save `xps` (list of `xp`s) in `nDir` subfolders: `save_as/i`.
@@ -413,7 +418,7 @@ for save_as in dd.iterdir():
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/datafiles.py#L136-L149" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/datafiles.py#L138-L151" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def overwrite_xps(xps, save_as, nDir=100):
     &#34;&#34;&#34;Save xps in save_as, but safely (by first saving to tmp).&#34;&#34;&#34;
@@ -435,29 +440,31 @@ for save_as in dd.iterdir():
 <span>def <span class="ident">reduce_inodes</span></span>(<span>save_as, nDir=100)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Reduce the number of <code>xp</code> dirs</p>
-<p>by packing multiple <code>xp</code>s into lists (<code>xps</code>).</p>
-<p>This reduces the <strong>number</strong> of files (inodes) on the system,
-which limits storage capacity (along with <strong>size</strong>).</p>
+<div class="desc"><p>Reduce the number of <code>xp</code> dirs.</p>
+<p>Done by packing multiple <code>xp</code>s into lists (<code>xps</code>).
+This reduces the <strong>number</strong> of files (inodes) on the system, which is limited.</p>
 <p>It also deletes files "xp.var" and "out",
 whose main content tends to be the printed progbar.
-This probably leads to reduced loading time is sometimes reduced.</p></div>
+This probably leads to some reduced loading time.</p>
+<p>FAQ: Why isn't the default for <code>nDir</code> simply 1?
+So that we can get a progressbar when loading.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/datafiles.py#L152-L164" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/datafiles.py#L154-L167" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def reduce_inodes(save_as, nDir=100):
-    &#34;&#34;&#34;Reduce the number of `xp` dirs
+    &#34;&#34;&#34;Reduce the number of `xp` dirs.
 
-    by packing multiple `xp`s into lists (`xps`).
-
-    This reduces the **number** of files (inodes) on the system,
-    which limits storage capacity (along with **size**).
+    Done by packing multiple `xp`s into lists (`xps`).
+    This reduces the **number** of files (inodes) on the system, which is limited.
 
     It also deletes files &#34;xp.var&#34; and &#34;out&#34;,
     whose main content tends to be the printed progbar.
-    This probably leads to reduced loading time is sometimes reduced.
+    This probably leads to some reduced loading time.
+
+    FAQ: Why isn&#39;t the default for `nDir` simply 1?
+    So that we can get a progressbar when loading.
     &#34;&#34;&#34;
     overwrite_xps(load_xps(save_as), save_as, nDir)</code></pre>
 </details>
