@@ -40,7 +40,7 @@ body.gsc-overflow-hidden #sidebar {overflow: visible;}
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L1-L887" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L1-L888" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">&#34;&#34;&#34;Tools (notably `xpSpace`) for processing and presenting experiment data.&#34;&#34;&#34;
 
@@ -650,10 +650,11 @@ class xpSpace(SparseSpace):
             Add color to tables for readability.
         &#34;&#34;&#34;
         # Title
-        if colorize:
-            clrs = colorama.Back.LIGHTBLUE_EX, colorama.Fore.BLACK
-            title = color_text(str(title), *clrs)
-        print(&#34;\n&#34; + title)
+        if title is not None:
+            if colorize:
+                clrs = colorama.Back.LIGHTBLUE_EX, colorama.Fore.BLACK
+                title = color_text(str(title), *clrs)
+            print(title)
 
         # Inform dims[&#34;mean&#34;]
         if dims.get(&#39;mean&#39;, None):
@@ -1587,7 +1588,7 @@ preventing them from being shown in plot labels and tuning panels.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L305-L887" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L305-L888" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class xpSpace(SparseSpace):
     &#34;&#34;&#34;Functionality to facilitate working with `xps` and their results.&#34;&#34;&#34;
@@ -1893,10 +1894,11 @@ preventing them from being shown in plot labels and tuning panels.</p></div>
             Add color to tables for readability.
         &#34;&#34;&#34;
         # Title
-        if colorize:
-            clrs = colorama.Back.LIGHTBLUE_EX, colorama.Fore.BLACK
-            title = color_text(str(title), *clrs)
-        print(&#34;\n&#34; + title)
+        if title is not None:
+            if colorize:
+                clrs = colorama.Back.LIGHTBLUE_EX, colorama.Fore.BLACK
+                title = color_text(str(title), *clrs)
+            print(title)
 
         # Inform dims[&#34;mean&#34;]
         if dims.get(&#39;mean&#39;, None):
@@ -2607,7 +2609,7 @@ Caution: <code>get_style</code> will not be able to access the eliminated attrs.
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L555-L710" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L555-L711" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def print(self, statkey, dims,  # noqa (shadowing builtin)
           subcols=True, decimals=None, costfun=None,
@@ -2663,10 +2665,11 @@ Caution: <code>get_style</code> will not be able to access the eliminated attrs.
         Add color to tables for readability.
     &#34;&#34;&#34;
     # Title
-    if colorize:
-        clrs = colorama.Back.LIGHTBLUE_EX, colorama.Fore.BLACK
-        title = color_text(str(title), *clrs)
-    print(&#34;\n&#34; + title)
+    if title is not None:
+        if colorize:
+            clrs = colorama.Back.LIGHTBLUE_EX, colorama.Fore.BLACK
+            title = color_text(str(title), *clrs)
+        print(title)
 
     # Inform dims[&#34;mean&#34;]
     if dims.get(&#39;mean&#39;, None):
@@ -2799,7 +2802,7 @@ Don't include redundant attributes in the labels.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L712-L887" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/xp_process.py#L713-L888" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def plot(self, statkey, dims, get_style=default_styles,
          fignum=None, figsize=None, panels=None, costfun=None,
