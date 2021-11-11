@@ -40,7 +40,7 @@ body.gsc-overflow-hidden #sidebar {overflow: visible;}
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/integration.py#L1-L224" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/integration.py#L1-L226" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">&#34;&#34;&#34;Time stepping (integration) tools.&#34;&#34;&#34;
 
@@ -174,13 +174,15 @@ def with_recursion(func, prog=False):
         xx = np.zeros((k+1,)+x0.shape)
         xx[0] = x0
 
-        rg = range(k)
-        if isinstance(prog, str):
-            rg = progbar(rg, prog)
-        elif prog:
-            rg = progbar(rg, &#39;Recurs.&#39;)
+        # Prog. bar name
+        if prog == False:
+            desc = None
+        elif prog == None:
+            desc = &#34;Recurs.&#34;
+        else:
+            desc = prog
 
-        for i in rg:
+        for i in progbar(range(k), desc):
             xx[i+1] = func(xx[i], *args, **kwargs)
 
         return xx
@@ -444,7 +446,7 @@ True
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/integration.py#L94-L144" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/integration.py#L94-L146" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def with_recursion(func, prog=False):
     &#34;&#34;&#34;Make function recursive in its 1st arg.
@@ -485,13 +487,15 @@ True
         xx = np.zeros((k+1,)+x0.shape)
         xx[0] = x0
 
-        rg = range(k)
-        if isinstance(prog, str):
-            rg = progbar(rg, prog)
-        elif prog:
-            rg = progbar(rg, &#39;Recurs.&#39;)
+        # Prog. bar name
+        if prog == False:
+            desc = None
+        elif prog == None:
+            desc = &#34;Recurs.&#34;
+        else:
+            desc = prog
 
-        for i in rg:
+        for i in progbar(range(k), desc):
             xx[i+1] = func(xx[i], *args, **kwargs)
 
         return xx
@@ -535,7 +539,7 @@ True
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/integration.py#L147-L184" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/integration.py#L149-L186" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def integrate_TLM(TLM, dt, method=&#39;approx&#39;):
     r&#34;&#34;&#34;Compute the resolvent.
@@ -595,7 +599,7 @@ where, in the 2D case, each row is seen as one function input.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/integration.py#L187-L209" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/integration.py#L189-L211" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def FD_Jac(func, eps=1e-7):
     &#34;&#34;&#34;Finite-diff approx. of Jacobian of `func`.
