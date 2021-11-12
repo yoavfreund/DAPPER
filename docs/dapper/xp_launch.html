@@ -586,7 +586,7 @@ class xpList(list):
                 assert len(mp[&#34;files&#34;]) &lt; 1000, (
                     &#34;Too many files staged for upload to server.&#34;
                     &#34; This is the result of trying to include all files&#34;
-                    f&#34; under {sys.path[0]=}.&#34;
+                    f&#34; under sys.path[0]: ({sys.path[0]}).&#34;
                     &#34; Consider moving your script to a project directory,&#34;
                     &#34; or expliclity listing the files to be uploaded.&#34;
                 )
@@ -1435,7 +1435,7 @@ as opposed to this class (<code><a title="dapper.xp_launch.xpList" href="#dapper
                 assert len(mp[&#34;files&#34;]) &lt; 1000, (
                     &#34;Too many files staged for upload to server.&#34;
                     &#34; This is the result of trying to include all files&#34;
-                    f&#34; under {sys.path[0]=}.&#34;
+                    f&#34; under sys.path[0]: ({sys.path[0]}).&#34;
                     &#34; Consider moving your script to a project directory,&#34;
                     &#34; or expliclity listing the files to be uploaded.&#34;
                 )
@@ -1918,7 +1918,7 @@ in <code>sys.path[0]</code> are uploaded.</li>
             assert len(mp[&#34;files&#34;]) &lt; 1000, (
                 &#34;Too many files staged for upload to server.&#34;
                 &#34; This is the result of trying to include all files&#34;
-                f&#34; under {sys.path[0]=}.&#34;
+                f&#34; under sys.path[0]: ({sys.path[0]}).&#34;
                 &#34; Consider moving your script to a project directory,&#34;
                 &#34; or expliclity listing the files to be uploaded.&#34;
             )
