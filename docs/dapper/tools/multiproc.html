@@ -6,7 +6,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
 <meta name="generator" content="pdoc 0.10.0" />
 <title>dapper.tools.multiproc API documentation</title>
-<meta name="description" content="Paralellisation via multiprocessing. Wraps pool.map for convenience." />
+<meta name="description" content="Paralellisation via multiprocessing. Limit num. of CPUs used by `numpy` to 1." />
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/typography.min.css" integrity="sha256-7l/o7C8jubJiy74VsKTidCy1yBkRtiUGbVkYBylBqUg=" crossorigin>
 <link rel="stylesheet preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/styles/github.min.css" crossorigin>
@@ -36,30 +36,28 @@ body.gsc-overflow-hidden #sidebar {overflow: visible;}
 <h1 class="title">Module <code>dapper.tools.multiproc</code></h1>
 </header>
 <section id="section-intro">
-<p>Paralellisation via multiprocessing. Wraps pool.map for convenience.</p>
+<p>Paralellisation via multiprocessing. Limit num. of CPUs used by <code>numpy</code> to 1.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/multiproc.py#L1-L85" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/multiproc.py#L1-L73" class="git-link">Browse git</a>
 </summary>
-<pre><code class="python">&#34;&#34;&#34;Paralellisation via multiprocessing. Wraps pool.map for convenience.&#34;&#34;&#34;
+<pre><code class="python">&#34;&#34;&#34;Paralellisation via multiprocessing. Limit num. of CPUs used by `numpy` to 1.&#34;&#34;&#34;
 
-import functools
-
-# Multiprocessing requries pickling. The package &#39;dill&#39; is able to
-# pickle much more than basic pickle (e.g. nested functions),
-# and is being used by &#39;multiprocessing_on_dill&#39;,
-# and the better-maintained pathos
+# To facilitate debugging, import mp here (where it&#39;s used).
+# For example, `matplotlib` (its event loop) might clash (however mysteriously)
+# with mp, so it&#39;s nice to be able to be sure that no mp is &#34;in the mix&#34;.
 import multiprocessing_on_dill as mpd
 # Enforcing individual core usage.
-# ---------
 # Issue: numpy uses multiple cores (github.com/numpy/numpy/issues/11826).
-#   This may yield some performance gain, but typically not much
-#   compared to manual parallelization over independent experiments,
-#   ensemble forecasts simulations, or local analyses.
-# Therefore: force numpy to only use a single core.
-#
-# Ref https://stackoverflow.com/a/53224849
+#     This may yield some performance gain, but typically not much
+#     compared to &#34;manual&#34; parallelization over
+#     experiments, ensemble members, or local analyses.
+#     Therefore: force numpy to only use a single core.
+import threadpoolctl
+
+threadpoolctl.threadpool_limits(1)
+# Alternative: ref https://stackoverflow.com/a/53224849
 # for envar in [
 #     &#34;OMP_NUM_THREADS&#34;,        # openmp
 #     &#34;OPENBLAS_NUM_THREADS&#34;,   # openblas
@@ -68,65 +66,55 @@ import multiprocessing_on_dill as mpd
 #     &#34;NUMEXPR_NUM_THREADS&#34;]:   # numexpr
 #     os.environ[envar] = &#34;1&#34;
 # The above may be the safest way to limit thread use on all systems,
-# but requires importing before np. =&gt; Instead, use threadpoolctl!
+# but must be imported ahead of numpy, which is clumsy.
 #
+# Test case:
 # &gt;&gt;&gt; import numpy as np
-# &gt;&gt;&gt; from threadpoolctl import threadpool_limits
-# &gt;&gt;&gt; N  = 4*10**3
-# &gt;&gt;&gt; a  = np.random.randn(N, N)
-# &gt;&gt;&gt; # Now start monitoring CPU usage (with e.g. htop).
-# &gt;&gt;&gt; with threadpool_limits(limits=1, user_api=&#39;blas&#39;):
-# &gt;&gt;&gt;   a2 = a @ a
-import threadpoolctl
-
-# Deciding on core numbers
-# ---------
-# Unnecessary. Just use NPROC=None.
-# from psutil import cpu_percent, cpu_count
-
-threadpoolctl.threadpool_limits(1)
+# ... from threadpoolctl import threadpool_limits
+# ... N  = 4*10**3
+# ... a  = np.random.randn(N, N)
+# ... # Now start monitoring CPU usage (with e.g. htop).
+# ... with threadpool_limits(limits=1, user_api=&#39;blas&#39;):
+# ...     a2 = a @ a
 
 
-def map(func, xx, **kwargs):  # noqa
-    &#34;&#34;&#34;A parallelized version of map.
+def Pool(NPROC=None):
+    &#34;&#34;&#34;Initialize a multiprocessing `Pool`.
 
-    Similar to `result = [func(x, **kwargs) for x in xx]`, but also deals with:
+    - Uses `pathos/dill` for serialisation.
+    - Provides unified interface for multiprocessing on/off (as a function of NPROC).
 
-    - passing kwargs
-    - join(), close()
-    - KeyboardInterrupt (not any more)
+    There is some overhead associated with the pool creation,
+    so you likely want to re-use a pool rather than repeatedly creating one.
+    Consider using `functools.partial` to fix kwargs.
 
-    Note: in contrast to reading operations, writing &#34;in-place&#34;
-    does not work with multiprocessing. This changes with
-    &#34;shared&#34; arrays, but this has not been tried out here.
-    By contrast, multithreading shares the memory,
-    but was significantly slower in the tested (pertinent) cases.
+    .. note::
+        In contrast to *reading*, in-place writing does not work with multiprocessing.
+        This changes with &#34;shared&#34; arrays, but that has not been tested here.
+        By contrast, multi*threading* shares the process memory,
+        but was significantly slower in the tested (pertinent) cases.
 
-    NB: multiprocessing does not mix with matplotlib,
-        so ensure `func` does not reference `self.stats.LP_instance`,
-        where `self` is a `@da_method` object.
-        In fact, `func` should not reference `self` at all,
-        because its serialization is rather slow.
+    .. caution::
+        `multiprocessing` does not mix with `matplotlib`, so ensure `func` does not
+        reference `xp.stats.LP_instance`. In fact, `func` should not reference `xp`
+        at all, because it takes time to serialize.
 
-    See example use in `dapper.mods.QG`
+    See example use in `dapper.mods.QG` and `dapper.da_methods.LETKF`.
     &#34;&#34;&#34;
-    NMAX = mpd.cpu_count() - 1  # Be nice
-    NPROC = kwargs.pop(&#34;NPROC&#34;, NMAX)
-    pool = mpd.Pool(NPROC)
+    if NPROC == False:
+        # Yield plain old map
+        class NoPool:
+            def __enter__(self): return builtins
+            def __exit__(self, *args): pass
+        import builtins
+        return NoPool()
 
-    try:
-        f = functools.partial(func, **kwargs)  # Fix kwargs
+    else:
+        # from psutil import cpu_percent, cpu_count
+        if NPROC in [True, None]:
+            NPROC = mpd.cpu_count() - 1  # be nice
 
-        # map vs imap: https://stackoverflow.com/a/26521507
-        result = pool.map(f, xx)
-
-    except Exception:
-        pool.terminate()
-        pool.close()
-        pool.join()
-        raise
-
-    return result</code></pre>
+        return mpd.Pool(NPROC)</code></pre>
 </details>
 </section>
 <section>
@@ -136,73 +124,74 @@ def map(func, xx, **kwargs):  # noqa
 <section>
 <h2 class="section-title" id="header-functions">Functions</h2>
 <dl>
-<dt id="dapper.tools.multiproc.map"><code class="name flex">
-<span>def <span class="ident">map</span></span>(<span>func, xx, **kwargs)</span>
+<dt id="dapper.tools.multiproc.Pool"><code class="name flex">
+<span>def <span class="ident">Pool</span></span>(<span>NPROC=None)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>A parallelized version of map.</p>
-<p>Similar to <code>result = [func(x, **kwargs) for x in xx]</code>, but also deals with:</p>
+<div class="desc"><p>Initialize a multiprocessing <code><a title="dapper.tools.multiproc.Pool" href="#dapper.tools.multiproc.Pool">Pool()</a></code>.</p>
 <ul>
-<li>passing kwargs</li>
-<li>join(), close()</li>
-<li>KeyboardInterrupt (not any more)</li>
+<li>Uses <code>pathos/dill</code> for serialisation.</li>
+<li>Provides unified interface for multiprocessing on/off (as a function of NPROC).</li>
 </ul>
-<p>Note: in contrast to reading operations, writing "in-place"
-does not work with multiprocessing. This changes with
-"shared" arrays, but this has not been tried out here.
-By contrast, multithreading shares the memory,
+<p>There is some overhead associated with the pool creation,
+so you likely want to re-use a pool rather than repeatedly creating one.
+Consider using <code>functools.partial</code> to fix kwargs.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>In contrast to <em>reading</em>, in-place writing does not work with multiprocessing.
+This changes with "shared" arrays, but that has not been tested here.
+By contrast, multi<em>threading</em> shares the process memory,
 but was significantly slower in the tested (pertinent) cases.</p>
-<p>NB: multiprocessing does not mix with matplotlib,
-so ensure <code>func</code> does not reference <code>self.stats.LP_instance</code>,
-where <code>self</code> is a <code>@da_method</code> object.
-In fact, <code>func</code> should not reference <code>self</code> at all,
-because its serialization is rather slow.</p>
-<p>See example use in <code><a title="dapper.mods.QG" href="../mods/QG/index.html">dapper.mods.QG</a></code></p></div>
+</div>
+<div class="admonition caution">
+<p class="admonition-title">Caution</p>
+<p><code>multiprocessing</code> does not mix with <code>matplotlib</code>, so ensure <code>func</code> does not
+reference <code>xp.stats.LP_instance</code>. In fact, <code>func</code> should not reference <code>xp</code>
+at all, because it takes time to serialize.</p>
+</div>
+<p>See example use in <code><a title="dapper.mods.QG" href="../mods/QG/index.html">dapper.mods.QG</a></code> and <code>dapper.da_methods.LETKF</code>.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/multiproc.py#L46-L85" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/multiproc.py#L37-L73" class="git-link">Browse git</a>
 </summary>
-<pre><code class="python">def map(func, xx, **kwargs):  # noqa
-    &#34;&#34;&#34;A parallelized version of map.
+<pre><code class="python">def Pool(NPROC=None):
+    &#34;&#34;&#34;Initialize a multiprocessing `Pool`.
 
-    Similar to `result = [func(x, **kwargs) for x in xx]`, but also deals with:
+    - Uses `pathos/dill` for serialisation.
+    - Provides unified interface for multiprocessing on/off (as a function of NPROC).
 
-    - passing kwargs
-    - join(), close()
-    - KeyboardInterrupt (not any more)
+    There is some overhead associated with the pool creation,
+    so you likely want to re-use a pool rather than repeatedly creating one.
+    Consider using `functools.partial` to fix kwargs.
 
-    Note: in contrast to reading operations, writing &#34;in-place&#34;
-    does not work with multiprocessing. This changes with
-    &#34;shared&#34; arrays, but this has not been tried out here.
-    By contrast, multithreading shares the memory,
-    but was significantly slower in the tested (pertinent) cases.
+    .. note::
+        In contrast to *reading*, in-place writing does not work with multiprocessing.
+        This changes with &#34;shared&#34; arrays, but that has not been tested here.
+        By contrast, multi*threading* shares the process memory,
+        but was significantly slower in the tested (pertinent) cases.
 
-    NB: multiprocessing does not mix with matplotlib,
-        so ensure `func` does not reference `self.stats.LP_instance`,
-        where `self` is a `@da_method` object.
-        In fact, `func` should not reference `self` at all,
-        because its serialization is rather slow.
+    .. caution::
+        `multiprocessing` does not mix with `matplotlib`, so ensure `func` does not
+        reference `xp.stats.LP_instance`. In fact, `func` should not reference `xp`
+        at all, because it takes time to serialize.
 
-    See example use in `dapper.mods.QG`
+    See example use in `dapper.mods.QG` and `dapper.da_methods.LETKF`.
     &#34;&#34;&#34;
-    NMAX = mpd.cpu_count() - 1  # Be nice
-    NPROC = kwargs.pop(&#34;NPROC&#34;, NMAX)
-    pool = mpd.Pool(NPROC)
+    if NPROC == False:
+        # Yield plain old map
+        class NoPool:
+            def __enter__(self): return builtins
+            def __exit__(self, *args): pass
+        import builtins
+        return NoPool()
 
-    try:
-        f = functools.partial(func, **kwargs)  # Fix kwargs
+    else:
+        # from psutil import cpu_percent, cpu_count
+        if NPROC in [True, None]:
+            NPROC = mpd.cpu_count() - 1  # be nice
 
-        # map vs imap: https://stackoverflow.com/a/26521507
-        result = pool.map(f, xx)
-
-    except Exception:
-        pool.terminate()
-        pool.close()
-        pool.join()
-        raise
-
-    return result</code></pre>
+        return mpd.Pool(NPROC)</code></pre>
 </details>
 </dd>
 </dl>
@@ -233,7 +222,7 @@ data-gaCategoryParameter="dapper.tools.multiproc">
 </li>
 <li><h3><a href="#header-functions">Functions</a></h3>
 <ul class="">
-<li><code><a title="dapper.tools.multiproc.map" href="#dapper.tools.multiproc.map">map</a></code></li>
+<li><code><a title="dapper.tools.multiproc.Pool" href="#dapper.tools.multiproc.Pool">Pool</a></code></li>
 </ul>
 </li>
 </ul>

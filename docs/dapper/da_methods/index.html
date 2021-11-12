@@ -82,21 +82,13 @@ You probably don't need statistical significance while debugging.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/__init__.py#L1-L189" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/__init__.py#L1-L199" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">&#34;&#34;&#34;Contains the data assimilation methods included with DAPPER.
 
 .. include:: ./README.md
 &#34;&#34;&#34;
-import dataclasses
-import functools
-import inspect
-import sys
-import time
-import traceback
-from dataclasses import dataclass
-
-import dapper.stats
+from pathlib import Path
 
 
 def da_method(*default_dataclasses):
@@ -157,6 +149,12 @@ def da_method(*default_dataclasses):
         `assimilate` method, but are instead used to customize other aspects of the
         experiments (see `dapper.xp_launch.run_experiment`).
     &#34;&#34;&#34;
+    import dataclasses
+    import functools
+    import time
+    from dataclasses import dataclass
+
+    import dapper.stats
 
     def dataclass_with_defaults(cls):
         &#34;&#34;&#34;Like `dataclass`, but add some DAPPER-specific things.
@@ -233,6 +231,9 @@ def da_method(*default_dataclasses):
 
 
 def _print_cropped_traceback(ERR):
+    import inspect
+    import sys
+    import traceback
 
     # A more &#34;standard&#34; (robust) way:
     # https://stackoverflow.com/a/32999522
@@ -267,6 +268,15 @@ def _print_cropped_traceback(ERR):
     print(msg, file=sys.stderr)
 
 
+# Import all da_methods
+# for _mod in Path(__file__).parent.glob(&#34;*.py&#34;):
+#     if _mod != Path(__file__) and not _mod.stem.startswith(&#34;_&#34;):
+#         _mod = __import__(__package__ + &#34;.&#34; + _mod.stem, fromlist=[&#39;*&#39;])
+#         del globals()[_mod.__name__.split(&#34;.&#34;)[-1]]  # rm module itself
+#         globals().update({k: v for k, v in vars(_mod).items()
+#                           if isinstance(v, type) and hasattr(v, &#34;da_method&#34;)})
+
+# The above does not allow for go-to-definition, so
 from .baseline import Climatology, OptInterp, Var3D
 from .ensemble import LETKF, SL_EAKF, EnKF, EnKF_N, EnKS, EnRTS
 from .extended import ExtKF, ExtRTS
@@ -386,7 +396,7 @@ experiments (see <code><a title="dapper.xp_launch.run_experiment" href="../xp_la
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/__init__.py#L16-L146" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/__init__.py#L8-L144" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def da_method(*default_dataclasses):
     &#34;&#34;&#34;Turn a dataclass-style class into a DA method for DAPPER (`xp`).
@@ -446,6 +456,12 @@ experiments (see <code><a title="dapper.xp_launch.run_experiment" href="../xp_la
         `assimilate` method, but are instead used to customize other aspects of the
         experiments (see `dapper.xp_launch.run_experiment`).
     &#34;&#34;&#34;
+    import dataclasses
+    import functools
+    import time
+    from dataclasses import dataclass
+
+    import dapper.stats
 
     def dataclass_with_defaults(cls):
         &#34;&#34;&#34;Like `dataclass`, but add some DAPPER-specific things.

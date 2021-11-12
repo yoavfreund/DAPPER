@@ -51,7 +51,7 @@ See example in <code><a title="dapper.mods.QG.counillon2009" href="counillon2009
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/QG/__init__.py#L1-L186" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/QG/__init__.py#L1-L188" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">&#34;&#34;&#34;Quasi-geostraphic 2D flow. Described in detail by `bib.sakov2008deterministic`.
 
@@ -76,7 +76,6 @@ import numpy as np
 
 import dapper.mods as modelling
 import dapper.tools.liveplotting as LP
-import dapper.tools.multiproc as mp
 
 #########################
 # Model
@@ -170,7 +169,10 @@ class model_config:
                 # Note: the relative overhead for parallelization decreases
                 # as the ratio dtout/dt increases.
                 # But the overhead is already negligible with a ratio of 4.
-                E = np.array(mp.map(self.step_1, E, t=t, dt=dt))
+                import dapper.tools.multiproc as multiproc
+                with multiproc.Pool(self.mp) as pool:
+                    E = pool.map(lambda x: self.step_1(x, t=t, dt=dt), E)
+                E = np.array(E)
             else:  # NON-PARALLELIZED:
                 for n, x in enumerate(E):
                     E[n] = self.step_1(x, t, dt)
@@ -277,7 +279,7 @@ def LP_setup(jj=None): return [
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/QG/__init__.py#L148-L148" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/QG/__init__.py#L150-L150" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def py2f(x): return x.reshape(shape, order=order)</code></pre>
 </details>
@@ -290,7 +292,7 @@ def LP_setup(jj=None): return [
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/QG/__init__.py#L149-L149" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/QG/__init__.py#L151-L151" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def f2py(X): return X.flatten(order=order)</code></pre>
 </details>
@@ -303,7 +305,7 @@ def LP_setup(jj=None): return [
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/QG/__init__.py#L152-L152" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/QG/__init__.py#L154-L154" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def square(x): return x.reshape(shape[::-1])</code></pre>
 </details>
@@ -316,7 +318,7 @@ def LP_setup(jj=None): return [
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/QG/__init__.py#L153-L153" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/QG/__init__.py#L155-L155" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def ind2sub(ind): return np.unravel_index(ind, shape[::-1])</code></pre>
 </details>
@@ -329,7 +331,7 @@ def LP_setup(jj=None): return [
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/QG/__init__.py#L159-L164" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/QG/__init__.py#L161-L166" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def gen_sample(model, nSamples, SpinUp, Spacing):
     simulator = modelling.with_recursion(model.step, prog=&#34;Simulating&#34;)
@@ -347,7 +349,7 @@ def LP_setup(jj=None): return [
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/QG/__init__.py#L182-L186" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/QG/__init__.py#L184-L188" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def LP_setup(jj=None): return [
     (1, LP.spatial2d(square, ind2sub, jj, cm)),
@@ -373,7 +375,7 @@ and Python calls to step(), for example for dt.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/QG/__init__.py#L48-L122" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/QG/__init__.py#L47-L124" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class model_config:
     &#34;&#34;&#34;Define model.
@@ -445,7 +447,10 @@ and Python calls to step(), for example for dt.</p>
                 # Note: the relative overhead for parallelization decreases
                 # as the ratio dtout/dt increases.
                 # But the overhead is already negligible with a ratio of 4.
-                E = np.array(mp.map(self.step_1, E, t=t, dt=dt))
+                import dapper.tools.multiproc as multiproc
+                with multiproc.Pool(self.mp) as pool:
+                    E = pool.map(lambda x: self.step_1(x, t=t, dt=dt), E)
+                E = np.array(E)
             else:  # NON-PARALLELIZED:
                 for n, x in enumerate(E):
                     E[n] = self.step_1(x, t, dt)
@@ -459,7 +464,7 @@ and Python calls to step(), for example for dt.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/QG/__init__.py#L81-L91" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/QG/__init__.py#L80-L90" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">@property
 def f90(self):
@@ -485,7 +490,7 @@ def f90(self):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/QG/__init__.py#L93-L107" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/QG/__init__.py#L92-L106" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def step_1(self, x0, t, dt):
     &#34;&#34;&#34;Step a single state vector.&#34;&#34;&#34;
@@ -512,7 +517,7 @@ def f90(self):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/QG/__init__.py#L109-L122" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/QG/__init__.py#L108-L124" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def step(self, E, t, dt):
     &#34;&#34;&#34;Vector and 2D-array (ens) input, with multiproc for ens case.&#34;&#34;&#34;
@@ -523,7 +528,10 @@ def f90(self):
             # Note: the relative overhead for parallelization decreases
             # as the ratio dtout/dt increases.
             # But the overhead is already negligible with a ratio of 4.
-            E = np.array(mp.map(self.step_1, E, t=t, dt=dt))
+            import dapper.tools.multiproc as multiproc
+            with multiproc.Pool(self.mp) as pool:
+                E = pool.map(lambda x: self.step_1(x, t=t, dt=dt), E)
+            E = np.array(E)
         else:  # NON-PARALLELIZED:
             for n, x in enumerate(E):
                 E[n] = self.step_1(x, t, dt)

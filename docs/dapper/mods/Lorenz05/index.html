@@ -58,7 +58,7 @@ somewhere around what Lorenz used, namely <code>dt=0.05/12</code>.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/Lorenz05/__init__.py#L1-L228" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/Lorenz05/__init__.py#L1-L222" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">&#34;&#34;&#34;A multi-scale, smooth version of the classic Lorenz-96.
 
@@ -157,15 +157,9 @@ class Model:
             return self.step1(E, t, dt)
         if E.ndim == 2:
             if self.mp and E.size &gt; 1e5:
-                # TODO 4: using dapper.tools.multiproc.Pool yielded
-                # &#34;Too many files open&#34; error. Fixed it as described here:
-                # https://stackoverflow.com/q/45665991
-                import multiprocessing_on_dill as mpd
-
-                def f(E):
-                    return self.step1(E, t=t, dt=dt)
-                with mpd.Pool() as pool:
-                    E = pool.map(f, E)
+                import dapper.tools.multiproc as multiproc
+                with multiproc.Pool(self.mp) as pool:
+                    E = pool.map(lambda x: self.step1(x, t=t, dt=dt), E)
                 E = np.array(E)
             else:
                 for n, x in enumerate(E):
@@ -317,7 +311,7 @@ But with default system parameters and N=50, the savings are negligible.</p></di
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/Lorenz05/__init__.py#L114-L126" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/Lorenz05/__init__.py#L108-L120" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def summation_kernel(width):
     &#34;&#34;&#34;Prepare computation of the modified sum in `bib.lorenz2005designing`.
@@ -375,7 +369,7 @@ array([4., 3., 2., 3., 4., 5., 6., 7., 6., 5.])
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/Lorenz05/__init__.py#L129-L203" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/Lorenz05/__init__.py#L123-L197" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def boxcar(x, n, method=&#34;direct&#34;):
     &#34;&#34;&#34;Moving average (boxcar filter) on `x` using `n` nearest (periodically) elements.
@@ -466,7 +460,7 @@ compared to just calling this function again are negligible.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/Lorenz05/__init__.py#L206-L214" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/Lorenz05/__init__.py#L200-L208" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def shift(x, k):
     &#34;&#34;&#34;Rolls `x` leftwards. I.e. `output[i] = input[i+k]`.
@@ -487,7 +481,7 @@ compared to just calling this function again are negligible.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/Lorenz05/__init__.py#L217-L223" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/Lorenz05/__init__.py#L211-L217" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def prodsum_self(x, k):
     &#34;&#34;&#34;Compute `prodsum(x, x, k)` efficiently: eqn 10 of `bib.lorenz2005designing`.&#34;&#34;&#34;
@@ -506,7 +500,7 @@ compared to just calling this function again are negligible.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/Lorenz05/__init__.py#L226-L228" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/Lorenz05/__init__.py#L220-L222" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def prodsum_K1(x, y):
     &#34;&#34;&#34;Compute `prodsum(x, y, 1)` efficiently.&#34;&#34;&#34;
@@ -531,7 +525,7 @@ working with multiple parameter settings simultaneously.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/Lorenz05/__init__.py#L35-L111" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/Lorenz05/__init__.py#L35-L105" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Model:
     &#34;&#34;&#34;The model configuration.
@@ -596,15 +590,9 @@ working with multiple parameter settings simultaneously.</p></div>
             return self.step1(E, t, dt)
         if E.ndim == 2:
             if self.mp and E.size &gt; 1e5:
-                # TODO 4: using dapper.tools.multiproc.Pool yielded
-                # &#34;Too many files open&#34; error. Fixed it as described here:
-                # https://stackoverflow.com/q/45665991
-                import multiprocessing_on_dill as mpd
-
-                def f(E):
-                    return self.step1(E, t=t, dt=dt)
-                with mpd.Pool() as pool:
-                    E = pool.map(f, E)
+                import dapper.tools.multiproc as multiproc
+                with multiproc.Pool(self.mp) as pool:
+                    E = pool.map(lambda x: self.step1(x, t=t, dt=dt), E)
                 E = np.array(E)
             else:
                 for n, x in enumerate(E):
@@ -713,22 +701,16 @@ working with multiple parameter settings simultaneously.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/Lorenz05/__init__.py#L93-L111" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/Lorenz05/__init__.py#L93-L105" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def step(self, E, t, dt):
     if E.ndim == 1:
         return self.step1(E, t, dt)
     if E.ndim == 2:
         if self.mp and E.size &gt; 1e5:
-            # TODO 4: using dapper.tools.multiproc.Pool yielded
-            # &#34;Too many files open&#34; error. Fixed it as described here:
-            # https://stackoverflow.com/q/45665991
-            import multiprocessing_on_dill as mpd
-
-            def f(E):
-                return self.step1(E, t=t, dt=dt)
-            with mpd.Pool() as pool:
-                E = pool.map(f, E)
+            import dapper.tools.multiproc as multiproc
+            with multiproc.Pool(self.mp) as pool:
+                E = pool.map(lambda x: self.step1(x, t=t, dt=dt), E)
             E = np.array(E)
         else:
             for n, x in enumerate(E):
