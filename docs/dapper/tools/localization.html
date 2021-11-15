@@ -43,7 +43,7 @@ Sakov (2011), Computational Geosciences:
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/localization.py#L1-L299" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/localization.py#L1-L296" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">&#34;&#34;&#34;Localization tools, including distance and tapering comps.
 
@@ -52,7 +52,13 @@ Sakov (2011), Computational Geosciences:
 &#39;Relation between two common localisation methods for the EnKF&#39;.
 &#34;&#34;&#34;
 
-import itertools
+# NB: Why is the &#39;order&#39; argument not supported by this module? Because:
+#  1) Assuming only order (orientation) &#39;C&#39; simplifies the module&#39;s code.
+#  2) It&#39;s not necessary, because the module only communicates to *exterior* via indices
+#     [of what assumes to be X.flatten(order=&#39;C&#39;)], and not coordinates!
+#     Thus, the only adaptation necessary if the order is &#39;F&#39; is to reverse
+#     the shape parameter passed to these functions (example: mods/QG/sakov2008).
+
 
 import numpy as np
 
@@ -62,11 +68,11 @@ def pairwise_distances(A, B=None, domain=None):
 
     Parameters
     ----------
-    A: array of shape (nPoints, nDims).
-        A collection a points.
+    A: array of shape `(nPoints, nDims)`.
+        A collection of points.
 
     B:
-        Same as `A`, but nPoints can differ.
+        Same as `A`, but `nPoints` can differ.
 
     domain: tuple
         Assume the domain is a **periodic** hyper-rectangle whose
@@ -265,17 +271,16 @@ def rectangular_partitioning(shape, steps, do_ind=True):
 
     Example
     -------
-    &gt;&gt;&gt; shape    = [4, 13]
-    &gt;&gt;&gt; steps    = [2, 4]
-    &gt;&gt;&gt; batches  = rectangular_partitioning(shape, steps, do_ind=False)
-    &gt;&gt;&gt; M        = np.prod(shape)
-    &gt;&gt;&gt; nB       = len(batches)
-    &gt;&gt;&gt; values   = np.random.choice(np.arange(nB), nB, 0)
-    &gt;&gt;&gt; Z        = np.zeros(shape)
-    &gt;&gt;&gt; for ib, b in enumerate(batches):
+    &gt;&gt;&gt; shape   = [4, 13]
+    ... batches = rectangular_partitioning(shape, [2, 4], do_ind=False)
+    ... nB      = len(batches)
+    ... values  = np.random.choice(np.arange(nB), nB, 0)
+    ... Z       = np.zeros(shape)
+    ... for ib, b in enumerate(batches):
     ...     Z[tuple(b)] = values[ib]
-    &gt;&gt;&gt; plt.imshow(Z)  # doctest: +SKIP
+    ... plt.imshow(Z)  # doctest: +SKIP
     &#34;&#34;&#34;
+    import itertools
     assert len(shape) == len(steps)
     # ndim = len(steps)
 
@@ -310,14 +315,6 @@ def safe_eval(fun, t):
         return fun(t)
     except TypeError:
         return fun
-
-
-# NB: Why is the &#39;order&#39; argument not supported by this module? Because:
-#  1) Assuming only order (orientation) &#39;C&#39; simplifies the module&#39;s code.
-#  2) It&#39;s not necessary, because the module only communicates to *exterior* via indices
-#     [of what assumes to be X.flatten(order=&#39;C&#39;)], and not coordinates!
-#     Thus, the only adaptation necessary if the order is &#39;F&#39; is to reverse
-#     the shape parameter passed to these functions (example: mods/QG/sakov2008).
 
 
 def nd_Id_localization(shape,
@@ -359,10 +356,10 @@ def nd_Id_localization(shape,
 <dd>
 <div class="desc"><p>Euclidian distance (not squared) between pts. in <code>A</code> and <code>B</code>.</p>
 <h2 id="parameters">Parameters</h2>
-<p>A: array of shape (nPoints, nDims).
-A collection a points.</p>
+<p>A: array of shape <code>(nPoints, nDims)</code>.
+A collection of points.</p>
 <p>B:
-Same as <code>A</code>, but nPoints can differ.</p>
+Same as <code>A</code>, but <code>nPoints</code> can differ.</p>
 <dl>
 <dt><strong><code>domain</code></strong> :&ensp;<code>tuple</code></dt>
 <dd>Assume the domain is a <strong>periodic</strong> hyper-rectangle whose
@@ -405,18 +402,18 @@ array([[0.]])
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/localization.py#L13-L87" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/localization.py#L19-L93" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def pairwise_distances(A, B=None, domain=None):
     &#34;&#34;&#34;Euclidian distance (not squared) between pts. in `A` and `B`.
 
     Parameters
     ----------
-    A: array of shape (nPoints, nDims).
-        A collection a points.
+    A: array of shape `(nPoints, nDims)`.
+        A collection of points.
 
     B:
-        Same as `A`, but nPoints can differ.
+        Same as `A`, but `nPoints` can differ.
 
     domain: tuple
         Assume the domain is a **periodic** hyper-rectangle whose
@@ -497,7 +494,7 @@ array([[0.]])
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/localization.py#L90-L140" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/localization.py#L96-L146" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def dist2coeff(dists, radius, tag=None):
     &#34;&#34;&#34;Compute tapering coefficients corresponding to a distances.
@@ -565,7 +562,7 @@ array([[0.]])
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/localization.py#L143-L155" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/localization.py#L149-L161" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def inds_and_coeffs(dists, radius, cutoff=1e-3, tag=None):
     &#34;&#34;&#34;Compute indices and coefficients of localization.
@@ -590,7 +587,7 @@ array([[0.]])
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/localization.py#L158-L180" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/localization.py#L164-L186" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def localization_setup(y2x_distances, batches):
 
@@ -625,7 +622,7 @@ array([[0.]])
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/localization.py#L183-L203" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/localization.py#L189-L209" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def no_localization(Nx, Ny):
 
@@ -670,21 +667,19 @@ for dim in range(ndim))</code></dt>
 </dl>
 <p>where each element (batch) is a list of indices.</p>
 <h2 id="example">Example</h2>
-<pre><code class="language-python-repl">&gt;&gt;&gt; shape    = [4, 13]
-&gt;&gt;&gt; steps    = [2, 4]
-&gt;&gt;&gt; batches  = rectangular_partitioning(shape, steps, do_ind=False)
-&gt;&gt;&gt; M        = np.prod(shape)
-&gt;&gt;&gt; nB       = len(batches)
-&gt;&gt;&gt; values   = np.random.choice(np.arange(nB), nB, 0)
-&gt;&gt;&gt; Z        = np.zeros(shape)
-&gt;&gt;&gt; for ib, b in enumerate(batches):
+<pre><code class="language-python-repl">&gt;&gt;&gt; shape   = [4, 13]
+... batches = rectangular_partitioning(shape, [2, 4], do_ind=False)
+... nB      = len(batches)
+... values  = np.random.choice(np.arange(nB), nB, 0)
+... Z       = np.zeros(shape)
+... for ib, b in enumerate(batches):
 ...     Z[tuple(b)] = values[ib]
-&gt;&gt;&gt; plt.imshow(Z)  # doctest: +SKIP
+... plt.imshow(Z)  # doctest: +SKIP
 </code></pre></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/localization.py#L206-L255" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/localization.py#L212-L260" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def rectangular_partitioning(shape, steps, do_ind=True):
     &#34;&#34;&#34;N-D rectangular batch generation.
@@ -701,17 +696,16 @@ for dim in range(ndim))</code></dt>
 
     Example
     -------
-    &gt;&gt;&gt; shape    = [4, 13]
-    &gt;&gt;&gt; steps    = [2, 4]
-    &gt;&gt;&gt; batches  = rectangular_partitioning(shape, steps, do_ind=False)
-    &gt;&gt;&gt; M        = np.prod(shape)
-    &gt;&gt;&gt; nB       = len(batches)
-    &gt;&gt;&gt; values   = np.random.choice(np.arange(nB), nB, 0)
-    &gt;&gt;&gt; Z        = np.zeros(shape)
-    &gt;&gt;&gt; for ib, b in enumerate(batches):
+    &gt;&gt;&gt; shape   = [4, 13]
+    ... batches = rectangular_partitioning(shape, [2, 4], do_ind=False)
+    ... nB      = len(batches)
+    ... values  = np.random.choice(np.arange(nB), nB, 0)
+    ... Z       = np.zeros(shape)
+    ... for ib, b in enumerate(batches):
     ...     Z[tuple(b)] = values[ib]
-    &gt;&gt;&gt; plt.imshow(Z)  # doctest: +SKIP
+    ... plt.imshow(Z)  # doctest: +SKIP
     &#34;&#34;&#34;
+    import itertools
     assert len(shape) == len(steps)
     # ndim = len(steps)
 
@@ -746,7 +740,7 @@ for dim in range(ndim))</code></dt>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/localization.py#L261-L265" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/localization.py#L266-L270" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def safe_eval(fun, t):
     try:
@@ -763,7 +757,7 @@ for dim in range(ndim))</code></dt>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/localization.py#L276-L299" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/tools/localization.py#L273-L296" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def nd_Id_localization(shape,
                        batch_shape=None,
