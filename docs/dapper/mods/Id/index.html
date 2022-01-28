@@ -42,7 +42,7 @@ body.gsc-overflow-hidden #sidebar {overflow: visible;}
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/Id/__init__.py#L1-L45" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/Id/__init__.py#L1-L42" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">&#34;&#34;&#34;The identity model (that does nothing, i.e. sets `output = input`).
 
@@ -52,7 +52,7 @@ Next to setting the state to a constant, this is the simplest model you can thin
 &#34;&#34;&#34;
 import dapper.mods as modelling
 
-tseq = modelling.Chronology(1, dko=1, Ko=100, Tplot=10, BurnIn=0)
+tseq = modelling.Chronology(1, dko=1, Ko=2000, Tplot=10, BurnIn=0)
 M = 4
 Obs = {&#39;noise&#39;: 2, &#39;M&#39;: M}
 Dyn = {&#39;noise&#39;: 1, &#39;M&#39;: M}
@@ -65,9 +65,6 @@ HMM = modelling.HiddenMarkovModel(Dyn, Obs, tseq, X0)
 #########################
 # import dapper as dpr
 # dpr.rc.field_summaries.append(&#34;ms&#34;)
-
-# from dapper.mods.Id import HMM
-# HMM.tseq.Ko = 2000
 
 # # We do not include Climatology and OptInterp because their variance and accuracy
 # # are less interesting since they grow with the duration of the experiment.
