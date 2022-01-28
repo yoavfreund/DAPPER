@@ -12,6 +12,7 @@ https://nansencenter.github.io/DAPPER/docs/dapper/dpr_config.html
 https://nansencenter.github.io/DAPPER/docs/dapper/mods/
 https://nansencenter.github.io/DAPPER/docs/dapper/mods/DoublePendulum/
 https://nansencenter.github.io/DAPPER/docs/dapper/mods/DoublePendulum/settings101.html
+https://nansencenter.github.io/DAPPER/docs/dapper/mods/Id/
 https://nansencenter.github.io/DAPPER/docs/dapper/mods/Ikeda/
 https://nansencenter.github.io/DAPPER/docs/dapper/mods/Ikeda/some_settings_01.html
 https://nansencenter.github.io/DAPPER/docs/dapper/mods/KS/

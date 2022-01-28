@@ -40,7 +40,7 @@ body.gsc-overflow-hidden #sidebar {overflow: visible;}
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/ensemble.py#L1-L966" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/ensemble.py#L1-L967" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">&#34;&#34;&#34;The EnKF and other ensemble-based methods.&#34;&#34;&#34;
 
@@ -594,7 +594,7 @@ def local_analyses(E, Eo, R, y, state_batches, obs_taperer, mp=map, xN=None, g=0
     &#34;&#34;&#34;Perform local analysis update for the LETKF.&#34;&#34;&#34;
     def local_analysis(ii):
         &#34;&#34;&#34;Perform analysis, for state index batch `ii`.&#34;&#34;&#34;
-        # Locate local obs
+        # Locate local domain
         oBatch, tapering = obs_taperer(ii)
         Eii = E[:, ii]
 
@@ -637,6 +637,7 @@ def local_analyses(E, Eo, R, y, state_batches, obs_taperer, mp=map, xN=None, g=0
 
     # Assign
     E_batches, infl1 = zip(*result)
+    # TODO: this overwrites E, possibly unbeknownst to caller
     for ii, Eii in zip(state_batches, E_batches):
         E[:, ii] = Eii
 
@@ -1394,13 +1395,13 @@ this should have been inside <code><a title="dapper.da_methods.ensemble.EnKF_ana
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/ensemble.py#L549-L599" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/ensemble.py#L549-L600" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def local_analyses(E, Eo, R, y, state_batches, obs_taperer, mp=map, xN=None, g=0):
     &#34;&#34;&#34;Perform local analysis update for the LETKF.&#34;&#34;&#34;
     def local_analysis(ii):
         &#34;&#34;&#34;Perform analysis, for state index batch `ii`.&#34;&#34;&#34;
-        # Locate local obs
+        # Locate local domain
         oBatch, tapering = obs_taperer(ii)
         Eii = E[:, ii]
 
@@ -1443,6 +1444,7 @@ this should have been inside <code><a title="dapper.da_methods.ensemble.EnKF_ana
 
     # Assign
     E_batches, infl1 = zip(*result)
+    # TODO: this overwrites E, possibly unbeknownst to caller
     for ii, Eii in zip(state_batches, E_batches):
         E[:, ii] = Eii
 
@@ -1458,7 +1460,7 @@ this should have been inside <code><a title="dapper.da_methods.ensemble.EnKF_ana
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/ensemble.py#L643-L685" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/ensemble.py#L644-L686" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def effective_N(YR, dyR, xN, g):
     &#34;&#34;&#34;Effective ensemble size N.
@@ -1514,7 +1516,7 @@ this should have been inside <code><a title="dapper.da_methods.ensemble.EnKF_ana
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/ensemble.py#L713-L737" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/ensemble.py#L714-L738" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def Newton_m(fun, deriv, x0, is_inverted=False,
              conf=1.0, xtol=1e-4, ytol=1e-7, itermax=10**2):
@@ -1591,7 +1593,7 @@ as if N were smaller than it truly is.</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/ensemble.py#L740-L800" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/ensemble.py#L741-L801" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def hyperprior_coeffs(s, N, xN=1, g=0):
     r&#34;&#34;&#34;Set EnKF-N inflation hyperparams.
@@ -1668,7 +1670,7 @@ the distinction between the primal and dual EnKF-N.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/ensemble.py#L803-L815" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/ensemble.py#L804-L816" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def zeta_a(eN, cL, w):
     &#34;&#34;&#34;EnKF-N inflation estimation via w.
@@ -2373,7 +2375,7 @@ even with <code>batch_size=(1,)</code>. But for <code><a title="dapper.mods.QG" 
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/ensemble.py#L603-L640" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/ensemble.py#L604-L641" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class LETKF:
     &#34;&#34;&#34;Same as EnKF (Sqrt), but with localization.
@@ -2467,7 +2469,7 @@ even with <code>batch_size=(1,)</code>. But for <code><a title="dapper.mods.QG" 
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/ensemble.py#L622-L640" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/ensemble.py#L623-L641" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def assimilate(self, HMM, xx, yy):
     E = HMM.X0.sample(self.N)
@@ -2532,7 +2534,7 @@ Further description in hyperprior_coeffs().</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/ensemble.py#L819-L966" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/ensemble.py#L820-L967" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class EnKF_N:
     &#34;&#34;&#34;Finite-size EnKF (EnKF-N).
@@ -2732,7 +2734,7 @@ Further description in hyperprior_coeffs().</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/ensemble.py#L852-L966" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/ensemble.py#L853-L967" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def assimilate(self, HMM, xx, yy):
     R, N, N1 = HMM.Obs.noise.C, self.N, self.N-1

@@ -40,7 +40,7 @@ body.gsc-overflow-hidden #sidebar {overflow: visible;}
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/utils.py#L1-L231" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/utils.py#L1-L225" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">&#34;&#34;&#34;Utilities to help define hidden Markov models.&#34;&#34;&#34;
 
@@ -110,14 +110,8 @@ def ens_compatible(func):
 
 
 def Id_op():
-    &#34;&#34;&#34;Id operator for first argument.&#34;&#34;&#34;
+    &#34;&#34;&#34;Id operator (named). Returns first argument.&#34;&#34;&#34;
     return NamedFunc(lambda *args: args[0], &#34;Id operator&#34;)
-
-
-def Id_mat(M):
-    &#34;&#34;&#34;Id matrix.&#34;&#34;&#34;
-    Id = np.eye(M)
-    return NamedFunc(lambda x, t: Id, &#34;Id(&#34;+str(M)+&#34;) matrix&#34;)
 
 
 def linear_model_setup(ModelMatrix, dt0):
@@ -359,31 +353,15 @@ def linspace_int(Nx, Ny, periodic=True):
 <span>def <span class="ident">Id_op</span></span>(<span>)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Id operator for first argument.</p></div>
+<div class="desc"><p>Id operator (named). Returns first argument.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 <a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/utils.py#L68-L70" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def Id_op():
-    &#34;&#34;&#34;Id operator for first argument.&#34;&#34;&#34;
+    &#34;&#34;&#34;Id operator (named). Returns first argument.&#34;&#34;&#34;
     return NamedFunc(lambda *args: args[0], &#34;Id operator&#34;)</code></pre>
-</details>
-</dd>
-<dt id="dapper.mods.utils.Id_mat"><code class="name flex">
-<span>def <span class="ident">Id_mat</span></span>(<span>M)</span>
-</code></dt>
-<dd>
-<div class="desc"><p>Id matrix.</p></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/utils.py#L73-L76" class="git-link">Browse git</a>
-</summary>
-<pre><code class="python">def Id_mat(M):
-    &#34;&#34;&#34;Id matrix.&#34;&#34;&#34;
-    Id = np.eye(M)
-    return NamedFunc(lambda x, t: Id, &#34;Id(&#34;+str(M)+&#34;) matrix&#34;)</code></pre>
 </details>
 </dd>
 <dt id="dapper.mods.utils.linear_model_setup"><code class="name flex">
@@ -402,7 +380,7 @@ Anyways, <code>dt</code> must be an integer multiple of <code>dt0</code>.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/utils.py#L79-L117" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/utils.py#L73-L111" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def linear_model_setup(ModelMatrix, dt0):
     r&#34;&#34;&#34;Make the Dyn/Obs field of a HMM representing a linear model.
@@ -465,7 +443,7 @@ Anyways, <code>dt</code> must be an integer multiple of <code>dt0</code>.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/utils.py#L120-L142" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/utils.py#L114-L136" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def direct_obs_matrix(Nx, obs_inds):
     &#34;&#34;&#34;Generate matrix that &#34;picks&#34; state elements `obs_inds` out of `range(Nx)`.
@@ -514,7 +492,7 @@ observation operator/model and tangent linear observation operator</dd>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/utils.py#L145-L176" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/utils.py#L139-L170" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def partial_Id_Obs(Nx, obs_inds):
     &#34;&#34;&#34;Specify identity observations of a subset of obs. indices.
@@ -570,7 +548,7 @@ observation operator/model and tangent linear observation operator</dd>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/utils.py#L179-L195" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/utils.py#L173-L189" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def Id_Obs(Nx):
     &#34;&#34;&#34;Specify identity observations of entire state.
@@ -623,7 +601,7 @@ array([0, 2, 4, 6, 8])
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/utils.py#L198-L231" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/utils.py#L192-L225" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def linspace_int(Nx, Ny, periodic=True):
     &#34;&#34;&#34;Provide a range of `Ny` equispaced integers between `0` and `Nx-1`.
@@ -725,7 +703,6 @@ data-gaCategoryParameter="dapper.mods.utils">
 <li><code><a title="dapper.mods.utils.name_func" href="#dapper.mods.utils.name_func">name_func</a></code></li>
 <li><code><a title="dapper.mods.utils.ens_compatible" href="#dapper.mods.utils.ens_compatible">ens_compatible</a></code></li>
 <li><code><a title="dapper.mods.utils.Id_op" href="#dapper.mods.utils.Id_op">Id_op</a></code></li>
-<li><code><a title="dapper.mods.utils.Id_mat" href="#dapper.mods.utils.Id_mat">Id_mat</a></code></li>
 <li><code><a title="dapper.mods.utils.linear_model_setup" href="#dapper.mods.utils.linear_model_setup">linear_model_setup</a></code></li>
 <li><code><a title="dapper.mods.utils.direct_obs_matrix" href="#dapper.mods.utils.direct_obs_matrix">direct_obs_matrix</a></code></li>
 <li><code><a title="dapper.mods.utils.partial_Id_Obs" href="#dapper.mods.utils.partial_Id_Obs">partial_Id_Obs</a></code></li>

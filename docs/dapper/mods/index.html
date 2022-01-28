@@ -171,7 +171,7 @@ DAPPER, used for cross-referenced with literature to verify the workings of DAPP
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/__init__.py#L1-L199" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/__init__.py#L1-L200" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">&#34;&#34;&#34;Models included with DAPPER.
 
@@ -188,7 +188,7 @@ import struct_tools
 # Imports used to set up HMMs
 import dapper.tools.progressbar as pb
 from dapper.dpr_config import rc
-from dapper.mods.utils import Id_mat, Id_op
+from dapper.mods.utils import Id_op
 from dapper.tools.chronos import Chronology
 from dapper.tools.localization import no_localization
 from dapper.tools.matrices import CovMat
@@ -347,10 +347,11 @@ class Operator(struct_tools.NicePrint):
     def __init__(self, M, model=None, noise=None, **kwargs):
         self.M = M
 
-        # None =&gt; Identity model
+        # Default to the Identity operator
         if model is None:
             model = Id_op()
-            kwargs[&#39;linear&#39;] = lambda x, t, dt: Id_mat(M)
+            kwargs[&#39;linear&#39;] = lambda *args: np.eye(M)
+        # Assign
         self.model = model
 
         # None/0 =&gt; No noise
@@ -382,6 +383,12 @@ class Operator(struct_tools.NicePrint):
 <dt><code class="name"><a title="dapper.mods.DoublePendulum" href="DoublePendulum/index.html">DoublePendulum</a></code></dt>
 <dd>
 <div class="desc"><p>The motion of a pendulum with another pendulum attached to its end …</p></div>
+</dd>
+<!-- CHANGE: Short submodule name -->
+<!-- https://github.com/pdoc3/pdoc/issues/265#issuecomment-702426471 -->
+<dt><code class="name"><a title="dapper.mods.Id" href="Id/index.html">Id</a></code></dt>
+<dd>
+<div class="desc"><p>The identity model (that does nothing, i.e. sets <code>output = input</code>) …</p></div>
 </dd>
 <!-- CHANGE: Short submodule name -->
 <!-- https://github.com/pdoc3/pdoc/issues/265#issuecomment-702426471 -->
@@ -760,7 +767,7 @@ array, producing <code>GaussRV(C=noise)</code>.</dd>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/__init__.py#L156-L199" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/mods/__init__.py#L156-L200" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Operator(struct_tools.NicePrint):
     &#34;&#34;&#34;Container for the dynamical and the observational maps.
@@ -781,10 +788,11 @@ array, producing <code>GaussRV(C=noise)</code>.</dd>
     def __init__(self, M, model=None, noise=None, **kwargs):
         self.M = M
 
-        # None =&gt; Identity model
+        # Default to the Identity operator
         if model is None:
             model = Id_op()
-            kwargs[&#39;linear&#39;] = lambda x, t, dt: Id_mat(M)
+            kwargs[&#39;linear&#39;] = lambda *args: np.eye(M)
+        # Assign
         self.model = model
 
         # None/0 =&gt; No noise
@@ -850,6 +858,9 @@ data-gaCategoryParameter="dapper.mods">
 <!-- CHANGE: Short submodule name -->
 <!-- https://github.com/pdoc3/pdoc/issues/265#issuecomment-702426471 -->
 <li><code><a title="dapper.mods.DoublePendulum" href="DoublePendulum/index.html">DoublePendulum</a></code></li>
+<!-- CHANGE: Short submodule name -->
+<!-- https://github.com/pdoc3/pdoc/issues/265#issuecomment-702426471 -->
+<li><code><a title="dapper.mods.Id" href="Id/index.html">Id</a></code></li>
 <!-- CHANGE: Short submodule name -->
 <!-- https://github.com/pdoc3/pdoc/issues/265#issuecomment-702426471 -->
 <li><code><a title="dapper.mods.Ikeda" href="Ikeda/index.html">Ikeda</a></code></li>
