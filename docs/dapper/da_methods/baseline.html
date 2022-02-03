@@ -41,13 +41,13 @@ body.gsc-overflow-hidden #sidebar {overflow: visible;}
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/baseline.py#L1-L173" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/baseline.py#L1-L200" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">&#34;&#34;&#34;Unsophisticated&#34; but robust (widely applicable) DA methods.
 
 Many are based on `bib.raanes2016thesis`.
 &#34;&#34;&#34;
-from typing import Optional
+from typing import Callable, Optional
 
 import numpy as np
 
@@ -209,13 +209,40 @@ def fit_sigmoid(Sb, L, kb):
 
 
 @da_method()
-class EnCheat:
-    &#34;&#34;&#34;A baseline/reference method.
+class Persistence:
+    &#34;&#34;&#34;Sets estimate to the **true state** at the previous time index.
 
-    Should be implemented as part of Stats instead.
+    The analysis (.a) stat uses the previous obs. time.
+    The forecast and universal (.f and .u) stats use previous integration time index.
     &#34;&#34;&#34;
 
-    def assimilate(self, HMM, xx, yy): pass</code></pre>
+    def assimilate(self, HMM, xx, yy):
+        prev = xx[0]
+        self.stats.assess(0, mu=prev)
+        for k, ko, _t, _dt in progbar(HMM.tseq.ticker):
+            self.stats.assess(k, ko, &#39;fu&#39;, mu=xx[k-1])
+            if ko is not None:
+                self.stats.assess(k, ko, &#39;a&#39;, mu=prev)
+                prev = xx[k]
+
+
+@da_method()
+class PreProg:
+    &#34;&#34;&#34;Simply look-up the estimates in user-specified function (`schedule`).
+
+    For example, with `schedule` given by `lambda k, xx, yy: xx[k]`
+    the error (err.rms, err.ma, ...) should be 0.
+    &#34;&#34;&#34;
+
+    schedule: Callable
+    tag: str = None
+
+    def assimilate(self, HMM, xx, yy):
+        self.stats.assess(0, mu=self.schedule(0, xx, yy))
+        for k, ko, _t, _dt in progbar(HMM.tseq.ticker):
+            self.stats.assess(k, ko, &#39;fu&#39;, mu=self.schedule(k, xx, yy))
+            if ko is not None:
+                self.stats.assess(k, ko, &#39;a&#39;, mu=self.schedule(k, xx, yy))</code></pre>
 </details>
 </section>
 <section>
@@ -635,35 +662,44 @@ with the background covariance being user specified, through B and xB.</p></div>
 </dd>
 </dl>
 </dd>
-<dt id="dapper.da_methods.baseline.EnCheat"><code class="flex name class">
-<span>class <span class="ident">EnCheat</span></span>
+<dt id="dapper.da_methods.baseline.Persistence"><code class="flex name class">
+<span>class <span class="ident">Persistence</span></span>
 </code></dt>
 <dd>
-<div class="desc"><p>A baseline/reference method.</p>
-<p>Should be implemented as part of Stats instead.</p></div>
+<div class="desc"><p>Sets estimate to the <strong>true state</strong> at the previous time index.</p>
+<p>The analysis (.a) stat uses the previous obs. time.
+The forecast and universal (.f and .u) stats use previous integration time index.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/baseline.py#L167-L173" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/baseline.py#L167-L181" class="git-link">Browse git</a>
 </summary>
-<pre><code class="python">class EnCheat:
-    &#34;&#34;&#34;A baseline/reference method.
+<pre><code class="python">class Persistence:
+    &#34;&#34;&#34;Sets estimate to the **true state** at the previous time index.
 
-    Should be implemented as part of Stats instead.
+    The analysis (.a) stat uses the previous obs. time.
+    The forecast and universal (.f and .u) stats use previous integration time index.
     &#34;&#34;&#34;
 
-    def assimilate(self, HMM, xx, yy): pass</code></pre>
+    def assimilate(self, HMM, xx, yy):
+        prev = xx[0]
+        self.stats.assess(0, mu=prev)
+        for k, ko, _t, _dt in progbar(HMM.tseq.ticker):
+            self.stats.assess(k, ko, &#39;fu&#39;, mu=xx[k-1])
+            if ko is not None:
+                self.stats.assess(k, ko, &#39;a&#39;, mu=prev)
+                prev = xx[k]</code></pre>
 </details>
 <h3>Class variables</h3>
 <dl>
-<dt id="dapper.da_methods.baseline.EnCheat.da_method"><code class="name">var <span class="ident">da_method</span></code></dt>
+<dt id="dapper.da_methods.baseline.Persistence.da_method"><code class="name">var <span class="ident">da_method</span></code></dt>
 <dd>
 <div class="desc"></div>
 </dd>
 </dl>
 <h3>Methods</h3>
 <dl>
-<dt id="dapper.da_methods.baseline.EnCheat.assimilate"><code class="name flex">
+<dt id="dapper.da_methods.baseline.Persistence.assimilate"><code class="name flex">
 <span>def <span class="ident">assimilate</span></span>(<span>self, HMM, xx, yy)</span>
 </code></dt>
 <dd>
@@ -671,12 +707,100 @@ with the background covariance being user specified, through B and xB.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/baseline.py#L173-L173" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/baseline.py#L174-L181" class="git-link">Browse git</a>
 </summary>
-<pre><code class="python">def assimilate(self, HMM, xx, yy): pass</code></pre>
+<pre><code class="python">def assimilate(self, HMM, xx, yy):
+    prev = xx[0]
+    self.stats.assess(0, mu=prev)
+    for k, ko, _t, _dt in progbar(HMM.tseq.ticker):
+        self.stats.assess(k, ko, &#39;fu&#39;, mu=xx[k-1])
+        if ko is not None:
+            self.stats.assess(k, ko, &#39;a&#39;, mu=prev)
+            prev = xx[k]</code></pre>
 </details>
 </dd>
-<dt id="dapper.da_methods.baseline.EnCheat.stat"><code class="name flex">
+<dt id="dapper.da_methods.baseline.Persistence.stat"><code class="name flex">
+<span>def <span class="ident">stat</span></span>(<span>self, name, value)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/__init__.py#L135-L136" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def stat(self, name, value):
+    dapper.stats.register_stat(self.stats, name, value)</code></pre>
+</details>
+</dd>
+</dl>
+</dd>
+<dt id="dapper.da_methods.baseline.PreProg"><code class="flex name class">
+<span>class <span class="ident">PreProg</span></span>
+<span>(</span><span>schedule: Callable, tag: str = None)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Simply look-up the estimates in user-specified function (<code>schedule</code>).</p>
+<p>For example, with <code>schedule</code> given by <code>lambda k, xx, yy: xx[k]</code>
+the error (err.rms, err.ma, &hellip;) should be 0.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/baseline.py#L185-L200" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">class PreProg:
+    &#34;&#34;&#34;Simply look-up the estimates in user-specified function (`schedule`).
+
+    For example, with `schedule` given by `lambda k, xx, yy: xx[k]`
+    the error (err.rms, err.ma, ...) should be 0.
+    &#34;&#34;&#34;
+
+    schedule: Callable
+    tag: str = None
+
+    def assimilate(self, HMM, xx, yy):
+        self.stats.assess(0, mu=self.schedule(0, xx, yy))
+        for k, ko, _t, _dt in progbar(HMM.tseq.ticker):
+            self.stats.assess(k, ko, &#39;fu&#39;, mu=self.schedule(k, xx, yy))
+            if ko is not None:
+                self.stats.assess(k, ko, &#39;a&#39;, mu=self.schedule(k, xx, yy))</code></pre>
+</details>
+<h3>Class variables</h3>
+<dl>
+<dt id="dapper.da_methods.baseline.PreProg.schedule"><code class="name">var <span class="ident">schedule</span> : Callable</code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+<dt id="dapper.da_methods.baseline.PreProg.tag"><code class="name">var <span class="ident">tag</span> : str</code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+<dt id="dapper.da_methods.baseline.PreProg.da_method"><code class="name">var <span class="ident">da_method</span></code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+</dl>
+<h3>Methods</h3>
+<dl>
+<dt id="dapper.da_methods.baseline.PreProg.assimilate"><code class="name flex">
+<span>def <span class="ident">assimilate</span></span>(<span>self, HMM, xx, yy)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/da_methods/baseline.py#L195-L200" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def assimilate(self, HMM, xx, yy):
+    self.stats.assess(0, mu=self.schedule(0, xx, yy))
+    for k, ko, _t, _dt in progbar(HMM.tseq.ticker):
+        self.stats.assess(k, ko, &#39;fu&#39;, mu=self.schedule(k, xx, yy))
+        if ko is not None:
+            self.stats.assess(k, ko, &#39;a&#39;, mu=self.schedule(k, xx, yy))</code></pre>
+</details>
+</dd>
+<dt id="dapper.da_methods.baseline.PreProg.stat"><code class="name flex">
 <span>def <span class="ident">stat</span></span>(<span>self, name, value)</span>
 </code></dt>
 <dd>
@@ -750,11 +874,21 @@ data-gaCategoryParameter="dapper.da_methods.baseline">
 </ul>
 </li>
 <li>
-<h4><code><a title="dapper.da_methods.baseline.EnCheat" href="#dapper.da_methods.baseline.EnCheat">EnCheat</a></code></h4>
+<h4><code><a title="dapper.da_methods.baseline.Persistence" href="#dapper.da_methods.baseline.Persistence">Persistence</a></code></h4>
 <ul class="">
-<li><code><a title="dapper.da_methods.baseline.EnCheat.assimilate" href="#dapper.da_methods.baseline.EnCheat.assimilate">assimilate</a></code></li>
-<li><code><a title="dapper.da_methods.baseline.EnCheat.stat" href="#dapper.da_methods.baseline.EnCheat.stat">stat</a></code></li>
-<li><code><a title="dapper.da_methods.baseline.EnCheat.da_method" href="#dapper.da_methods.baseline.EnCheat.da_method">da_method</a></code></li>
+<li><code><a title="dapper.da_methods.baseline.Persistence.assimilate" href="#dapper.da_methods.baseline.Persistence.assimilate">assimilate</a></code></li>
+<li><code><a title="dapper.da_methods.baseline.Persistence.stat" href="#dapper.da_methods.baseline.Persistence.stat">stat</a></code></li>
+<li><code><a title="dapper.da_methods.baseline.Persistence.da_method" href="#dapper.da_methods.baseline.Persistence.da_method">da_method</a></code></li>
+</ul>
+</li>
+<li>
+<h4><code><a title="dapper.da_methods.baseline.PreProg" href="#dapper.da_methods.baseline.PreProg">PreProg</a></code></h4>
+<ul class="">
+<li><code><a title="dapper.da_methods.baseline.PreProg.assimilate" href="#dapper.da_methods.baseline.PreProg.assimilate">assimilate</a></code></li>
+<li><code><a title="dapper.da_methods.baseline.PreProg.stat" href="#dapper.da_methods.baseline.PreProg.stat">stat</a></code></li>
+<li><code><a title="dapper.da_methods.baseline.PreProg.schedule" href="#dapper.da_methods.baseline.PreProg.schedule">schedule</a></code></li>
+<li><code><a title="dapper.da_methods.baseline.PreProg.tag" href="#dapper.da_methods.baseline.PreProg.tag">tag</a></code></li>
+<li><code><a title="dapper.da_methods.baseline.PreProg.da_method" href="#dapper.da_methods.baseline.PreProg.da_method">da_method</a></code></li>
 </ul>
 </li>
 </ul>

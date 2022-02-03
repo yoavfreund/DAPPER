@@ -103,7 +103,7 @@ must be "registered":</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L1-L806" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L1-L815" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">&#34;&#34;&#34;Statistics for the assessment of DA methods.
 
@@ -452,18 +452,27 @@ class Stats(series.StatPrint):
         if rc.comps[&#39;error_only&#39;]:
             return
 
-        # Compute standard deviation (&#34;Spread&#34;)
-        var = P.diag if isinstance(P, CovMat) else np.diag(P)
-        now.spread = np.sqrt(var)
+        # Get diag(P)
+        if P is None:
+            var = np.zeros_like(mu)
+        elif np.isscalar(P):
+            var = np.ones_like(mu) * P
+        else:
+            if isinstance(P, CovMat):
+                var = P.diag
+                P   = P.full
+            else:
+                var = np.diag(P)
 
+            if self.do_spectral:
+                s2, U     = sla.eigh(P)
+                now.svals = np.sqrt(np.maximum(s2, 0.0))[::-1]
+                now.umisf = (U.T @ now.err)[::-1]
+
+        # Compute stddev
+        now.spread = np.sqrt(var)
         # Here, sqrt(2/pi) is the ratio, of MAD/Spread for Gaussians
         now.mad = np.nanmean(now.spread) * np.sqrt(2/np.pi)
-
-        if self.do_spectral:
-            P         = P.full if isinstance(P, CovMat) else P
-            s2, U     = sla.eigh(P)
-            now.svals = np.sqrt(np.maximum(s2, 0.0))[::-1]
-            now.umisf = (U.T @ now.err)[::-1]
 
     def average_in_time(self, kk=None, kko=None, free=False):
         &#34;&#34;&#34;Avarage all univariate (scalar) time series.
@@ -929,7 +938,7 @@ def unbias_var(w=None, N_eff=None, avoid_pathological=False):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L474-L482" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L483-L491" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def register_stat(self, name, value):
     &#34;&#34;&#34;Do `self.name = value` and register `name` as in self&#39;s `stat_register`.
@@ -963,7 +972,7 @@ Default: <code>None</code>. In this case, the formatting is left to the <code>uq
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L604-L658" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L613-L667" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def unpack_uqs(uq_list, decimals=None):
     &#34;&#34;&#34;Convert list of `uq`s into dict of lists (of equal-length) of attributes.
@@ -1030,7 +1039,7 @@ Default: <code>None</code>. In this case, the formatting is left to the <code>uq
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L661-L679" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L670-L688" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def tabulate_avrgs(avrgs_list, statkeys=(), decimals=None):
     &#34;&#34;&#34;Tabulate avrgs (val±prec).&#34;&#34;&#34;
@@ -1080,7 +1089,7 @@ where N is the ensemble size. Default: False</dd>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L682-L717" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L691-L726" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def center(E, axis=0, rescale=False):
     r&#34;&#34;&#34;Center ensemble.
@@ -1130,7 +1139,7 @@ when used to center observation perturbations.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L720-L726" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L729-L735" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def mean0(E, axis=0, rescale=True):
     &#34;&#34;&#34;Like `center`, but only return the anomalies (not the mean).
@@ -1161,7 +1170,7 @@ when used to center observation perturbations.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L729-L748" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L738-L757" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def inflate_ens(E, factor):
     &#34;&#34;&#34;Inflate the ensemble (center, inflate, re-combine).
@@ -1207,7 +1216,7 @@ should be nearly one since sum(w) = 1</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L751-L770" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L760-L779" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def weight_degeneracy(w, prec=1e-10):
     &#34;&#34;&#34;Check if the weights are degenerate.
@@ -1258,7 +1267,7 @@ The unbiasing factor is <span><span class="MathJax_Preview"> N_{eff} / (N_{eff} 
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L773-L806" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L782-L815" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def unbias_var(w=None, N_eff=None, avoid_pathological=False):
     &#34;&#34;&#34;Compute unbias-ing factor for variance estimation.
@@ -1311,7 +1320,7 @@ The unbiasing factor is <span><span class="MathJax_Preview"> N_{eff} / (N_{eff} 
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L33-L471" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L33-L480" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Stats(series.StatPrint):
     &#34;&#34;&#34;Contains and computes statistics of the DA methods.&#34;&#34;&#34;
@@ -1628,18 +1637,27 @@ The unbiasing factor is <span><span class="MathJax_Preview"> N_{eff} / (N_{eff} 
         if rc.comps[&#39;error_only&#39;]:
             return
 
-        # Compute standard deviation (&#34;Spread&#34;)
-        var = P.diag if isinstance(P, CovMat) else np.diag(P)
-        now.spread = np.sqrt(var)
+        # Get diag(P)
+        if P is None:
+            var = np.zeros_like(mu)
+        elif np.isscalar(P):
+            var = np.ones_like(mu) * P
+        else:
+            if isinstance(P, CovMat):
+                var = P.diag
+                P   = P.full
+            else:
+                var = np.diag(P)
 
+            if self.do_spectral:
+                s2, U     = sla.eigh(P)
+                now.svals = np.sqrt(np.maximum(s2, 0.0))[::-1]
+                now.umisf = (U.T @ now.err)[::-1]
+
+        # Compute stddev
+        now.spread = np.sqrt(var)
         # Here, sqrt(2/pi) is the ratio, of MAD/Spread for Gaussians
         now.mad = np.nanmean(now.spread) * np.sqrt(2/np.pi)
-
-        if self.do_spectral:
-            P         = P.full if isinstance(P, CovMat) else P
-            s2, U     = sla.eigh(P)
-            now.svals = np.sqrt(np.maximum(s2, 0.0))[::-1]
-            now.umisf = (U.T @ now.err)[::-1]
 
     def average_in_time(self, kk=None, kko=None, free=False):
         &#34;&#34;&#34;Avarage all univariate (scalar) time series.
@@ -2066,7 +2084,7 @@ Default: <code>'u' if ko is None else 'au' ('a' and 'u')</code>.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L334-L359" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L334-L368" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def assess_ext(self, now, x, mu, P):
     &#34;&#34;&#34;Kalman filter (Gaussian) assessment.&#34;&#34;&#34;
@@ -2082,18 +2100,27 @@ Default: <code>'u' if ko is None else 'au' ('a' and 'u')</code>.</p></div>
     if rc.comps[&#39;error_only&#39;]:
         return
 
-    # Compute standard deviation (&#34;Spread&#34;)
-    var = P.diag if isinstance(P, CovMat) else np.diag(P)
+    # Get diag(P)
+    if P is None:
+        var = np.zeros_like(mu)
+    elif np.isscalar(P):
+        var = np.ones_like(mu) * P
+    else:
+        if isinstance(P, CovMat):
+            var = P.diag
+            P   = P.full
+        else:
+            var = np.diag(P)
+
+        if self.do_spectral:
+            s2, U     = sla.eigh(P)
+            now.svals = np.sqrt(np.maximum(s2, 0.0))[::-1]
+            now.umisf = (U.T @ now.err)[::-1]
+
+    # Compute stddev
     now.spread = np.sqrt(var)
-
     # Here, sqrt(2/pi) is the ratio, of MAD/Spread for Gaussians
-    now.mad = np.nanmean(now.spread) * np.sqrt(2/np.pi)
-
-    if self.do_spectral:
-        P         = P.full if isinstance(P, CovMat) else P
-        s2, U     = sla.eigh(P)
-        now.svals = np.sqrt(np.maximum(s2, 0.0))[::-1]
-        now.umisf = (U.T @ now.err)[::-1]</code></pre>
+    now.mad = np.nanmean(now.spread) * np.sqrt(2/np.pi)</code></pre>
 </details>
 </dd>
 <dt id="dapper.stats.Stats.average_in_time"><code class="name flex">
@@ -2109,7 +2136,7 @@ time inds for averaging</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L361-L421" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L370-L430" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def average_in_time(self, kk=None, kko=None, free=False):
     &#34;&#34;&#34;Avarage all univariate (scalar) time series.
@@ -2194,7 +2221,7 @@ time inds for averaging</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L423-L471" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L432-L480" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def replay(self, figlist=&#34;default&#34;, speed=np.inf, t1=0, t2=None, **kwargs):
     &#34;&#34;&#34;Replay LivePlot with what&#39;s been stored in &#39;self&#39;.
@@ -2265,7 +2292,7 @@ time inds for averaging</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L485-L510" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L494-L519" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Avrgs(series.StatPrint, struct_tools.DotDict):
     &#34;&#34;&#34;A `dict` specialized for the averages of statistics.
@@ -2319,7 +2346,7 @@ time inds for averaging</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L495-L497" class="git-link">Browse git</a>
+<a href="https://github.com/nansencenter/DAPPER/blob/master/dapper/stats.py#L504-L506" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def tabulate(self, statkeys=(), decimals=None):
     columns = tabulate_avrgs([self], statkeys, decimals=decimals)
