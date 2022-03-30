@@ -12,7 +12,7 @@ import multiprocessing_on_dill as mpd
 #     Therefore: force numpy to only use a single core.
 import threadpoolctl
 
-threadpoolctl.threadpool_limits(1)
+threadpoolctl.threadpool_limits(8)
 # Alternative: ref https://stackoverflow.com/a/53224849
 # for envar in [
 #     "OMP_NUM_THREADS",        # openmp

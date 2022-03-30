@@ -1,6 +1,5 @@
 """Ensemble generation for stream function time series for QG (quasi-geostrophic) model."""
 
-from matplotlib import pyplot as plt
 import numpy as np
 import dapper.mods as modelling
 import dapper as dpr
@@ -40,6 +39,7 @@ def gen_ensemble_sample(model, nSamples, nEnsemble, SpinUp, Spacing):
 # Generate time-series data of a simulated state and obs:
 np.random.seed(123)
 Ne = 10
+model_config.mp = True
 fname = "QG-ts-en-" + str(Ne) + ".npz"
 fname = dpr.rc.dirs.data / fname
 sample = gen_ensemble_sample(model_config("sample_generation", {}), 

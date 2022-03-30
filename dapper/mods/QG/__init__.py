@@ -22,6 +22,7 @@ import numpy as np
 import dapper.mods as modelling
 import dapper.tools.liveplotting as LP
 
+
 #########################
 # Model
 #########################
