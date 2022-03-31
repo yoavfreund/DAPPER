@@ -11,6 +11,7 @@ from dapper.tools.linalg import mldiv, mrdiv, pad0, svd0, svdi, tinv, tsvd
 from dapper.tools.matrices import funm_psd, genOG_1
 from dapper.tools.progressbar import progbar
 from dapper.tools.randvars import GaussRV
+import ipdb
 
 from . import da_method
 
@@ -38,6 +39,10 @@ class EnKF:
         # Init
         E = HMM.X0.sample(self.N)
         self.stats.assess(0, E=E)
+        Ne, Nx = np.shape(E)
+        Na = len(yy[:,0])
+        f_time_series = np.empty([Na, Ne, Nx])
+        a_time_series = np.empty([Na, Ne, Nx])
 
         # Cycle
         for k, ko, t, dt in progbar(HMM.tseq.ticker):
@@ -46,12 +51,18 @@ class EnKF:
 
             # Analysis update
             if ko is not None:
+                f_time_series[ko, :, :] = E
                 self.stats.assess(k, ko, 'f', E=E)
                 E = EnKF_analysis(E, HMM.Obs(E, t), HMM.Obs.noise, yy[ko],
                                   self.upd_a, self.stats, ko)
                 E = post_process(E, self.infl, self.rot)
 
+                a_time_series[ko, :, :] = E[:]
+
             self.stats.assess(k, ko, E=E)
+        
+        self.f_time_series = f_time_series
+        self.a_time_series = a_time_series
 
 
 def EnKF_analysis(E, Eo, hnoise, y, upd_a, stats=None, ko=None):
